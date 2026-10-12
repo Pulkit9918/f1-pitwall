@@ -1,5 +1,7 @@
 # F1 Pitwall
 
+![CI](https://github.com/Pulkit9918/f1-pitwall/actions/workflows/ci.yml/badge.svg)
+
 Race-strategy analytics for Formula 1 on a local Parquet lakehouse: a resumable ingestion pipeline, data-quality checks, a validated race-state engine, strategy models with measured accuracy, and a Streamlit app with a race scrubber.
 
 > **Unofficial.** This project is not associated with the Formula 1 companies. F1, FORMULA ONE, FORMULA 1, GRAND PRIX and related marks are trade marks of Formula One Licensing B.V. Data comes from the public timing feed via [FastF1](https://github.com/theOehrly/Fast-F1) and from the [Jolpica](https://github.com/jolpica/jolpica-f1) Ergast-compatible API. The data is not redistributed in this repository. Personal, non-commercial use.
