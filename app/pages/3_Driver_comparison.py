@@ -80,6 +80,9 @@ def on_grid(x):
 
 
 ga, gb = on_grid(a), on_grid(b)
+imp = pw.imperial()
+ga["speed"] = pw.spd(ga["speed"], imp)
+gb["speed"] = pw.spd(gb["speed"], imp)
 delta = gb["t"] - ga["t"]
 
 label_a = f"{da} lap {int(row_a['LapNumber'])}"
@@ -91,7 +94,7 @@ ta, tb = float(row_a["LapTime_s"]), float(row_b["LapTime_s"])
 m1, m2, m3 = st.columns(3)
 m1.metric(label_a, pw.fmt_lap(ta))
 m2.metric(label_b, pw.fmt_lap(tb), delta=f"{tb - ta:+.3f} s", delta_color="inverse")
-m3.metric("Top speed (A / B)", f"{ga['speed'].max():.0f} / {gb['speed'].max():.0f} km/h")
+m3.metric("Top speed (A / B)", f"{ga['speed'].max():.0f} / {gb['speed'].max():.0f} {pw.spd_unit(imp)}")
 
 fig = make_subplots(rows=4, cols=1, shared_xaxes=True, vertical_spacing=0.03,
                     row_heights=[0.4, 0.2, 0.2, 0.2])
@@ -108,7 +111,7 @@ fig.add_trace(go.Scatter(x=grid, y=ga["brake"], name=label_a, showlegend=False,
                          line=dict(color=ca, shape="hv")), row=4, col=1)
 fig.add_trace(go.Scatter(x=grid, y=gb["brake"], name=label_b, showlegend=False,
                          line=dict(color=cb, shape="hv", dash=style_b["dash"])), row=4, col=1)
-fig.update_yaxes(title_text="km/h", row=1, col=1)
+fig.update_yaxes(title_text=pw.spd_unit(imp), row=1, col=1)
 fig.update_yaxes(title_text=f"Gap (s), {db} - {da}", row=2, col=1)
 fig.update_yaxes(title_text="Throttle %", row=3, col=1)
 fig.update_yaxes(title_text="Brake", row=4, col=1)

@@ -50,6 +50,8 @@ for col in ("x", "y", "speed", "throttle"):
     m[col] = pd.to_numeric(m[col], errors="coerce").astype(float)
 m["brake"] = m["brake"].fillna(False).astype(bool)
 m = m.dropna(subset=["x", "y"])
+imp = pw.imperial()
+m["speed"] = pw.spd(m["speed"], imp)
 
 expected = (end - start) / 0.24
 if len(m) < 0.8 * expected:
@@ -96,8 +98,8 @@ fig.add_trace(go.Scatter(x=pd.concat([m["px"], m["px"].iloc[:1]]),
 if mode == "Speed":
     fig.add_trace(go.Scatter(
         x=m["px"], y=m["py"], mode="markers", showlegend=False,
-        marker=dict(color=m["speed"], colorscale="Turbo", size=6, colorbar=dict(title="km/h", len=0.75, y=0.4)),
-        customdata=m[["speed"]], hovertemplate="%{customdata[0]:.0f} km/h<extra></extra>"))
+        marker=dict(color=m["speed"], colorscale="Turbo", size=6, colorbar=dict(title=pw.spd_unit(imp), len=0.75, y=0.4)),
+        customdata=m[["speed"]], hovertemplate="%{customdata[0]:.0f} " + pw.spd_unit(imp) + "<extra></extra>"))
 else:
     for name, color in palette.items():
         sub = m[m["cat"] == name]
@@ -125,5 +127,5 @@ st.plotly_chart(fig)
 
 a, b, c = st.columns(3)
 a.metric("Lap time", pw.fmt_lap(times[lap]))
-b.metric("Top speed", f"{m['speed'].max():.0f} km/h")
-c.metric("Minimum speed", f"{m['speed'].min():.0f} km/h")
+b.metric("Top speed", f"{m['speed'].max():.0f} {pw.spd_unit(imp)}")
+c.metric("Minimum speed", f"{m['speed'].min():.0f} {pw.spd_unit(imp)}")

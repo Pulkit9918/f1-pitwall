@@ -134,3 +134,28 @@ def pick_session(need_telemetry: bool = False, key: str = "s") -> dict:
     code = c3.selectbox("Session", codes, index=codes.index("R") if "R" in codes else 0,
                         format_func=lambda c: SESSION_NAMES.get(c, c), key=f"{key}_session")
     return ss[ss["session"] == code].iloc[0].to_dict()
+
+
+# ---- units ---------------------------------------------------------------------------
+
+def imperial() -> bool:
+    """Sidebar toggle for mph / deg F. Pages that show speeds or temperatures call this."""
+    return st.sidebar.toggle("Imperial units (mph, °F)", key="imperial")
+
+
+def spd(v, imp: bool):
+    """km/h to mph when `imp` is true."""
+    return v * 0.621371 if imp else v
+
+
+def tmp(v, imp: bool):
+    """deg C to deg F when `imp` is true."""
+    return v * 9 / 5 + 32 if imp else v
+
+
+def spd_unit(imp: bool) -> str:
+    return "mph" if imp else "km/h"
+
+
+def tmp_unit(imp: bool) -> str:
+    return "°F" if imp else "°C"

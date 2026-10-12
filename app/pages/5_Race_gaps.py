@@ -38,7 +38,7 @@ def shade(fig):
     return fig
 
 
-tab_pos, tab_gap, tab_tower = st.tabs(["Positions", "Gap to leader", "Lap snapshot"])
+tab_pos, tab_gap, tab_tower = st.tabs(["Positions", "Gap to leader", "Timing tower"])
 
 with tab_pos:
     chosen = st.multiselect("Drivers", names, default=names, key="pos_drivers")
@@ -66,11 +66,18 @@ with tab_gap:
                "Lapped cars show large gaps; use the slider to hide them.")
 
 with tab_tower:
+    results = pw.read("results", year, rnd, code)
     last_lap = int(laps["LapNumber"].max())
-    lap = st.slider("Lap", 1, last_lap, min(last_lap, 10))
-    snap = rl.snapshot(laps, lap)
+    c1, c2 = st.columns([3, 1])
+    lap = c1.slider("Lap", 1, last_lap, min(last_lap, 10))
+    ref = c2.selectbox("Compare against", ["(none)"] + names)
+    ref = None if ref == "(none)" else ref
+    snap = rl.tower(laps, drv, results, lap, ref)
     if snap.empty:
         st.info("No timing for this lap.")
     else:
-        st.dataframe(snap, hide_index=True, height=min(750, 40 + 36 * len(snap)))
-        st.caption("Order in which cars finished this lap. Resolution is one lap, not live.")
+        st.dataframe(snap, hide_index=True, height=min(800, 40 + 36 * len(snap)))
+        st.caption("OUT = retired before this lap. PIT = pitted on this lap. A dash = classified "
+                   "finisher who has not completed the lap. 'vs' columns: positive means that "
+                   "driver crossed the line after the one you chose. Order and gaps are at the end "
+                   "of the lap: one-lap resolution, not live.")

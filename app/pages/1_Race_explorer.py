@@ -3,6 +3,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 import pitwall as pw
+import racelib as rl
 
 st.set_page_config(page_title="Race explorer", layout="wide")
 st.title("Race explorer")
@@ -43,6 +44,10 @@ with tab_laps:
                       color_discrete_map=colors,
                       hover_data={"lap_time": True, "LapTime_s": False},
                       labels={"LapTime_s": "Lap time (s)", "LapNumber": "Lap"})
+        for a_, b_, c_ in rl.status_ranges(laps):
+            fig.add_vrect(x0=a_ - 0.5, x1=b_ + 0.5, fillcolor=rl.STATUS_STYLE[c_][1],
+                          opacity=0.18, line_width=0, annotation_text=c_,
+                          annotation_position="top left")
         st.plotly_chart(fig)
         best = d.loc[d.groupby("Driver")["LapTime_s"].idxmin(),
                      ["Driver", "LapNumber", "lap_time", "Compound"]]
@@ -84,10 +89,13 @@ with tab_weather:
     else:
         w = w.assign(minutes=w["Time_s"] / 60)
         a, b, c = st.columns(3)
-        a.metric("Air temp (avg)", f"{w['AirTemp'].mean():.1f} °C")
-        b.metric("Track temp (avg)", f"{w['TrackTemp'].mean():.1f} °C")
+        imp = pw.imperial()
+        u = pw.tmp_unit(imp)
+        a.metric("Air temp (avg)", f"{pw.tmp(w['AirTemp'].mean(), imp):.1f} {u}")
+        b.metric("Track temp (avg)", f"{pw.tmp(w['TrackTemp'].mean(), imp):.1f} {u}")
         c.metric("Rain samples", f"{100 * w['Rainfall'].mean():.0f}%")
-        st.line_chart(w.set_index("minutes")[["AirTemp", "TrackTemp"]])
+        wt = w.set_index("minutes")[["AirTemp", "TrackTemp"]].apply(lambda s: pw.tmp(s, imp))
+        st.line_chart(wt)
 
 with tab_rc:
     rc = pw.read("race_control", year, rnd, code)

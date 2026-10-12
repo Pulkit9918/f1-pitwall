@@ -84,16 +84,18 @@ def lap_trace(year: int, rnd: int, code: str, row) -> dict | None:
                        .astype(float).to_numpy(), 0, 100)
     brake = car["brake"].fillna(False).astype(float).to_numpy()
     gear = pd.to_numeric(car["ngear"], errors="coerce").fillna(0).astype(float).to_numpy()
+    drs = np.isin(pd.to_numeric(car["drs"], errors="coerce").fillna(0).astype(float)
+                  .to_numpy(), (10, 12, 14)).astype(float)
     dist = np.cumsum(speed / 3.6 * np.diff(t, prepend=t[0]))
     dist = np.maximum.accumulate(dist) + np.arange(len(dist)) * 1e-6
     return {"t": t, "dist": dist, "speed": speed, "throttle": throttle,
-            "brake": brake, "gear": gear}
+            "brake": brake, "gear": gear, "drs": drs}
 
 
 def on_grid(trace: dict, length: float, grid: np.ndarray) -> dict:
     """Resample a lap trace onto a common distance grid (laps scaled to the same length)."""
     d = trace["dist"] * (length / trace["dist"][-1])
-    return {k: np.interp(grid, d, trace[k]) for k in ("t", "speed", "throttle", "brake", "gear")}
+    return {k: np.interp(grid, d, trace[k]) for k in ("t", "speed", "throttle", "brake", "gear", "drs")}
 
 def driver_frames(laps: pd.DataFrame) -> dict:
     """One frame per driver, indexed by lap number, with 'clean' and 'green' flags."""
@@ -142,3 +144,59 @@ def predict_rejoin(frames: dict, driver: str, n: int, loss: float) -> dict | Non
             others.append((name, float(t_o) + 2 * p_o))
     return {"position": 1 + sum(1 for _, t in others if t < mine), "driver_time": mine,
             "others": others, "now": g.at[m, "Position"]}
+
+
+# ---- timing tower --------------------------------------------------------------------
+
+FINISHED = ("Finished", "+", "Lapped")
+
+
+def tower(laps: pd.DataFrame, drv: pd.DataFrame, results: pd.DataFrame, lap: int,
+          ref: str | None = None) -> pd.DataFrame:
+    """Timing tower at the end of `lap`: order across the line, gaps, tyres, best lap, pits.
+
+    status: OUT = retired before this lap, PIT = pitted this lap, dash = classified finisher
+    who has not completed this lap. Gaps are lap-resolution, not live."""
+    d = laps.dropna(subset=["LapNumber"]).copy()
+    d["LapNumber"] = d["LapNumber"].astype(int)
+    upto = d[d["LapNumber"] <= lap]
+    cur = d[d["LapNumber"] == lap].dropna(subset=["Time_s"]).sort_values("Time_s")
+    if cur.empty:
+        return cur
+    best = upto.groupby("Driver")["LapTime_s"].min()
+    pits = upto.groupby("Driver")["PitInTime_s"].apply(lambda s: int(s.notna().sum()))
+    status = {}
+    if not results.empty and {"Abbreviation", "Status"} <= set(results.columns):
+        status = dict(zip(results["Abbreviation"], results["Status"].astype(str)))
+    has_row = set(d.loc[d["LapNumber"] == lap, "Driver"])
+    t_lead = float(cur["Time_s"].iloc[0])
+    t_ref = None
+    if ref is not None and (cur["Driver"] == ref).any():
+        t_ref = float(cur.loc[cur["Driver"] == ref, "Time_s"].iloc[0])
+
+    rows, prev = [], None
+    for i, r in enumerate(cur.itertuples(), start=1):
+        t = float(r.Time_s)
+        row = {"order": i, "Driver": r.Driver,
+               "status": "PIT" if pd.notna(r.PitInTime_s) else "",
+               "gap to leader": round(t - t_lead, 3),
+               "interval": None if prev is None else round(t - prev, 3)}
+        if t_ref is not None:
+            row[f"vs {ref} (s)"] = round(t - t_ref, 3)
+        row.update({"last lap": pw.fmt_lap(r.LapTime_s), "best lap": pw.fmt_lap(best.get(r.Driver)),
+                    "tyre": r.Compound, "tyre age": r.TyreLife, "pits": pits.get(r.Driver, 0)})
+        rows.append(row)
+        prev = t
+    seen = {row["Driver"] for row in rows}
+    for name in drv["Driver"]:
+        if name in seen:
+            continue
+        finished = status.get(name, "").startswith(FINISHED)
+        label = "no time" if name in has_row else ("-" if finished else "OUT")
+        rows.append({"order": None, "Driver": name, "status": label,
+                     "best lap": pw.fmt_lap(best.get(name)), "pits": pits.get(name, 0)})
+    out = pd.DataFrame(rows)
+    out["order"] = out["order"].astype("Int64")
+    out["tyre age"] = pd.to_numeric(out["tyre age"], errors="coerce").round().astype("Int64")
+    out["pits"] = out["pits"].astype("Int64")
+    return out
