@@ -230,8 +230,8 @@ def snapshot(state, T):
             ta = t_at(ahead, r["P"])
             behind_lap = np.floor(df.at[i - 1, "P"] - r["P"] + 1e-9) >= 1
             int_s = np.nan if (np.isnan(ta) or behind_lap) else T - ta
-        in_pit = any(a <= T <= b for a, b in d["pit_iv"])
-        status = "PIT" if in_pit else ""
+        pit_now = [T - a for a, b in d["pit_iv"] if a <= T <= b]
+        status = f"PIT {pit_now[0]:.0f}s" if pit_now else ""
         if T > d["last_end"] + 1:
             status = "FIN" if d["finisher"] else "OUT"
         comp = li.at[cur, "Compound"] if cur in li.index else ""
