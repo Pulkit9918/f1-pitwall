@@ -1,0 +1,8 @@
+.venv/
+data/
+data.nosync/
+__pycache__/
+data
+logs/
+*.log
+.DS_Store
