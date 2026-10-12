@@ -6,3 +6,7 @@ data
 logs/
 *.log
 .DS_Store
+data
+logs/
+*.log
+.DS_Store
