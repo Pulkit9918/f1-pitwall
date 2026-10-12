@@ -96,6 +96,6 @@ else:
 st.caption(
     "Backtest on 547 green-flag stops (36 sessions, 2025-2026, first ingest): the predicted rejoin "
     "position was exact 49% of the time, within one place 82%, with a mean error of 0.8 places, "
-    "against 3.8 places for 'stay where you are'. Not modelled: safety car and VSC, other cars "
+    "against 3.8 places for 'stay where you are' and 2.2 for 'lose the typical three places'. Not modelled: safety car and VSC, other cars "
     "pitting at the same time, and traffic after rejoining. A circuit-specific pit loss did not beat "
     "the single global figure in testing.")
