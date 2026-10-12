@@ -193,6 +193,8 @@ def ingest(year: int, event, code: str, force: bool = False, keep_cache: bool = 
             "weather": lambda: seconds(session.weather_data),
             "race_control": lambda: pd.DataFrame(session.race_control_messages).copy(),
             "results": lambda: seconds(session.results),
+            "track_status": lambda: seconds(session.track_status),
+            "session_status": lambda: seconds(session.session_status),
         }
         if telemetry:
             try:
@@ -228,7 +230,8 @@ def ingest(year: int, event, code: str, force: bool = False, keep_cache: bool = 
             except Exception as e:
                 tables[table] = {"error": f"{type(e).__name__}: {e}"}
         row["tables"] = tables
-        failed = [t for t, i in tables.items() if "error" in i]
+        optional = {"track_status", "session_status"}  # nice to have: never downgrade a session
+        failed = [t for t, i in tables.items() if "error" in i and t not in optional]
         if "bytes" not in tables.get("laps", {}):
             row["status"] = "failed"
         elif failed or (telemetry and not row["with_telemetry"]):
