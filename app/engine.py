@@ -88,6 +88,10 @@ def build(year: int, rnd: int, code: str):
     status = {}
     if not res.empty and {"Abbreviation", "Status"} <= set(res.columns):
         status = dict(zip(res["Abbreviation"], res["Status"].astype(str)))
+    grid = {}
+    if not res.empty and {"Abbreviation", "GridPosition"} <= set(res.columns):
+        grid = dict(zip(res["Abbreviation"],
+                        pd.to_numeric(res["GridPosition"], errors="coerce")))
 
     drivers = {}
     for name, dl in laps.groupby("Driver"):
@@ -144,6 +148,7 @@ def build(year: int, rnd: int, code: str):
             "finisher": status.get(name, "Finished").startswith(FINISHED),
             "max_lap": int(dls["LapNumber"].max()),
             "approx": approx,
+            "grid": grid.get(name, np.nan),
         }
     if not drivers:
         return None
@@ -201,6 +206,12 @@ def snapshot(state, T):
         else:
             gap = gap_text(leader, r["P"], lead_p)
             interval = gap_text(df.at[i - 1, "driver"], r["P"], df.at[i - 1, "P"])
+        if i == 0:
+            int_s = np.nan
+        else:
+            ta = t_at(df.at[i - 1, "driver"], r["P"])
+            behind_lap = np.floor(df.at[i - 1, "P"] - r["P"] + 1e-9) >= 1
+            int_s = np.nan if (np.isnan(ta) or behind_lap) else T - ta
         in_pit = any(a <= T <= b for a, b in d["pit_iv"])
         status = "PIT" if in_pit else ""
         if T > d["last_end"] + 1:
@@ -213,8 +224,12 @@ def snapshot(state, T):
             "best_lap": pw.fmt_lap(done.min()) if len(done) else "",
             "pits": sum(1 for a, _ in d["pit_iv"] if a <= T),
             "status": status, "approx": (n_done + 1) in d["approx"],
-            "P": r["P"], "x": r["x"], "y": r["y"],
+            "P": r["P"], "x": r["x"], "y": r["y"], "int_s": int_s, "grid": d["grid"],
+            "best_s": float(done.min()) if len(done) else np.nan,
         })
     res = pd.DataFrame(out)
     res["tyre_age"] = pd.to_numeric(res["tyre_age"], errors="coerce").round().astype("Int64")
+    res["fl"] = False
+    if res["best_s"].notna().any():
+        res.loc[res["best_s"].idxmin(), "fl"] = True
     return res
