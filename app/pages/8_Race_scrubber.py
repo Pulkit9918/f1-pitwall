@@ -1,6 +1,3 @@
-import re
-import time
-
 import duckdb
 import numpy as np
 import pandas as pd
@@ -9,7 +6,10 @@ import streamlit as st
 
 import engine as eg
 import pitwall as pw
+import racecontrol as rcc
 import racelib as rl
+
+import time
 
 st.set_page_config(page_title="Race scrubber", layout="wide")
 st.title("Race scrubber")
@@ -39,6 +39,7 @@ st.session_state.setdefault(ev_key, -1)
 L_m = state["L"] / 10.0
 rot = p.get("rotation")
 has_rot = rot is not None and pd.notna(rot)
+PIT_LOSS = 22.4
 
 SPEEDS = [0.5, 1, 2, 4, 5, 10, 20, 30, 60]
 SKIPS = [("-5m", -300), ("-1m", -60), ("-30s", -30), ("-5s", -5),
@@ -50,6 +51,8 @@ SEC_STYLE = {"purple": "background-color: #7b2cbf; color: #ffffff",
              "yellow": "background-color: #ffd166; color: #111111"}
 LABEL_POS = ["top center", "bottom center", "middle right", "middle left"]
 flags = rl.flag_laps(laps)
+frames = rl.driver_frames(laps)
+pace_cache = {}
 
 _seg = np.sqrt((np.diff(state["ref_xy"], axis=0) ** 2).sum(1))
 _s = np.concatenate([[0.0], np.cumsum(_seg)])
@@ -82,27 +85,7 @@ def rel_gap_text(ref, name, p_ref, p_name, T):
     return "" if np.isnan(t) else f"-{T - t:.1f}"
 
 
-def steward_status(rc, names_):
-    """Latest investigation / penalty state per driver from the race control message text."""
-    out = {n: "" for n in names_}
-    for msg in rc["Message"].astype(str):
-        up = msg.upper()
-        for c in re.findall(r"\(([A-Z]{3})\)", up):
-            if c not in out:
-                continue
-            if "NO FURTHER" in up or "NO INVESTIGATION" in up:
-                out[c] = ""
-            elif "PENALTY SERVED" in up:
-                out[c] = "served"
-            elif "PENALTY" in up:
-                m = re.search(r"(\d+) SECOND", up)
-                out[c] = f"PEN {m.group(1)}s" if m else "PEN"
-            elif "UNDER INVESTIGATION" in up or "NOTED" in up:
-                out[c] = "INV"
-    return out
-
-
-# ---- race control messages on the race clock: exact flag periods, events, marshal yellows ----
+# ---- race control messages on the race clock ----
 @st.cache_data(show_spinner=False)
 def utc_offset(year: int, rnd: int, code: str):
     """UTC clock time of session second zero, from the first position sample."""
@@ -130,85 +113,6 @@ def prepare_rc():
     if not ((d["t"] > -600) & (d["t"] < state["end"] + 1800)).any():
         return None                          # the clock mapping looks wrong: switch the feature off
     return d
-
-
-def build_periods(d):
-    """Safety car, VSC and red flag periods (session seconds) from the message wording."""
-    periods, cur = [], None
-
-    def close(t1):
-        nonlocal cur
-        if cur is not None:
-            cur["t1"] = t1
-            periods.append(cur)
-            cur = None
-
-    for r in d.itertuples():
-        msg = str(r.Message).upper()
-        flag = str(r.Flag).upper() if pd.notna(r.Flag) else ""
-        t = float(r.t)
-        if "BEHIND SAFETY CAR" in msg or "FORMATION" in msg:
-            continue
-        is_red = (flag == "RED" or msg.startswith("RED FLAG")) and "INFRINGEMENT" not in msg
-        is_sc = "SAFETY CAR DEPLOYED" in msg and "VIRTUAL" not in msg
-        is_vsc = "VSC DEPLOYED" in msg or "VIRTUAL SAFETY CAR DEPLOYED" in msg
-        is_vsc_end = "VSC ENDING" in msg or "VIRTUAL SAFETY CAR ENDING" in msg
-        if is_red:
-            if not (cur and cur["kind"] == "RED"):
-                close(t)
-                cur = {"kind": "RED", "t0": t}
-            continue
-        if cur and cur["kind"] == "RED":
-            if is_sc or "PIT EXIT OPEN" in msg or "TRACK CLEAR" in msg or "RACE START" in msg:
-                close(t)
-            else:
-                continue                      # still red-flagged
-        if is_sc:
-            close(t)
-            cur = {"kind": "SC", "t0": t}
-        elif is_vsc:
-            close(t)
-            cur = {"kind": "VSC", "t0": t}
-        elif cur and cur["kind"] == "SC":
-            if "LIGHTS OFF" in msg:
-                cur.setdefault("t_off", t)
-            elif "IN THIS LAP" in msg:
-                cur.setdefault("t_in", t)
-            elif "TRACK CLEAR" in msg:
-                close(t)
-        elif cur and cur["kind"] == "VSC" and is_vsc_end:
-            close(t)
-    close(state["end"])
-    periods = [q for q in periods if q["t1"] > q["t0"]]
-    for q in periods:
-        q["p0"] = float(np.interp(q["t0"], state["grid"], state["lead"]))
-        q["p1"] = float(np.interp(q["t1"], state["grid"], state["lead"]))
-    return periods
-
-
-def build_events(d):
-    """A list of race events for the jump-to-event box."""
-    out, seen = [], set()
-    for r in d.itertuples():
-        msg = str(r.Message).upper()
-        flag = str(r.Flag).upper() if pd.notna(r.Flag) else ""
-        scope = str(r.Scope) if pd.notna(r.Scope) else ""
-        keep = (str(r.Category) == "SafetyCar" or flag in ("RED", "CHEQUERED")
-                or msg.startswith("RED FLAG")
-                or (scope == "Sector" and flag in ("YELLOW", "DOUBLE YELLOW"))
-                or ("FIA STEWARDS" in msg and ("PENALTY" in msg or "INVESTIGAT" in msg)))
-        t_race = float(r.t) - state["start"]
-        if not keep or t_race < -5 or t_race > duration + 5:
-            continue
-        sig = (round(t_race), msg)
-        if sig in seen:
-            continue
-        seen.add(sig)
-        lap = int(r.Lap) if pd.notna(r.Lap) else None
-        mm, ss = divmod(int(max(0, t_race)), 60)
-        out.append({"t": max(0.0, t_race),
-                    "label": f"L{lap if lap is not None else '-'} | {mm}:{ss:02d} | {msg[:80]}"})
-    return out[:200]
 
 
 def build_marshal(d):
@@ -253,9 +157,13 @@ def yellow_now(t_now):
 
 
 rcd = prepare_rc()
-periods = build_periods(rcd) if rcd is not None else None
-events = build_events(rcd) if rcd is not None else []
+periods = rcc.build_periods(rcd, state["grid"], state["lead"], state["end"]) if rcd is not None else None
+events = rcc.build_events(rcd, state["start"], duration) if rcd is not None else []
 marshal = build_marshal(rcd) if rcd is not None else None
+dels = (rcc.deleted_laps(rcd) if rcd is not None
+        else pd.DataFrame(columns=["t", "driver", "lap", "reason"]))
+tz_off = rcc.estimate_tz_offset(rcd) if rcd is not None else None
+resumes = rcc.resume_targets(rcd, tz_off) if rcd is not None else []
 
 
 def sc_marker_on(T_s, lead_lap_):
@@ -313,6 +221,10 @@ def add_cars(fig, sub, symbol, size, opacity, ring, text_size, grey=False):
 
 def bump(delta: int) -> None:
     st.session_state[key] = int(min(duration, max(0, st.session_state[key] + delta)))
+
+
+def to_time(t_abs: float) -> None:
+    st.session_state[key] = int(min(duration, max(0, t_abs - state["start"] - 2)))
 
 
 def to_lap() -> None:
@@ -390,16 +302,30 @@ def render() -> None:
     tag = f" | {' / '.join(active)}" if active else ""
     st.caption(f"Race time {m}:{s:02d} | leader on lap {lead_lap} of {last_lap}{tag}{playing}")
 
+    red = next((q for q in (periods or []) if q["kind"] == "RED" and q["t0"] <= T <= q["t1"]), None)
+    if red is not None:
+        ann = [r_ for r_ in resumes if red["t0"] <= r_[0] <= T]
+        if ann:
+            remaining = ann[-1][1] - T
+            when = (f"restart announced in {int(remaining // 60)}:{int(remaining % 60):02d}"
+                    if remaining > 0 else "restart is due now")
+        else:
+            when = "no restart time announced yet"
+        w1, w2 = st.columns([6, 1])
+        w1.warning(f"Red flag: {when}.")
+        w2.button("Skip to restart", on_click=to_time, args=(red["t1"],),
+                  key=f"{key}_skip_restart")
+
     rc = pw.read("race_control", year, rnd, code)
     rc_up = pd.DataFrame()
     if not rc.empty and "Lap" in rc.columns:
         rc_up = rc[pd.to_numeric(rc["Lap"], errors="coerce") <= lead_lap]
-    stew = steward_status(rc_up, names) if (not rc_up.empty and "Message" in rc_up.columns) else {}
+    stew = (rcc.steward_status(rc_up, names)
+            if (not rc_up.empty and "Message" in rc_up.columns) else {})
 
     # ---- flag timeline: exact safety car / VSC / red periods when the messages allow it ----
     with timeline_box:
         tl = go.Figure()
-        clear = [n for n in range(1, last_lap + 1) if n not in flags]
         tl.add_trace(go.Bar(x=[n - 0.5 for n in range(1, last_lap + 1)], y=[1] * last_lap, width=1,
                             name="Green", marker=dict(color="#2e7d4f", line=dict(width=0)),
                             opacity=0.55, hoverinfo="skip"))
@@ -495,11 +421,21 @@ def render() -> None:
         rel_col = f"vs {ref}"
         tbl[rel_col] = ["ref" if d_ == ref else rel_gap_text(ref, d_, p_ref, p_d, T)
                         for d_, p_d in zip(tbl["driver"], tbl["P"])]
+    pit_col = None
+    if code in ("R", "S") and not active:
+        preds = [rl.rejoin_live(state["drivers"], frames, d_, T, PIT_LOSS, pace_cache)
+                 for d_ in tbl["driver"]]
+        pit_col = "if pit now"
+        tbl[pit_col] = ["" if pr is None else f"P{pr} ({pr - int(q):+d})"
+                        for pr, q in zip(preds, tbl["pos"])]
     tbl["stewards"] = [stew.get(d_, "") for d_ in tbl["driver"]]
+    dsub = dels[dels["t"] <= T] if len(dels) else dels
+    dcount = dsub.groupby("driver").size().to_dict() if len(dsub) else {}
+    tbl["deleted"] = [dcount.get(d_, "") for d_ in tbl["driver"]]
     cols = (["pos", "driver"] + (["grid change"] if "grid change" in tbl else [])
-            + ["gap", "interval"] + ([rel_col] if rel_col else [])
+            + ["gap", "interval"] + ([rel_col] if rel_col else []) + ([pit_col] if pit_col else [])
             + ["tyres", "age", "last lap", "S1", "S2", "S3", "best lap", "pits", "status",
-               "stewards"])
+               "stewards", "deleted"])
     show = tbl[cols]
     int_s = snap["int_s"].to_numpy()
     fl = snap["fl"].to_numpy()
@@ -582,6 +518,10 @@ def render() -> None:
             "message, which is my inference: no message says when it ends. Yellow flags are at lap "
             "resolution here. Sessions without usable messages fall back to lap resolution for "
             "everything. The purple line is the leader now.\n"
+            "- **Red flag banner:** shows the time left to the announced restart. Announced times "
+            "are local clock times, so the countdown needs the circuit's time zone, which I infer "
+            "from messages that quote a local time next to their UTC timestamp. 'Skip to restart' "
+            "jumps to the end of the inferred red-flag period.\n"
             "- **Dots:** team colour, with the driver code. A grey x is a retired car. The orange "
             "**SC** dot is a simulated safety car (no real GPS exists): about 500 m ahead of the "
             "leader from SAFETY CAR DEPLOYED until its lights go off.\n"
@@ -593,11 +533,18 @@ def render() -> None:
             "(seconds, and metres along the track), speed, gear, DRS, throttle, brake and RPM.\n"
             "- **Compare gaps against:** adds a column with every car's gap to the chosen driver "
             "(+ behind them, - ahead of them), useful for watching a pit window.\n"
+            "- **If pit now (races and sprints):** the predicted position if that driver pitted at "
+            "this instant, using a 22.4 s pit loss, with the change from the current position. "
+            "Cars within the pit loss, ahead or behind, end up in front. Blank under a safety car, "
+            "VSC or red flag, which the model was not validated for. Backtest of this live-gap "
+            "version on 661 green-flag stops (2025-2026): exact 49.0%, within one place 75.9%. "
+            "Not modelled: other cars pitting at the same time, traffic after the stop.\n"
             "- **~ after a gap:** GPS matching looked unreliable on that car's current lap, so its "
             "progress is estimated from the lap timing.\n"
-            "- **PIT / OUT / FIN:** in the pit lane / retired / finished. **Stewards:** INV = under "
-            "investigation, PEN 10s = a penalty, served = penalty served, read from the text of "
-            "the race control messages (a message naming two cars marks both).\n"
+            "- **PIT / OUT / FIN:** in the pit lane (with seconds so far) / retired / finished. "
+            "**Stewards:** INV = under investigation, PEN 10s = a penalty, served = penalty "
+            "served. **Deleted:** lap times deleted so far (track limits and similar), counted from "
+            "the race control messages. A message naming two cars marks both.\n"
             "- **Tyres:** compounds used so far, oldest first (S soft, M medium, H hard, "
             "I intermediate, W wet); age is laps on the current set.\n"
             "- **S1 / S2 / S3:** the freshest completed sector time. Purple = fastest of anyone so "

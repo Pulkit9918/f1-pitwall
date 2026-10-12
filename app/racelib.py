@@ -219,3 +219,40 @@ def flag_laps(laps: pd.DataFrame) -> dict[int, str]:
         for n in share[share >= 0.5].index:
             out[int(n)] = code
     return out
+
+
+# ---- live rejoin prediction ------------------------------------------------------------
+
+def rejoin_live(drivers, frames, name, T, loss, pace_cache=None):
+    """Predicted position if `name` pitted at session time T, from the race-state engine.
+
+    A car ends up ahead after the stop if it is within `loss` seconds of the driver, ahead or
+    behind. Cars behind are extrapolated at their recent pace. Not modelled: other cars pitting,
+    traffic after the stop, safety cars. Returns None for a car that has finished or retired."""
+    di = drivers[name]
+    if T > di["last_end"] + 1:
+        return None
+    p_i = float(np.interp(T, di["tv"], di["pv"], left=0.0, right=di["pv"][-1]))
+    own = pace(frames[name], int(np.floor(p_i)) + 1) if name in frames else float("nan")
+    fallback = own if not np.isnan(own) else 95.0
+    ahead = 1
+    for j, dj in drivers.items():
+        if j == name or T > dj["last_end"] + 1:
+            continue
+        p_j = float(np.interp(T, dj["tv"], dj["pv"], left=0.0, right=dj["pv"][-1]))
+        if p_j > p_i:
+            pv = dj["pv_inc"]
+            g = 1e9 if (p_i < pv[0] or p_i > pv[-1]) else T - float(np.interp(p_i, pv, dj["tv"]))
+        else:
+            lap_j = int(np.floor(p_j)) + 1
+            if pace_cache is not None and (j, lap_j) in pace_cache:
+                pace_j = pace_cache[(j, lap_j)]
+            else:
+                pace_j = pace(frames[j], lap_j) if j in frames else float("nan")
+                if pace_cache is not None:
+                    pace_cache[(j, lap_j)] = pace_j
+            if np.isnan(pace_j):
+                pace_j = fallback
+            g = -(p_i - p_j) * pace_j
+        ahead += int(g + loss > 0)
+    return ahead
