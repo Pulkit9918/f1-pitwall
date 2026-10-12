@@ -143,7 +143,11 @@ def build(year: int, rnd: int, code: str):
         drivers[name] = {
             "tv": t[ok], "pv": pv, "pv_inc": pv + np.arange(len(pv)) * 1e-9,
             "tp": t, "x": xy[:, 0], "y": xy[:, 1],
-            "lapinfo": dls.set_index("LapNumber")[["LapTime_s", "Compound", "TyreLife"]],
+            "lapinfo": dls.set_index("LapNumber")[
+                [c for c in ("LapTime_s", "Compound", "TyreLife", "Stint", "Sector1Time_s",
+                             "Sector2Time_s", "Sector3Time_s", "Sector1SessionTime_s",
+                             "Sector2SessionTime_s", "Sector3SessionTime_s")
+                 if c in dls.columns]],
             "pit_iv": pit_iv, "last_end": float(dls["Time_s"].max()),
             "finisher": status.get(name, "Finished").startswith(FINISHED),
             "max_lap": int(dls["LapNumber"].max()),
@@ -170,8 +174,9 @@ def build(year: int, rnd: int, code: str):
 
 
 def snapshot(state, T):
-    """Running order, gaps, tyres and positions of every car at session time T (seconds)."""
+    """Running order, gaps, tyres, sectors and positions of every car at session time T."""
     D = state["drivers"]
+    initial = {"SOFT": "S", "MEDIUM": "M", "HARD": "H", "INTERMEDIATE": "I", "WET": "W"}
     rows = []
     for name, d in D.items():
         rows.append({"driver": name,
@@ -194,6 +199,21 @@ def snapshot(state, T):
         ta = t_at(ahead, P)
         return "" if np.isnan(ta) else f"+{T - ta:.1f}"
 
+    # sector times finished by T: freshest value, personal best, session best
+    sec, sbest = {}, {1: np.inf, 2: np.inf, 3: np.inf}
+    for name, d in D.items():
+        li = d["lapinfo"]
+        sec[name] = {}
+        for k in (1, 2, 3):
+            col, tcol = f"Sector{k}Time_s", f"Sector{k}SessionTime_s"
+            if col not in li.columns or tcol not in li.columns:
+                continue
+            vals = li.loc[li[tcol] <= T, col].dropna()
+            if vals.empty:
+                continue
+            sec[name][k] = (float(vals.iloc[-1]), float(vals.min()))
+            sbest[k] = min(sbest[k], float(vals.min()))
+
     out = []
     for i, r in df.iterrows():
         d = D[r["driver"]]
@@ -202,31 +222,43 @@ def snapshot(state, T):
         cur = min(n_done + 1, d["max_lap"])
         done = li.loc[li.index <= n_done, "LapTime_s"]
         if i == 0:
-            gap, interval = "leader", ""
+            gap, interval, int_s = "leader", "", np.nan
         else:
+            ahead = df.at[i - 1, "driver"]
             gap = gap_text(leader, r["P"], lead_p)
-            interval = gap_text(df.at[i - 1, "driver"], r["P"], df.at[i - 1, "P"])
-        if i == 0:
-            int_s = np.nan
-        else:
-            ta = t_at(df.at[i - 1, "driver"], r["P"])
+            interval = gap_text(ahead, r["P"], df.at[i - 1, "P"])
+            ta = t_at(ahead, r["P"])
             behind_lap = np.floor(df.at[i - 1, "P"] - r["P"] + 1e-9) >= 1
             int_s = np.nan if (np.isnan(ta) or behind_lap) else T - ta
         in_pit = any(a <= T <= b for a, b in d["pit_iv"])
         status = "PIT" if in_pit else ""
         if T > d["last_end"] + 1:
             status = "FIN" if d["finisher"] else "OUT"
-        out.append({
+        comp = li.at[cur, "Compound"] if cur in li.index else ""
+        stints = li.loc[li.index <= cur]
+        tyres = ""
+        if "Stint" in stints.columns:
+            g = stints.dropna(subset=["Stint"]).groupby("Stint")["Compound"].first()
+            tyres = "-".join(initial.get(str(c), "?") for c in g.tolist())
+        if not tyres and isinstance(comp, str) and comp:
+            tyres = initial.get(comp, "?")
+        row = {
             "pos": i + 1, "driver": r["driver"], "gap": gap, "interval": interval,
-            "tyre": li.at[cur, "Compound"] if cur in li.index else "",
+            "tyre": comp, "tyres": tyres,
             "tyre_age": li.at[cur, "TyreLife"] if cur in li.index else np.nan,
             "last_lap": pw.fmt_lap(li.at[n_done, "LapTime_s"]) if n_done in li.index else "",
             "best_lap": pw.fmt_lap(done.min()) if len(done) else "",
             "pits": sum(1 for a, _ in d["pit_iv"] if a <= T),
             "status": status, "approx": (n_done + 1) in d["approx"],
-            "P": r["P"], "x": r["x"], "y": r["y"], "int_s": int_s, "grid": d["grid"],
+            "P": r["P"], "x": r["x"], "y": r["y"], "int_s": int_s, "grid": d.get("grid", np.nan),
             "best_s": float(done.min()) if len(done) else np.nan,
-        })
+        }
+        for k in (1, 2, 3):
+            v, pb = sec[r["driver"]].get(k, (np.nan, np.nan))
+            row[f"S{k}"] = "" if np.isnan(v) else f"{v:.3f}"
+            row[f"c{k}"] = ("" if np.isnan(v) else "purple" if abs(v - sbest[k]) < 1e-6
+                            else "green" if abs(v - pb) < 1e-6 else "yellow")
+        out.append(row)
     res = pd.DataFrame(out)
     res["tyre_age"] = pd.to_numeric(res["tyre_age"], errors="coerce").round().astype("Int64")
     res["fl"] = False

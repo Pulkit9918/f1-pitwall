@@ -200,3 +200,22 @@ def tower(laps: pd.DataFrame, drv: pd.DataFrame, results: pd.DataFrame, lap: int
     out["tyre age"] = pd.to_numeric(out["tyre age"], errors="coerce").round().astype("Int64")
     out["pits"] = out["pits"].astype("Int64")
     return out
+
+
+# ---- flag timeline ---------------------------------------------------------------------
+
+def flag_laps(laps: pd.DataFrame) -> dict[int, str]:
+    """Lap number -> YEL / VSC / SC / RED when at least half the field ran under that status.
+
+    Codes from each lap's TrackStatus: 2 yellow, 4 safety car, 5 red, 6 or 7 VSC. Red beats
+    safety car beats VSC beats yellow when several apply to one lap."""
+    d = laps.dropna(subset=["TrackStatus", "LapNumber"]).copy()
+    d["lap"] = d["LapNumber"].astype(int)
+    d["ts"] = d["TrackStatus"].astype(str)
+    out = {}
+    for code, chars in (("YEL", "2"), ("VSC", "67"), ("SC", "4"), ("RED", "5")):
+        hit = d["ts"].map(lambda x, ch=chars: any(c in x for c in ch))
+        share = hit.groupby(d["lap"]).mean()
+        for n in share[share >= 0.5].index:
+            out[int(n)] = code
+    return out
