@@ -12,7 +12,7 @@ latest = {}
 for line in MANIFEST.read_text(encoding="utf-8").splitlines():
     r = json.loads(line)
     rnd = r.get("round", r["requested_event"] if isinstance(r["requested_event"], int) else 0)
-    latest[(r["year"], rnd, r["session"])] = r  # the latest attempt per session wins
+    latest[(r["year"], rnd, r["session"])] = r  
 
 by_year, mb = defaultdict(Counter), defaultdict(float)
 for (year, _, _), r in latest.items():

@@ -14,7 +14,6 @@ LAPS = """
 """
 laps = duckdb.connect().sql(LAPS).df()
 
-# circuit key = the venue's location from the manifest (event names can change venue)
 loc = {}
 for line in Path("data/lake/_manifest/sessions.jsonl").read_text(encoding="utf-8").splitlines():
     r = json.loads(line)
@@ -60,7 +59,7 @@ for (year, rnd, sess, drv), g in laps.groupby(["year", "round", "session", "Driv
         c = c[c["clean"] & (c["TrackStatus"] == "1") & c["field"].notna()]
         if len(c) < 3:
             continue
-        offset = (c["LapTime_s"] - c["field"]).median()   # this driver's usual gap to the field
+        offset = (c["LapTime_s"] - c["field"]).median()  
         loss = (t_in - f_in - offset) + (t_out - f_out - offset)
         rows.append({"year": year, "round": rnd, "session": sess, "circuit": g["circuit"].iloc[0],
                      "driver": drv, "lap": int(n), "loss": loss,

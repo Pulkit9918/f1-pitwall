@@ -95,9 +95,6 @@ def on_grid(trace: dict, length: float, grid: np.ndarray) -> dict:
     d = trace["dist"] * (length / trace["dist"][-1])
     return {k: np.interp(grid, d, trace[k]) for k in ("t", "speed", "throttle", "brake", "gear")}
 
-
-# ---- pit window ----------------------------------------------------------------------
-
 def driver_frames(laps: pd.DataFrame) -> dict:
     """One frame per driver, indexed by lap number, with 'clean' and 'green' flags."""
     d = laps.dropna(subset=["LapNumber"]).copy()

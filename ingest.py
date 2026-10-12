@@ -21,7 +21,7 @@ import pyarrow as pa
 CACHE = Path("data/cache")
 LAKE = Path("data/lake")
 MANIFEST = LAKE / "_manifest" / "sessions.jsonl"
-GAP_LIMIT_S = 10.0  # my heuristic: a telemetry gap longer than this counts as incomplete
+GAP_LIMIT_S = 10.0 
 
 CACHE.mkdir(parents=True, exist_ok=True)
 fastf1.Cache.enable_cache(str(CACHE))
@@ -128,7 +128,6 @@ def already_done(year: int, event, code: str, want_telemetry: bool) -> bool:
         return False
     for line in MANIFEST.read_text(encoding="utf-8").splitlines():
         r = json.loads(line)
-        # rows ingested by name also carry a "round"; match on it when asked by round number
         ident = r.get("round", r["requested_event"]) if isinstance(event, int) else r["requested_event"]
         if ((r["year"], ident, r["session"]) == (year, event, code)
                 and r["status"] == "ok"
@@ -230,7 +229,7 @@ def ingest(year: int, event, code: str, force: bool = False, keep_cache: bool = 
             except Exception as e:
                 tables[table] = {"error": f"{type(e).__name__}: {e}"}
         row["tables"] = tables
-        optional = {"track_status", "session_status"}  # nice to have: never downgrade a session
+        optional = {"track_status", "session_status"}  
         failed = [t for t, i in tables.items() if "error" in i and t not in optional]
         if "bytes" not in tables.get("laps", {}):
             row["status"] = "failed"
@@ -246,7 +245,7 @@ def ingest(year: int, event, code: str, force: bool = False, keep_cache: bool = 
     row["warnings"] = sorted(set(collector.messages))[:25]
     row["seconds"] = round(time.monotonic() - t0, 1)
     if "RateLimit" in str(row.get("error", "")):
-        row["status"] = "ratelimited"  # not recorded: the batch retries it after waiting
+        row["status"] = "ratelimited"  
         print(f"{year} {event} {code}: rate limited (not recorded)")
         return row
     log_manifest(row)

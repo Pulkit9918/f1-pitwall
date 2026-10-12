@@ -34,7 +34,7 @@ def manifest_status() -> dict:
         for line in ingest.MANIFEST.read_text(encoding="utf-8").splitlines():
             r = json.loads(line)
             key = (r["year"], r.get("round", r["requested_event"]), r["session"])
-            if status.get(key) != "ok":  # ok is final; otherwise the latest attempt wins
+            if status.get(key) != "ok":  
                 status[key] = r["status"]
     return status
 
