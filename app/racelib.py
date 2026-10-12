@@ -94,3 +94,54 @@ def on_grid(trace: dict, length: float, grid: np.ndarray) -> dict:
     """Resample a lap trace onto a common distance grid (laps scaled to the same length)."""
     d = trace["dist"] * (length / trace["dist"][-1])
     return {k: np.interp(grid, d, trace[k]) for k in ("t", "speed", "throttle", "brake", "gear")}
+
+
+# ---- pit window ----------------------------------------------------------------------
+
+def driver_frames(laps: pd.DataFrame) -> dict:
+    """One frame per driver, indexed by lap number, with 'clean' and 'green' flags."""
+    d = laps.dropna(subset=["LapNumber"]).copy()
+    d["LapNumber"] = d["LapNumber"].astype(int)
+    d["clean"] = d["PitInTime_s"].isna() & d["PitOutTime_s"].isna() & d["LapTime_s"].notna()
+    d["green"] = d["TrackStatus"].astype(str) == "1"
+    return {name: g.sort_values("LapNumber").drop_duplicates("LapNumber").set_index("LapNumber")
+            for name, g in d.groupby("Driver")}
+
+
+def pace(g: pd.DataFrame, before: int) -> float:
+    """Median of the last 3 clean green laps before lap `before` (NaN if fewer than 2)."""
+    ks = [k for k in range(before - 1, before - 9, -1) if k in g.index]
+    c = g.loc[ks]
+    c = c[c["clean"] & c["green"]]
+    return float(c["LapTime_s"].head(3).median()) if len(c) >= 2 else float("nan")
+
+
+def actual_stops(g: pd.DataFrame) -> list[int]:
+    out = []
+    for n in g.index[g["PitInTime_s"].notna()]:
+        if (n + 1) in g.index and pd.notna(g.at[n + 1, "PitOutTime_s"]):
+            out.append(int(n))
+    return out
+
+
+def predict_rejoin(frames: dict, driver: str, n: int, loss: float) -> dict | None:
+    """Predict the position at the end of the out-lap if `driver` pits on in-lap `n`.
+
+    Uses only information known at the end of lap n-1. Assumes nobody else pits."""
+    g = frames[driver]
+    m = n - 1
+    if m not in g.index:
+        return None
+    t_d, p_d = g.at[m, "Time_s"], pace(g, n)
+    if pd.isna(t_d) or pd.isna(p_d):
+        return None
+    mine = float(t_d) + 2 * p_d + loss
+    others = []
+    for name, go in frames.items():
+        if name == driver or m not in go.index:
+            continue
+        t_o, p_o = go.at[m, "Time_s"], pace(go, n)
+        if not (pd.isna(t_o) or pd.isna(p_o)):
+            others.append((name, float(t_o) + 2 * p_o))
+    return {"position": 1 + sum(1 for _, t in others if t < mine), "driver_time": mine,
+            "others": others, "now": g.at[m, "Position"]}
