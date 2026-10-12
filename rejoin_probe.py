@@ -132,3 +132,10 @@ err = (const - res["actual"]).abs()
 print(f"\nFAIRER BASELINE: lose the typical {shift:.0f} places "
       f"-> exact {100 * (err == 0).mean():.0f}%, within 1 place {100 * (err <= 1).mean():.0f}%, "
       f"mean error {err.mean():.2f} places")
+
+shift = float((res["actual"] - res["before"]).median())
+const = (res["before"] + shift).clip(lower=1).round()
+err = (const - res["actual"]).abs()
+print(f"\nFAIRER BASELINE: lose the typical {shift:.0f} places "
+      f"-> exact {100 * (err == 0).mean():.0f}%, within 1 place {100 * (err <= 1).mean():.0f}%, "
+      f"mean error {err.mean():.2f} places")
