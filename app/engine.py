@@ -101,6 +101,7 @@ def build(year: int, rnd: int, code: str):
         s_raw, _ = project(xy, ref_xy, s_ref)
         S = np.unwrap(s_raw, period=L)
         P = np.full(len(t), np.nan)
+        approx = set()
         prev_end = None
         dls = dl.sort_values("LapNumber").drop_duplicates("LapNumber")
         for r in dls.itertuples():
@@ -119,10 +120,11 @@ def build(year: int, rnd: int, code: str):
                 continue
             s0, s1 = np.interp(t0, t, S), np.interp(t1, t, S)
             span = s1 - s0
-            if 0.6 * L <= span <= 1.4 * L:
+            if 0.92 * L <= span <= 1.08 * L:
                 frac = (S[m] - s0) / span
             else:
                 frac = (t[m] - t0) / (t1 - t0)
+                approx.add(int(r.LapNumber))
             P[m] = (int(r.LapNumber) - 1) + np.clip(frac, 0, 1)
         ok = ~np.isnan(P)
         if ok.sum() < 100:
@@ -141,6 +143,7 @@ def build(year: int, rnd: int, code: str):
             "pit_iv": pit_iv, "last_end": float(dls["Time_s"].max()),
             "finisher": status.get(name, "Finished").startswith(FINISHED),
             "max_lap": int(dls["LapNumber"].max()),
+            "approx": approx,
         }
     if not drivers:
         return None
@@ -209,7 +212,8 @@ def snapshot(state, T):
             "last_lap": pw.fmt_lap(li.at[n_done, "LapTime_s"]) if n_done in li.index else "",
             "best_lap": pw.fmt_lap(done.min()) if len(done) else "",
             "pits": sum(1 for a, _ in d["pit_iv"] if a <= T),
-            "status": status, "P": r["P"], "x": r["x"], "y": r["y"],
+            "status": status, "approx": (n_done + 1) in d["approx"],
+            "P": r["P"], "x": r["x"], "y": r["y"],
         })
     res = pd.DataFrame(out)
     res["tyre_age"] = pd.to_numeric(res["tyre_age"], errors="coerce").round().astype("Int64")

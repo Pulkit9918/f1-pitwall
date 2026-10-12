@@ -84,6 +84,7 @@ fig.update_yaxes(visible=False, scaleanchor="x", scaleratio=1)
 c_map, c_tab = st.columns([3, 2])
 c_map.plotly_chart(fig)
 table = snap.rename(columns={"tyre_age": "age", "last_lap": "last lap", "best_lap": "best lap"})
+table["gap"] = [g + " ~" if (a and g) else g for g, a in zip(table["gap"], snap["approx"])]
 c_tab.dataframe(table[["pos", "driver", "gap", "interval", "tyre", "age", "last lap", "best lap",
                        "pits", "status"]], hide_index=True, height=640)
 st.caption(
@@ -92,3 +93,4 @@ st.caption(
     "sector timing lines on four races: exact 89-99.8% of the time, within one place 98-100%. "
     "Not tested: lap 1 and the start, and races with broken position data. Gaps are computed from "
     "when the car ahead was at the same point on track.")
+st.caption("A ~ after a gap means GPS matching looked unreliable on that car's current lap (a pit-lane lap, an incident or a mismatch near the line), so its progress is estimated from the lap timing instead.")

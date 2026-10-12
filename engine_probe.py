@@ -9,6 +9,7 @@ engine never sees: at the moment each driver crosses a sector line, is the engin
 order the same as the order derived from the official sector times?
 """
 
+import os
 import sys
 import time
 
@@ -19,6 +20,8 @@ import pandas as pd
 YEAR, RND, CODE = ((int(sys.argv[1]), int(sys.argv[2]), sys.argv[3])
                    if len(sys.argv) >= 4 else (2026, 17, "R"))
 LAKE = "data/lake"
+HEADING = os.environ.get("HEADING") == "1"
+BAND = float(os.environ.get("BAND", "0.08"))
 T_START = time.monotonic()
 
 
@@ -75,9 +78,21 @@ def project(xy, ref, s):
     seg_len = np.sqrt((ab ** 2).sum(1))
     n_seg = len(a)
     s_out, d_out = np.empty(len(xy)), np.empty(len(xy))
+    if HEADING:
+        v = np.empty_like(xy)
+        v[1:-1] = xy[2:] - xy[:-2]
+        v[0], v[-1] = v[1], v[-2]
+        speed = np.sqrt((v ** 2).sum(1))
+        unit = v / np.maximum(speed, 1e-9)[:, None]
+        tan = np.vstack([ab, ab[-1:]])
+        tan = tan / np.maximum(np.sqrt((tan ** 2).sum(1)), 1e-9)[:, None]
     for lo in range(0, len(xy), 20000):
         p = xy[lo:lo + 20000]
         d2 = ((p[:, None, :] - ref[None, :, :]) ** 2).sum(2)
+        if HEADING:
+            cos = unit[lo:lo + 20000] @ tan.T
+            moving = (speed[lo:lo + 20000] > 20)[:, None]
+            d2 = d2 + np.where(moving & (cos < 0.3), 1e12, 0.0)
         k = d2.argmin(1)
         best_d2 = np.full(len(p), np.inf)
         best_s = np.zeros(len(p))
@@ -125,7 +140,7 @@ for drv, dl in laps.groupby("Driver"):
             continue
         s0, s1 = np.interp(t0, t, S), np.interp(t1, t, S)
         span = s1 - s0
-        if 0.6 * L <= span <= 1.4 * L:
+        if (1 - BAND) * L <= span <= (1 + BAND) * L:
             frac = (S[m] - s0) / span
         else:
             frac = (t[m] - t0) / (t1 - t0)                    # fall back to linear in time
@@ -251,3 +266,40 @@ if dbg:
         print(f"  {int(r.LapNumber):3d}  {r.LapTime_s:7.1f}  {'Y' if pd.notna(r.PitInTime_s) else '-':>6} "
               f"{'Y' if pd.notna(r.PitOutTime_s) else '-':>7}  {str(r.TrackStatus):>5}  "
               f"{r.Position:12.0f}  {e1:9.2f}  {e2:9.2f}  {off:11.0f}%  {jumps_:5d}")
+
+trace = os.environ.get("TRACE_DRIVER")
+if trace:
+    name, lap_txt = trace.split(":")
+    n = int(lap_txt)
+    dl = (laps[laps["Driver"] == name].sort_values("LapNumber")
+          .drop_duplicates("LapNumber").set_index("LapNumber"))
+    t0, t1 = dl.at[n - 1, "Time_s"], dl.at[n, "Time_s"]
+    p = (pos[pos["driver_number"] == int(dl["DriverNumber"].iloc[0])]
+         .sort_values("session_time_s").drop_duplicates("session_time_s"))
+    t = p["session_time_s"].to_numpy(float)
+    s_raw, dist = project(p[["x", "y"]].to_numpy(float), ref_xy, s_ref)
+    S = np.unwrap(s_raw, period=L)
+    s0, s1 = np.interp(t0, t, S), np.interp(t1, t, S)
+    print(f"\nTRACE {name} lap {n}: lap time {t1 - t0:.1f} s, matched span "
+          f"{(s1 - s0) / L:.3f} of the track length, start at {s0 / L % 1:.3f}, "
+          f"end at {s1 / L % 1:.3f}")
+    print("  t-t0    dt  off-line  raw s/L  (S-s0)/L  time frac  engine frac")
+    idx = np.where((t > t0) & (t <= t1))[0]
+    for i in idx[::max(1, len(idx) // 26)]:
+        print(f"  {t[i] - t0:5.1f} {t[i] - t[i - 1]:5.2f} {dist[i] / 10:7.1f}m {s_raw[i] / L:8.3f} "
+              f"{(S[i] - s0) / L:9.3f} {(t[i] - t0) / (t1 - t0):10.3f} "
+              f"{p_at(name, t[i]) - (n - 1):11.3f}")
+
+
+bd = os.environ.get("BOUNDS_DRIVER")
+if bd:
+    dl = laps[laps["Driver"] == bd].sort_values("LapNumber").drop_duplicates("LapNumber")
+    p = (pos[pos["driver_number"] == int(dl["DriverNumber"].iloc[0])]
+         .sort_values("session_time_s").drop_duplicates("session_time_s"))
+    t = p["session_time_s"].to_numpy(float)
+    s_raw, _ = project(p[["x", "y"]].to_numpy(float), ref_xy, s_ref)
+    S = np.unwrap(s_raw, period=L)
+    vals = [f"{int(r.LapNumber)}:{(np.interp(r.Time_s, t, S) / L) % 1:.2f}"
+            for r in dl.itertuples() if pd.notna(r.Time_s)]
+    print(f"WHERE EACH LAP ENDS ON THE REFERENCE LINE ({bd}), lap:position, 0.00 = on the line")
+    print("  " + "  ".join(vals))
