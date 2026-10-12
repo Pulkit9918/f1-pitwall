@@ -1,4 +1,7 @@
+import re
 import time
+
+import duckdb
 
 import numpy as np
 import pandas as pd
@@ -37,6 +40,10 @@ L_m = state["L"] / 10.0
 rot = p.get("rotation")
 has_rot = rot is not None and pd.notna(rot)
 
+SPEEDS = [0.5, 1, 2, 4, 5, 10, 20, 30, 60]
+SKIPS = [("-5m", -300), ("-1m", -60), ("-30s", -30), ("-5s", -5),
+         ("+5s", 5), ("+30s", 30), ("+1m", 60), ("+5m", 300)]
+
 
 def bump(delta: int) -> None:
     st.session_state[key] = int(min(duration, max(0, st.session_state[key] + delta)))
@@ -64,6 +71,121 @@ SEC_STYLE = {"purple": "background-color: #7b2cbf; color: #ffffff",
              "green": "background-color: #2d6a4f; color: #ffffff",
              "yellow": "background-color: #ffd166; color: #111111"}
 flags = rl.flag_laps(laps)
+
+_seg = np.sqrt((np.diff(state["ref_xy"], axis=0) ** 2).sum(1))
+_s = np.concatenate([[0.0], np.cumsum(_seg)])
+
+
+def point_at(frac):
+    """A point on the reference line, as a fraction of the lap from the start/finish line."""
+    s = (frac % 1.0) * _s[-1]
+    return np.array([np.interp(s, _s, state["ref_xy"][:, 0]),
+                     np.interp(s, _s, state["ref_xy"][:, 1])])
+
+
+def t_at(name, P):
+    d = state["drivers"][name]
+    pv = d["pv_inc"]
+    if P < pv[0] or P > pv[-1]:
+        return np.nan
+    return float(np.interp(P, pv, d["tv"]))
+
+
+def rel_gap_text(ref, name, p_ref, p_name, T):
+    diff = p_ref - p_name            # positive: `name` is behind `ref`
+    if abs(diff) >= 1.0:
+        n = int(np.floor(abs(diff) + 1e-9))
+        return f"{'+' if diff > 0 else '-'}{n} lap" + ("s" if n > 1 else "")
+    if diff > 0:
+        t = t_at(ref, p_name)
+        return "" if np.isnan(t) else f"+{T - t:.1f}"
+    t = t_at(name, p_ref)
+    return "" if np.isnan(t) else f"-{T - t:.1f}"
+
+
+def steward_status(rc, names_):
+    """Latest investigation / penalty state per driver from the race control message text."""
+    out = {n: "" for n in names_}
+    for msg in rc["Message"].astype(str):
+        up = msg.upper()
+        codes = re.findall(r"\(([A-Z]{3})\)", up)
+        for c in codes:
+            if c not in out:
+                continue
+            if "NO FURTHER" in up or "NO INVESTIGATION" in up:
+                out[c] = ""
+            elif "PENALTY SERVED" in up:
+                out[c] = "served"
+            elif "PENALTY" in up:
+                m = re.search(r"(\d+) SECOND", up)
+                out[c] = f"PEN {m.group(1)}s" if m else "PEN"
+            elif "UNDER INVESTIGATION" in up or "NOTED" in up:
+                out[c] = "INV"
+    return out
+
+
+@st.cache_data(show_spinner=False)
+def utc_offset(year: int, rnd: int, code: str):
+    """UTC clock time of session second zero, from the first position sample."""
+    path = pw.part("telemetry_pos", year, rnd, code)
+    con = duckdb.connect()
+    try:
+        d, s = con.sql("SELECT date_utc, session_time_s FROM read_parquet('" + str(path) + "') "
+                       "ORDER BY session_time_s LIMIT 1").fetchone()
+    finally:
+        con.close()
+    return pd.Timestamp(d) - pd.Timedelta(seconds=float(s))
+
+
+def build_marshal():
+    """Marshal-sector extents along the reference line, and yellow / clear events in session seconds."""
+    ms = pw.read("circuit_marshal_sectors", year, rnd, code)
+    rc_all = pw.read("race_control", year, rnd, code)
+    if ms.empty or rc_all.empty or not {"X", "Y", "Number"} <= set(ms.columns):
+        return None
+    if not {"Time", "Scope", "Flag", "Sector"} <= set(rc_all.columns):
+        return None
+    s_pts, off = eg.project(ms[["X", "Y"]].to_numpy(float), state["ref_xy"], _s)
+    if float(np.median(off)) > 500:        # over 50 m from the track: a different coordinate frame
+        return None
+    frac = s_pts / _s[-1]
+    order = np.argsort(frac)
+    starts = frac[order]
+    ends = np.roll(starts, -1)
+    ends[-1] += 1.0
+    nums = ms["Number"].to_numpy()[order].astype(int)
+    extents = {int(n): (float(a), float(b)) for n, a, b in zip(nums, starts, ends)}
+    ev = rc_all[rc_all["Scope"].isin(["Sector", "Track"]) & rc_all["Flag"].notna()].copy()
+    ev["t"] = (pd.to_datetime(ev["Time"]) - utc_offset(year, rnd, code)).dt.total_seconds()
+    ev = ev.sort_values("t")
+    events = []
+    for r in ev.itertuples():
+        flag = str(r.Flag).upper()
+        if r.Scope == "Track" and flag == "CLEAR":
+            events.append((float(r.t), "all", "CLEAR"))
+        elif r.Scope == "Sector" and pd.notna(r.Sector):
+            events.append((float(r.t), int(r.Sector), flag))
+    inside = [e for e in events if -600 <= e[0] <= state["end"] + 1800]
+    if not inside:                          # the clock mapping looks wrong: switch the feature off
+        return None
+    return {"extents": extents, "events": inside}
+
+
+marshal = build_marshal()
+
+
+def yellow_now(t_now):
+    active = {}
+    for t, who, flag in marshal["events"]:
+        if t > t_now:
+            break
+        if who == "all":
+            active = {}
+        elif flag in ("YELLOW", "DOUBLE YELLOW"):
+            active[who] = flag
+        elif flag == "CLEAR":
+            active.pop(who, None)
+    return active
 
 
 @st.cache_data(show_spinner=False)
@@ -111,7 +233,7 @@ def add_cars(fig, sub, symbol, size, opacity, ring, text_size, grey=False):
 pc1, pc2, pc3 = st.columns([1, 1, 6])
 pc1.button("Pause" if st.session_state[play_key] else "Play", on_click=toggle_play,
            key=f"{key}_playbtn")
-pc2.selectbox("Speed", [1, 4, 10, 30, 60], format_func=lambda v: f"{v}x", key=speed_key,
+pc2.selectbox("Speed", SPEEDS, format_func=lambda v: f"{v:g}x", key=speed_key,
               label_visibility="collapsed")
 pc3.caption("Auto-play refreshes about once a second, so fast speeds move in jumps.")
 
@@ -134,23 +256,30 @@ def render() -> None:
 
     timeline_box = st.container()
 
-    b1, b2, b3, b4, b5, b6 = st.columns([1, 1, 1, 1, 1, 2])
-    b1.button("-60 s", on_click=bump, args=(-60,))
-    b2.button("-10 s", on_click=bump, args=(-10,))
-    b3.button("+10 s", on_click=bump, args=(10,))
-    b4.button("+60 s", on_click=bump, args=(60,))
-    b5.number_input("Lap", 1, last_lap, 1, key=f"{key}_lap", label_visibility="collapsed")
-    b6.button("Go to lap", on_click=to_lap)
+    bcols = st.columns([1] * 8 + [1.2, 1.7])
+    for col, (label, delta) in zip(bcols[:8], SKIPS):
+        col.button(label, on_click=bump, args=(delta,), key=f"{key}_skip{delta}")
+    bcols[8].number_input("Lap", 1, last_lap, 1, key=f"{key}_lap", label_visibility="collapsed")
+    bcols[9].button("Go to lap", on_click=to_lap)
 
     t_rel = st.slider("Seconds since the start", 0, duration, key=key)
-    follow = st.multiselect("Follow drivers (highlighted on the map, live panel below)",
-                            names, max_selections=3, key=f"{key}_follow")
+    f1c, f2c = st.columns([3, 1])
+    follow = f1c.multiselect("Follow drivers (highlighted on the map, live panel below)",
+                             names, max_selections=3, key=f"{key}_follow")
+    ref_choice = f2c.selectbox("Compare gaps against", ["(none)"] + names, key=f"{key}_ref")
+    ref = None if ref_choice == "(none)" else ref_choice
     T = state["start"] + t_rel
     snap = eg.snapshot(state, T)
     m, s = divmod(int(t_rel), 60)
     lead_lap = int(min(np.floor(snap["P"].iloc[0]) + 1, last_lap))
-    playing = f" | playing at {st.session_state[speed_key]}x" if st.session_state[play_key] else ""
+    playing = f" | playing at {st.session_state[speed_key]:g}x" if st.session_state[play_key] else ""
     st.caption(f"Race time {m}:{s:02d} | leader on lap {lead_lap} of {last_lap}{playing}")
+
+    rc = pw.read("race_control", year, rnd, code)
+    rc_up = pd.DataFrame()
+    if not rc.empty and "Lap" in rc.columns:
+        rc_up = rc[pd.to_numeric(rc["Lap"], errors="coerce") <= lead_lap]
+    stew = steward_status(rc_up, names) if (not rc_up.empty and "Message" in rc_up.columns) else {}
 
     # ---- flag timeline (lap resolution) ----
     with timeline_box:
@@ -198,11 +327,28 @@ def render() -> None:
     fig.add_trace(go.Scatter(x=outline[:, 0], y=outline[:, 1], mode="lines",
                              line=dict(color="#777777", width=9), hoverinfo="skip",
                              showlegend=False))
+    if marshal is not None:
+        for num_, flag_ in yellow_now(T).items():
+            ext = marshal["extents"].get(num_)
+            if ext is None:
+                continue
+            pts = tr(np.array([point_at(f_) for f_ in np.linspace(ext[0], ext[1], 30)]))
+            fig.add_trace(go.Scatter(
+                x=pts[:, 0], y=pts[:, 1], mode="lines", showlegend=False, hoverinfo="text",
+                hovertext=f"{flag_.title()} in marshal sector {num_}",
+                line=dict(color="#ff9f1c" if flag_ == "DOUBLE YELLOW" else "#ffd60a", width=13)))
     followed = snap["driver"].isin(follow)
     dim = 0.65 if follow else 1.0
     add_cars(fig, snap[(snap["status"] != "OUT") & ~followed], "circle", 12, dim, 1, 10)
     add_cars(fig, snap[(snap["status"] == "OUT") & ~followed], "x", 12, dim, 1, 10, True)
     add_cars(fig, snap[followed], "circle", 20, 1.0, 3, 14)
+    if flags.get(lead_lap) == "SC":
+        sc_xy = tr(point_at(float(snap["P"].iloc[0]) + 500.0 / L_m).reshape(1, 2))
+        fig.add_trace(go.Scatter(
+            x=[sc_xy[0, 0]], y=[sc_xy[0, 1]], mode="markers+text", text=["SC"],
+            textposition="top center", showlegend=False, hoverinfo="text",
+            hovertext="Safety car (simulated: about 500 m ahead of the leader)",
+            marker=dict(size=22, color="#ff9f1c", line=dict(width=3, color="#ffffff"))))
     fig.update_layout(height=640, margin=dict(l=0, r=0, t=10, b=0), uirevision="map")
     fig.update_xaxes(visible=False)
     fig.update_yaxes(visible=False, scaleanchor="x", scaleratio=1)
@@ -214,9 +360,17 @@ def render() -> None:
             for g, q in zip(tbl["grid"], tbl["pos"])]
     tbl = tbl.rename(columns={"tyre_age": "age", "last_lap": "last lap", "best_lap": "best lap"})
     tbl["gap"] = [g + " ~" if (a and g) else g for g, a in zip(tbl["gap"], tbl["approx"])]
+    rel_col = None
+    if ref is not None and ref in set(snap["driver"]):
+        p_ref = float(snap.loc[snap["driver"] == ref, "P"].iloc[0])
+        rel_col = f"vs {ref}"
+        tbl[rel_col] = ["ref" if d_ == ref else rel_gap_text(ref, d_, p_ref, p_d, T)
+                        for d_, p_d in zip(tbl["driver"], tbl["P"])]
+    tbl["stewards"] = [stew.get(d_, "") for d_ in tbl["driver"]]
     cols = (["pos", "driver"] + (["grid change"] if "grid change" in tbl else [])
-            + ["gap", "interval", "tyres", "age", "last lap", "S1", "S2", "S3", "best lap",
-               "pits", "status"])
+            + ["gap", "interval"] + ([rel_col] if rel_col else [])
+            + ["tyres", "age", "last lap", "S1", "S2", "S3", "best lap", "pits", "status",
+               "stewards"])
     show = tbl[cols]
     int_s = snap["int_s"].to_numpy()
     fl = snap["fl"].to_numpy()
@@ -228,8 +382,8 @@ def render() -> None:
         if col.name == "best lap":
             return ["color: #b048ff; font-weight: 700" if f else "" for f in fl]
         if col.name == "driver":
-            return ["font-weight: 700; text-decoration: underline" if d in follow else ""
-                    for d in show["driver"]]
+            return ["font-weight: 700; text-decoration: underline" if d_ in follow else ""
+                    for d_ in show["driver"]]
         if col.name in ("S1", "S2", "S3"):
             return [SEC_STYLE.get(c, "") for c in snap[f"c{col.name[1]}"]]
         return [""] * len(col)
@@ -250,7 +404,8 @@ def render() -> None:
             v = car_at(arr, T) if arr is not None else None
             with col:
                 st.markdown(f"**{name}** | P{int(row['pos'])} | lap {lap_now} | "
-                            f"{row['status'] or 'on track'}")
+                            f"{row['status'] or 'on track'}"
+                            + (f" | {stew[name]}" if stew.get(name) else ""))
                 st.caption(neighbour_text(
                     "Ahead", None if ahead is None else ahead["driver"], row["int_s"],
                     99.0 if ahead is None else ahead["P"] - row["P"]))
@@ -273,12 +428,11 @@ def render() -> None:
                 rpm = 0.0 if np.isnan(v["rpm"]) else float(v["rpm"])
                 st.progress(min(1.0, rpm / arr["rpm_max"]), text=f"RPM {rpm:,.0f}")
 
-    rc = pw.read("race_control", year, rnd, code)
     st.subheader(f"Race control: latest messages up to lap {lead_lap}")
     if rc.empty or "Lap" not in rc.columns:
         st.caption("No race control messages with lap numbers for this session.")
     else:
-        sub = rc[pd.to_numeric(rc["Lap"], errors="coerce") <= lead_lap].tail(8).iloc[::-1]
+        sub = rc_up.tail(8).iloc[::-1]
         rcols = [c for c in ("Lap", "Category", "Flag", "Message") if c in sub.columns]
         if sub.empty:
             st.caption("No messages yet.")
@@ -288,16 +442,24 @@ def render() -> None:
     with st.expander("Legend"):
         st.markdown(
             "- **Play / Pause and speed** sit above the scrubber. Auto-play refreshes about once a "
-            "second, so 30x and 60x move in jumps; dragging the slider while it plays re-syncs it.\n"
+            "second, so 30x and 60x move in jumps; dragging the slider while it plays re-syncs it. "
+            "The skip buttons jump 5 s, 30 s, 1 min or 5 min.\n"
             "- **Timeline above the slider:** green = normal running; yellow, virtual safety car, "
             "safety car and red flag stretches at lap resolution; the purple line is the leader "
             "now.\n"
-            "- **Dots:** team colour, with the driver code. A grey x is a retired car.\n"
+            "- **Dots:** team colour, with the driver code. A grey x is a retired car. The orange "
+            "**SC** dot is a simulated safety car (no real GPS exists): about 500 m ahead of the "
+            "leader on laps flagged safety car.\n"
             "- **Followed drivers** get a large ringed dot and a panel with gaps ahead and behind "
             "(seconds, and metres along the track), speed, gear, DRS, throttle, brake and RPM.\n"
+            "- **Yellow track stretches:** marshal sectors under a yellow flag at this moment (orange for double yellow), from the race control messages, with the message sector numbers matched to the circuit's marshal sectors. Shown only for circuits with marshal-sector data.\n"
+            "- **Compare gaps against:** adds a column with every car's gap to the chosen driver "
+            "(+ behind them, - ahead of them), useful for watching a pit window.\n"
             "- **~ after a gap:** GPS matching looked unreliable on that car's current lap, so its "
             "progress is estimated from the lap timing.\n"
-            "- **PIT / OUT / FIN:** in the pit lane / retired / finished.\n"
+            "- **PIT / OUT / FIN:** in the pit lane / retired / finished. **Stewards:** INV = under "
+            "investigation, PEN 10s = a penalty, served = penalty served, read from the text of "
+            "the race control messages (a message naming two cars marks both).\n"
             "- **Tyres:** compounds used so far, oldest first (S soft, M medium, H hard, "
             "I intermediate, W wet); age is laps on the current set.\n"
             "- **S1 / S2 / S3:** the freshest completed sector time. Purple = fastest of anyone so "

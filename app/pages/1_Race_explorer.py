@@ -48,6 +48,15 @@ with tab_laps:
             fig.add_vrect(x0=a_ - 0.5, x1=b_ + 0.5, fillcolor=rl.STATUS_STYLE[c_][1],
                           opacity=0.18, line_width=0, annotation_text=c_,
                           annotation_position="top left")
+        pit = laps[laps["Driver"].isin(chosen) & laps["PitInTime_s"].notna()]
+        if not pit.empty:
+            fig.add_trace(go.Scatter(
+                x=pit["LapNumber"], y=[float(d["LapTime_s"].min())] * len(pit),
+                mode="markers", name="Pit in",
+                marker=dict(symbol="triangle-up", size=11, line=dict(width=1, color="#ffffff"),
+                            color=[colors.get(x, "#888888") for x in pit["Driver"]]),
+                hovertext=[f"{r.Driver} pits, lap {int(r.LapNumber)}" for r in pit.itertuples()],
+                hoverinfo="text"))
         st.plotly_chart(fig)
         best = d.loc[d.groupby("Driver")["LapTime_s"].idxmin(),
                      ["Driver", "LapNumber", "lap_time", "Compound"]]
