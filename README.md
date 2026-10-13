@@ -1,8 +1,9 @@
 # F1 Pitwall
 
 ![CI](https://github.com/Pulkit9918/f1-pitwall/actions/workflows/ci.yml/badge.svg)
+![dbt](https://github.com/Pulkit9918/f1-pitwall/actions/workflows/dbt.yml/badge.svg)
 
-Race-strategy analytics for Formula 1 on a local Parquet lakehouse: a resumable ingestion pipeline, data-quality checks, a validated race-state engine, strategy models with measured accuracy, and a Streamlit app with a race scrubber.
+Race-strategy analytics for Formula 1 on a local Parquet lakehouse: a resumable ingestion pipeline with an audit log, a tested dbt transformation layer (typed silver tables, gold dimensions and facts with enforced contracts, reconciliation against official results), a validated race-state engine, strategy models with measured accuracy, and a Streamlit app with a race scrubber.
 
 > **Unofficial.** This project is not associated with the Formula 1 companies. F1, FORMULA ONE, FORMULA 1, GRAND PRIX and related marks are trade marks of Formula One Licensing B.V. Data comes from the public timing feed via [FastF1](https://github.com/theOehrly/Fast-F1) and from the [Jolpica](https://github.com/jolpica/jolpica-f1) Ergast-compatible API. The data is not redistributed in this repository. Personal, non-commercial use.
 
@@ -10,50 +11,53 @@ Race-strategy analytics for Formula 1 on a local Parquet lakehouse: a resumable 
 
 ## What it does
 
-- **Ingests** race-weekend data one session at a time (laps, sectors, tyres, weather, race control, 4 Hz car telemetry and GPS position) into partitioned Parquet files, and 1950-to-now results and standings from Jolpica.
-- **Checks** every file it writes and records per-session quality metrics (value ranges, sampling gaps, circuit metadata) in a manifest.
+- **Ingests** race-weekend data one session at a time (laps, sectors, tyres, weather, race control, track status, 4 Hz car telemetry and GPS position) into partitioned Parquet files, and 1950-to-now results and standings from Jolpica. Every attempt is written to an ingest log.
+- **Transforms** the lake with dbt (DuckDB): typed and deduplicated silver tables, gold dimensions and facts with enforced data contracts, and tests that compare the pipeline's output with the official classification and with its own log.
+- **Checks** every file it writes and records per-session quality metrics (value ranges, sampling gaps, circuit metadata) in the log.
 - **Reconstructs the race** from GPS: a running order and time gaps for every car at any moment, validated against the official sector timing.
 - **Models pit stops**: the time lost in the pit lane, and where a driver rejoins, backtested on real stops.
 - **Serves it** in a Streamlit app: race explorer, track map, driver and multi-driver telemetry, race gaps, pit window, a race scrubber with auto-play, a session timing screen, and a 1950-to-now history browser.
 
 ## Why it exists
 
-Most F1 tools are viewers: they show the timing screen. This project asks a narrower question: *how well can the numbers on that screen be reconstructed and used for strategy decisions, and how do we know?* Every derived number here comes with a test against something independent (official sector timing, real pit stops), and the limits are written down.
+Most F1 tools are viewers: they show the timing screen. This project asks a narrower question: *how well can the numbers on that screen be reconstructed and used for strategy decisions, and how do we know?* Every derived number here comes with a test against something independent (official sector timing, official classification, real pit stops), and the limits are written down.
 
 ## Architecture
 
 ```
 FastF1 (timing + telemetry) ──┐
-                               ├─► ingest.py / batch.py ─► Parquet lake ─► DuckDB ─► Streamlit app
-Jolpica API (1950-now) ───────┘      (rate-limit aware,     data/lake/        (read-only)
-                                      resumable, one          year=/round=/
+                               ├─► ingest.py / batch.py ─► Parquet lake ─► dbt (DuckDB) ─► gold tables ─► Streamlit app
+Jolpica API (1950-now) ───────┘      (rate-limit aware,     data/lake/      silver -> gold     contracts      (read-only)
+                                      resumable, one          year=/round=/   + reconciliation   + tests
                                       session at a time)      session=/
                                            │
-                                           └─► _manifest/sessions.jsonl ─► report.py, verify.py
+                                           └─► _manifest/*.jsonl (ingest log) ─► dbt run metadata, report.py, verify.py
 ```
 
 | Layer | Choice |
 |---|---|
 | Language | Python 3.11 |
 | Sources | FastF1 3.8 (timing, telemetry), Jolpica (history) |
-| Storage | Parquet (zstd), Hive-style partitions, JSONL manifest |
+| Storage | Parquet (zstd), Hive-style partitions, JSONL ingest log |
+| Transform | dbt-core 1.12 with dbt-duckdb, models read the lake in place |
 | Query | DuckDB (embedded), pandas, NumPy |
 | App | Streamlit 1.65, Plotly |
-| Checks | `verify.py` (file vs manifest), `report.py` (coverage and problems), probe scripts |
+| CI | GitHub Actions: unit tests and syntax lint, and a full dbt build on a synthetic lake |
+| Checks | dbt tests and contracts, `verify.py` (file vs log), `report.py` (coverage and problems) |
 
-There is no warehouse server and no orchestrator. That was deliberate: an earlier version of this project ran on a warehouse trial that expired and took its dashboard with it. Everything here runs from files.
+There is no warehouse server and no orchestrator yet (see the roadmap). That was deliberate: an earlier version of this project ran on a warehouse trial that expired and took its dashboard with it. Everything here runs from files.
 
 ## Data
 
-**Coverage** <!-- TODO: update after 2022-2024 ingest finishes -->
+**Coverage** <!-- TODO: update after the 2022-2024 practice and 2018-2021 ingest finishes -->
 
 | Tier | Years | Content |
 |---|---|---|
 | Results, standings, drivers, teams, circuits | 1950 - 2026 | Jolpica |
-| Full detail | 2022 - 2026 | Races, qualifying, sprints, sprint qualifying: laps, sectors, tyres, weather, race control, car telemetry, GPS position |
+| Full detail | 2022 - 2026 | Races, qualifying, sprints, sprint qualifying: laps, sectors, tyres, weather, race control, track status, car telemetry, GPS position |
 | Laps only | Practice sessions | No telemetry |
 
-As of this draft: 2025 and 2026 complete (120 and 85 sessions), 2024 in progress, 2022 and 2023 queued. Total <!-- TODO: final size --> on disk.
+Sessions in the lake at the last dbt build: 369 (2019: 1, 2022: 47, 2023: 56, 2024: 60, 2025: 120, 2026: 85). Practice sessions for 2022-2024 and race and qualifying sessions for 2018-2021 are queued. Total <!-- TODO: final size --> on disk.
 
 **Typical size per session** (zstd Parquet): race with telemetry 9-16 MB, qualifying 4-5 MB, sprint 4-7 MB, practice (laps only) about 0.1 MB.
 
@@ -62,25 +66,58 @@ As of this draft: 2025 and 2026 complete (120 and 85 sessions), 2024 in progress
 ```
 data/lake/
   laps/ telemetry_car/ telemetry_pos/ weather/ race_control/ results/
-  circuit_corners/ circuit_marshal_sectors/
-  track_status/ session_status/           (sessions ingested from 2024 on)
+  circuit_corners/ circuit_marshal_sectors/ track_status/ session_status/
      year=YYYY/round=RR/session=CODE/part.parquet
   history/   results, driver_standings, constructor_standings, drivers, constructors, circuits
-  _manifest/sessions.jsonl               one record per ingest attempt
+  _manifest/ sessions.jsonl (one record per ingest attempt), backfill.jsonl (one per backfill attempt)
+data/f1_dbt.duckdb                       dbt output (silver and gold schemas)
 ```
 
-Round numbers follow FastF1's numbering for the season. They do not always match the official calendar (the 2026 calendar was changed), so history tables are never joined to sessions by round number.
+Round numbers follow FastF1's numbering for the season. They do not always match the official calendar (the 2026 calendar was changed), so history tables are never joined to sessions by round number. The 2023 sprint qualifying session is stored as `SS`.
 
 ## Ingestion
 
-- **One session at a time**, written then recorded in the manifest, so an interrupted run loses at most the session in progress.
-- **Rate limits.** FastF1 enforces about 500 requests an hour. The batch runner detects the limit, waits, and retries. Observed behaviour: a burst of roughly 40 sessions, then about an hour before the first retry succeeds. A season takes 2-3 hours unattended. <!-- TODO: confirm wording after the 2022-2023 runs -->
+- **One session at a time**, written then recorded in the ingest log, so an interrupted run loses at most the session in progress.
+- **Rate limits.** FastF1 limits itself to about 500 requests an hour (200 for ergast.com hosts), counted in a sliding window inside the Python process; it raises an error when the window is full. The batch runner detects this, waits, and retries. Observed behaviour: a burst of roughly 40 sessions, then about an hour before the first retry succeeds. A season takes 2-3 hours unattended. <!-- TODO: confirm wording after the 2022-2023 runs -->
 - **Resumable.** Finished sessions are skipped; `--retry-failed` redoes failures; `--dry-run` prints the plan.
 - **Scratch cache** is deleted after every session, so disk use stays flat.
 - **Status per session:** ok, partial or failed, with the reason.
-- **A launcher script** refuses to start a second run. (An accidental double launch early on made two runs collide on the shared cache; `verify.py` was written to prove nothing was damaged. It found nothing, and the duplicate manifest lines are harmless.)
+- **A launcher script** refuses to start a second run. (An accidental double launch early on made two runs collide on the shared cache; `verify.py` was written to prove nothing was damaged. It found nothing, and the duplicate log lines are harmless.)
+- **Backfill.** `scripts/backfill_track_status.py` adds `track_status` and `session_status` to sessions that were ingested before those tables existed (206 sessions in 2019, 2025 and 2026). It only writes the missing tables, skips sessions that already have them, and logs to `backfill.jsonl`.
 
-## What the data-quality checks found
+## Transformation layer (dbt)
+
+Run from the repository root: `dbt build --project-dir dbt --profiles-dir dbt`. The models read the Parquet lake in place and write a DuckDB file under `data/`.
+
+| Layer | Models | What happens |
+|---|---|---|
+| Sources | `lake.*`, `history.*`, `manifest.runs` | Parquet files and the JSON ingest log, with not-null checks on key columns |
+| Silver (10) | laps, results, race control, weather, track status, sessions, three history tables, ingest runs | Typed columns, duplicates removed, explicit keys such as `session_key = 2025-R07-R` |
+| Gold (17) | `dim_session`, `dim_driver`, `dim_circuit`, `dim_constructor`, `dim_historical_driver`, `fct_lap`, `fct_stint`, `fct_pit_stop`, `fct_result`, `fct_race_control_event`, `fct_track_status_period`, `fct_session_weather`, `fct_season_result`, `fct_driver_standing`, `fct_constructor_standing`, `fct_ingest_session`, `fct_ingest_summary` | Facts and dimensions the app and any later API read |
+| Reconciliation (3) | `rec_finish_order`, `rec_lake_vs_manifest`, `rec_weekend_coverage` | The pipeline checked against official results and against its own log |
+
+The last build had 92 steps: 30 models and 62 tests. Result: 89 passed, 3 warnings, 0 errors. Five gold models have enforced contracts (declared column names and types that the build checks).
+
+**What the reconciliation found**
+
+| Check | Result |
+|---|---|
+| Lap counts of classified finishers against the official classification | Match in 1,871 of 1,873 driver-race cases |
+| Finishing order derived from laps against the official order | Exact position match turned out to be a poor metric: post-race penalties shift official positions. The test now compares the order of classified finishers pairwise and flags races with at least 10 finishers that fall below 90% agreement or have more than one lap-count mismatch. Four races are flagged (2023 Australia, 2024 Miami sprint, 2025 Miami sprint, 2026 Monaco). Post-race time penalties are a candidate explanation and have not been tested yet |
+| Pit lane time (timed lane transit) for green-flag race stops | Median about 23 s. Different from the 22.4 s pit *loss* used in the strategy models below, which includes the in-lap and out-lap. Two stops fall outside the 5-300 s plausibility window (one in the 2026 round 1 race, one in the 2026 round 12 sprint), cause not investigated |
+| Lake files against the ingest log, five tables per session | Row counts agreed for every session at the last build |
+| Race weekends against the expected set of sessions | 177 gaps, all in the 2022-2024 practice sessions that are not ingested yet. Expected sessions by weekend format are my reading of FastF1's session names |
+
+**Data problems the tests found, and what was done**
+
+- **Garage visits** in qualifying and practice were counted as pit stops (4,466 false warnings). Pit-stop plausibility now applies to race sessions only.
+- **Red-flag laps** (Monaco 2024 lap 1) triggered lap-time warnings; laps under a red flag are excluded from that check.
+- **Shared drives**: in 1950-1964 a driver could take over another car in the same race, which gave 71 duplicate result keys. `fct_season_result` now numbers the extra drives (`drive_number`) and suffixes the key.
+- **Missing driver ids**: FastF1 gives `nan` or an empty id for some drivers (Bearman, Piastri, and practice-only drivers in 2025-2026, 59 session rows). The id is filled from the Jolpica history by season and driver code; drivers who have never raced get a placeholder id `ff1-<code>`, and `driver_id_source` records which rule applied. FastF1 also writes missing names as the text `None None`; those become null.
+
+CI builds the same project on a small synthetic lake (`dbt/ci/make_ci_lake.py`) that contains deliberate bad rows: a duplicate lap, a null lap number, a `nan` driver id, a practice-only driver, a shared drive, and a log that the lake must match. The real data is not needed in CI.
+
+## What the data-quality checks found (raw feed)
 
 | Finding | Handling |
 |---|---|
@@ -149,38 +186,53 @@ Using the engine's live gaps was **no more accurate** than lap-end times, so the
 
 ```bash
 # environments (kept separate so the app can never disturb a long ingest)
-python3.11 -m venv ~/.venvs/f1-pitwall && source ~/.venvs/f1-pitwall/bin/activate
-pip install fastf1 pandas pyarrow duckdb requests          # TODO: add requirements files
-python3.11 -m venv ~/.venvs/f1-app
-~/.venvs/f1-app/bin/pip install streamlit plotly duckdb pandas pyarrow numpy
+python3.11 -m venv ~/.venvs/f1-pitwall && ~/.venvs/f1-pitwall/bin/pip install -r requirements-ingest.txt
+python3.11 -m venv ~/.venvs/f1-app     && ~/.venvs/f1-app/bin/pip install -r requirements-app.txt
+python3.11 -m venv ~/.venvs/f1-dbt     && ~/.venvs/f1-dbt/bin/pip install -r requirements-dbt.txt
 
 # ingest one season (race, qualifying, sprints); --dry-run first to see the plan
+source ~/.venvs/f1-pitwall/bin/activate
 python batch.py --years 2024 --codes R,Q,S,SQ,SS --dry-run
 scripts/start_batch.sh --years 2024 --codes R,Q,S,SQ,SS --cooldown 5 --max-waits 30
 scripts/status.sh                                             # progress at a glance
 
-# history, checks, app
+# history, checks
 python history.py
 python report.py && python verify.py
+
+# transform and test with dbt (reads data/lake, writes data/f1_dbt.duckdb)
+~/.venvs/f1-dbt/bin/dbt build --project-dir dbt --profiles-dir dbt
+
+# app
 ~/.venvs/f1-app/bin/streamlit run app/Home.py
+
+# the CI dbt build on a synthetic lake, without any real data
+python dbt/ci/make_ci_lake.py ci_lake
+F1_LAKE=ci_lake F1_DBT_DB=ci_lake/f1.duckdb ~/.venvs/f1-dbt/bin/dbt build --project-dir dbt --profiles-dir dbt
 ```
+
+`F1_LAKE` and `F1_DBT_DB` set the lake and dbt database paths (defaults `data/lake` and `data/f1_dbt.duckdb`).
 
 ## Repository layout
 
 ```
-ingest.py        one session -> partitioned Parquet + manifest record
+ingest.py        one session -> partitioned Parquet + log record
 batch.py         season loop: schedule, skips, rate-limit waits, retries
 history.py       Jolpica 1950-now -> Parquet (cached raw responses)
 report.py        coverage and problems per season
-verify.py        every ingested file against its manifest record
-scripts/         start_batch.sh (refuses a second run), status.sh
+verify.py        every ingested file against its log record
+dbt/             models (silver, gold, reconciliation), tests, macros, CI lake generator
+scripts/         start_batch.sh (refuses a second run), status.sh, backfill_track_status.py
 app/             Streamlit app: pitwall.py (data access), engine.py (race state), racelib.py, pages/
-*_probe.py       measurement scripts behind the numbers above
+tests/           unit tests for the race engine, race-control logic, history fetching and app helpers
+experiments/     measurement scripts behind the numbers above (run from the repository root)
+.github/         CI: ci.yml (tests, lint) and dbt.yml (dbt build on a synthetic lake)
 ```
 
 ## Decisions and dead ends
 
-- **Files instead of a warehouse.** The earlier version used a warehouse trial that expired. This one has nothing to expire.
+- **Files instead of a warehouse.** The earlier version used a warehouse trial that expired. This one has nothing to expire. dbt runs on DuckDB for the same reason.
+- **Reconciliation metric.** Exact finishing-position match flagged 52 to 64 races, mostly for reasons that were not real problems: post-race penalties change the official order, and retirements are not ranked on the same scale. Comparing classified finishers pairwise, plus lap counts, cut it to four races that deserve a look.
 - **Direction-aware map matching made things worse** (Miami exact order fell from 93% to 87%), so it was dropped. A stricter lap-length check helped (93% to 96%).
 - **Circuit-specific pit loss did not help** against a single global figure.
 - **A live-gap rejoin model was no better** than lap-end times.
@@ -192,16 +244,20 @@ app/             Streamlit app: pitwall.py (data access), engine.py (race state)
 - GPS position is already snapped to a common line, so cars cannot be shown side by side.
 - The simulated safety car is placed about 500 m ahead of the leader (no safety car GPS exists).
 - Red-flag periods end at the next pit-exit-open, safety car, track-clear or race-start message; no message states the end.
-- Wind speed is assumed to be in m/s; DRS open codes are an interpretation of the documentation.
+- Wind speed is assumed to be in m/s; DRS open codes and the track status code meanings are interpretations of the FastF1 documentation.
 - Gaps are lap-timing based at the lines and GPS based in between; accuracy is validated on four races only.
+- The dbt layer does not cover the telemetry tables yet, and the safety car, VSC and red-flag logic still lives in the app code (`app/racecontrol.py`), not in a model.
+- The reconciliation is against my own ingest of the public feed, so it shows internal consistency and agreement with the official classification, not that the feed itself is right.
 
 ## Roadmap
 
 <!-- TODO: edit -->
-- Re-run every figure above on the full 2022-2026 dataset
+- Re-run every figure above on the full 2022-2026 dataset, once the practice-session ingest finishes
+- Orchestration with Airflow: a calendar-driven DAG, one task per session, a rate-limit pool, retries, then `dbt build` and the reconciliation checks
+- Schema checks at ingest time, and a FastAPI layer over the gold tables
+- Tyre degradation and undercut models on the gold tables
 - Public deployment (hosting undecided)
 - A smooth static replay page
-- CI and tests (in progress)
 
 ## Credits and licence
 
