@@ -163,4 +163,26 @@ hist("constructor_standings", "season BIGINT, round BIGINT, position DOUBLE, poi
      "constructor_id VARCHAR, constructor VARCHAR, nationality VARCHAR",
      [(2099, 1, 1.0, 50.0, 1.0, "test", "Test Team", "Australian")])
 
+# patch_dbt_8: an ingest log that matches the synthetic files. The race's track_status is only in the backfill log.
+import json
+
+MAN = OUT / "_manifest"
+MAN.mkdir(parents=True, exist_ok=True)
+found = {}
+for p in sorted(OUT.glob("*/year=*/round=*/session=*/part.parquet")):
+    table = p.parts[-5]
+    key = (int(p.parts[-4].split("=")[1]), int(p.parts[-3].split("=")[1]), p.parts[-2].split("=")[1])
+    found.setdefault(key, {})[table] = con.execute(f"select count(*) from read_parquet('{p}')").fetchone()[0]
+with open(MAN / "sessions.jsonl", "w", encoding="utf-8") as f, open(MAN / "backfill.jsonl", "w", encoding="utf-8") as g:
+    for (y, r, c), tabs in found.items():
+        logged = {t: {"rows": n, "bytes": 1000} for t, n in tabs.items() if not (c == "R" and t == "track_status")}
+        f.write(json.dumps({"year": y, "requested_event": r if c == "R" else "Synth Grand Prix", "session": c,
+                            "fastf1_version": "synthetic", "ingested_at": "2099-01-02T03:04:05.123456+00:00",
+                            "with_telemetry": False, "round": r, "event": "Synth Grand Prix", "tables": logged,
+                            "status": "ok", "warnings": [], "seconds": 1.5}) + "\n")
+        if c == "R":
+            g.write(json.dumps({"year": y, "round": r, "session": c, "kind": "backfill",
+                                "at": "2099-01-03T00:00:00+00:00", "status": "ok", "seconds": 1.0,
+                                "tables": {"track_status": {"rows": tabs["track_status"], "bytes": 1000}}}) + "\n")
+
 print(f"Wrote a synthetic lake to {OUT}/")

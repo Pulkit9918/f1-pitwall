@@ -1,0 +1,44 @@
+version: 2
+
+models:
+  - name: silver_ingest_runs
+    description: The ingest log, typed. One row per ingest or backfill attempt.
+    columns:
+      - name: run_source
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['ingest', 'backfill']
+      - name: status
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['ok', 'partial', 'failed']
+              config:
+                severity: warn
+
+  - name: fct_ingest_session
+    description: One row per session in the ingest log, with the latest status and rows per table.
+    meta: {owner: data-eng}
+    columns:
+      - name: session_key
+        data_tests: [unique, not_null]
+
+  - name: fct_ingest_summary
+    description: One row per year, loaded sessions and last run time.
+    meta: {owner: data-eng}
+    columns:
+      - name: year
+        data_tests: [unique, not_null]
+
+  - name: rec_lake_vs_manifest
+    description: Parquet rows against logged rows, per session and table.
+    columns:
+      - name: check_result
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['match', 'row_mismatch', 'missing_in_lake', 'not_in_manifest']
+
+  - name: rec_weekend_coverage
+    description: Expected sessions per race weekend and whether each is loaded.

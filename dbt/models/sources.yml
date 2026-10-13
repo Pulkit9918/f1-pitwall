@@ -76,3 +76,20 @@ sources:
       - name: drivers
         meta:
           external_location: "read_parquet('{{ env_var('F1_LAKE', 'data/lake') }}/history/drivers.parquet')"
+
+  - name: manifest
+    description: >
+      The ingest log: one JSON line per run, written by ingest.py (sessions.jsonl) and by
+      scripts/backfill_track_status.py (backfill.jsonl). Only the fields listed below are read.
+    meta:
+      owner: data-eng
+      layer: bronze
+    tables:
+      - name: runs
+        description: One row per ingest or backfill attempt, with the rows written per table in the tables field.
+        meta:
+          external_location: >-
+            read_json('{{ env_var('F1_LAKE', 'data/lake') }}/_manifest/*.jsonl', format = 'newline_delimited',
+            filename = true, columns = {{ '{{' }}year: 'BIGINT', round: 'BIGINT', requested_event: 'VARCHAR',
+            session: 'VARCHAR', status: 'VARCHAR', error: 'VARCHAR', ingested_at: 'VARCHAR', "at": 'VARCHAR',
+            with_telemetry: 'BOOLEAN', seconds: 'DOUBLE', tables: 'JSON'}})
