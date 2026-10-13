@@ -50,11 +50,12 @@ models:
     meta: {owner: data-eng}
     columns:
       - name: result_key
+        description: Race, driver and constructor, with a -2 suffix on a shared drive.
         data_tests:
           - not_null
-          - unique:
-              config:
-                severity: warn
+          - unique
+      - name: drive_number
+        description: 1 for a driver's normal entry, 2 or more for shared drives in the same race.
       - name: driver_id
         data_tests:
           - relationships:

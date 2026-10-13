@@ -82,6 +82,8 @@ for pos, (name, (num, did, _lt)) in enumerate(DRIVERS.items(), start=1):
     res_rows.append(("Synth Grand Prix", str(num), name, name, did, "Test Team", "ffffff", "test", name,
                      name, name + " Driver", "", "AUS", float(pos), str(pos), float(pos), "Finished",
                      float(25 - 7 * (pos - 1)), float(N_LAPS), None, None, None, 600.0 + pos))
+# patch_dbt_6: FastF1 gave CCC no driver id ('nan'); silver_results must fill it from the history
+res_rows = [r[:4] + ("nan",) + r[5:] if r[3] == "CCC" else r for r in res_rows]
 write("results", "R", RESULTS_COLS, res_rows)
 
 rc_rows = [
@@ -106,6 +108,9 @@ q_res = [("Synth Grand Prix", str(num), name, name, did, "Test Team", "ffffff", 
           name + " Driver", "", "AUS", float(pos), str(pos), None, "", 0.0, None, 80.0 + pos, 79.0 + pos,
           78.0 + pos, None)
          for pos, (name, (num, did, _lt)) in enumerate(DRIVERS.items(), start=1)]
+# patch_dbt_7: a practice-only driver with no id and the name 'None None' (becomes the surrogate id ff1-zzz)
+q_res.append(("Synth Grand Prix", "99", "ZZZ", "ZZZ", "nan", "Test Team", "ffffff", "test", "None", "None",
+              "None None", "", "AUS", 4.0, "4", None, "", 0.0, None, 85.0, 84.0, 83.0, None))
 write("results", "Q", RESULTS_COLS, q_res)
 write("race_control", "Q", RC_COLS, [])
 
@@ -144,6 +149,12 @@ hist("results", "season BIGINT, round BIGINT, race_name VARCHAR, date VARCHAR, c
      [(2099, 1, "Synth Grand Prix", "2099-01-01", "synth", did, name, name + " Driver", float(num), "test",
        "Test Team", float(num), float(num), str(num), float(25 - 7 * (num - 1)), 6.0, "Finished", 600000.0 + num,
        float(num), 3.0, "1:30.000") for name, (num, did, _lt) in DRIVERS.items()])
+# patch_dbt_6: CCC also drove a second car in the same race (a shared drive)
+con.execute("INSERT INTO h SELECT * REPLACE (9.0 AS grid, 12.0 AS position, '12' AS position_text, "
+            "0.0 AS points, 2.0 AS laps, 'Engine' AS status, NULL AS time_ms, NULL AS fastest_rank, "
+            "NULL AS fastest_lap, NULL AS fastest_time) FROM h WHERE code = 'CCC'")
+con.execute(f"COPY h TO '{HIST / 'results.parquet'}' (FORMAT parquet)")
+
 hist("driver_standings", "season BIGINT, round BIGINT, position DOUBLE, position_text VARCHAR, points DOUBLE, "
      "wins DOUBLE, driver_id VARCHAR, driver VARCHAR, constructor VARCHAR",
      [(2099, 1, float(num), str(num), float(25 - 7 * (num - 1)), 1.0 if num == 1 else 0.0, did, name + " Driver",
