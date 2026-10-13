@@ -1,0 +1,25 @@
+-- Silver: Jolpica (Ergast-compatible) race results, 1950 to now. Round numbers are Jolpica's own,
+-- so these rows are never joined to FastF1 sessions by round.
+select
+    cast(season as integer)         as season,
+    cast(round as integer)          as round,
+    race_name,
+    try_cast(date as date)          as race_date,
+    circuit_id,
+    driver_id,
+    code                            as driver_code,
+    driver                          as driver_name,
+    cast(number as integer)         as car_number,
+    constructor_id,
+    constructor                     as constructor_name,
+    cast(grid as integer)           as grid,
+    cast(position as integer)       as position,
+    position_text,
+    points,
+    cast(laps as integer)           as laps,
+    status,
+    time_ms,
+    cast(fastest_rank as integer)   as fastest_rank,
+    cast(fastest_lap as integer)    as fastest_lap,
+    fastest_time
+from {{ source('history', 'results') }}

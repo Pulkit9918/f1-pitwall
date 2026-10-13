@@ -41,3 +41,38 @@ sources:
         description: Race control messages (flags, safety car, penalties, lap deletions).
         meta:
           external_location: "read_parquet('{{ env_var('F1_LAKE', 'data/lake') }}/race_control/*/*/*/part.parquet', hive_partitioning = true, union_by_name = true)"
+
+      - name: weather
+        description: Weather samples during a session.
+        meta:
+          external_location: "read_parquet('{{ env_var('F1_LAKE', 'data/lake') }}/weather/*/*/*/part.parquet', hive_partitioning = true, union_by_name = true)"
+
+      - name: track_status
+        description: Track status changes (sessions ingested from 2024 on).
+        meta:
+          external_location: "read_parquet('{{ env_var('F1_LAKE', 'data/lake') }}/track_status/*/*/*/part.parquet', hive_partitioning = true, union_by_name = true)"
+
+  - name: history
+    description: Jolpica (Ergast-compatible) history tables, 1950 to now, one Parquet file each.
+    meta:
+      owner: data-eng
+      layer: bronze
+    tables:
+      - name: results
+        meta:
+          external_location: "read_parquet('{{ env_var('F1_LAKE', 'data/lake') }}/history/results.parquet')"
+      - name: driver_standings
+        meta:
+          external_location: "read_parquet('{{ env_var('F1_LAKE', 'data/lake') }}/history/driver_standings.parquet')"
+      - name: constructor_standings
+        meta:
+          external_location: "read_parquet('{{ env_var('F1_LAKE', 'data/lake') }}/history/constructor_standings.parquet')"
+      - name: circuits
+        meta:
+          external_location: "read_parquet('{{ env_var('F1_LAKE', 'data/lake') }}/history/circuits.parquet')"
+      - name: constructors
+        meta:
+          external_location: "read_parquet('{{ env_var('F1_LAKE', 'data/lake') }}/history/constructors.parquet')"
+      - name: drivers
+        meta:
+          external_location: "read_parquet('{{ env_var('F1_LAKE', 'data/lake') }}/history/drivers.parquet')"

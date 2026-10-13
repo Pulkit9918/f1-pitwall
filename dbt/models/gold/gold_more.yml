@@ -1,0 +1,128 @@
+version: 2
+
+models:
+  - name: dim_circuit
+    description: Circuits from the Jolpica history.
+    meta: {owner: data-eng}
+    config:
+      contract: {enforced: true}
+    columns:
+      - name: circuit_id
+        data_type: varchar
+        data_tests: [unique, not_null]
+      - {name: circuit_name, data_type: varchar}
+      - {name: locality, data_type: varchar}
+      - {name: country, data_type: varchar}
+      - {name: lat, data_type: double}
+      - {name: long, data_type: double}
+
+  - name: dim_constructor
+    description: Constructors from the Jolpica history.
+    meta: {owner: data-eng}
+    config:
+      contract: {enforced: true}
+    columns:
+      - name: constructor_id
+        data_type: varchar
+        data_tests: [unique, not_null]
+      - {name: name, data_type: varchar}
+      - {name: nationality, data_type: varchar}
+
+  - name: dim_historical_driver
+    description: Every driver in the Jolpica history (1950 to now).
+    meta: {owner: data-eng}
+    config:
+      contract: {enforced: true}
+    columns:
+      - name: driver_id
+        data_type: varchar
+        data_tests: [unique, not_null]
+      - {name: given_name, data_type: varchar}
+      - {name: family_name, data_type: varchar}
+      - {name: full_name, data_type: varchar}
+      - {name: date_of_birth, data_type: date}
+      - {name: nationality, data_type: varchar}
+      - {name: driver_code, data_type: varchar}
+      - {name: car_number, data_type: integer}
+
+  - name: fct_season_result
+    description: One row per driver per race, 1950 to now (Jolpica round numbers, not FastF1's).
+    meta: {owner: data-eng}
+    columns:
+      - name: result_key
+        data_tests:
+          - not_null
+          - unique:
+              config:
+                severity: warn
+      - name: driver_id
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_historical_driver')
+                field: driver_id
+              config:
+                severity: warn
+      - name: circuit_id
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_circuit')
+                field: circuit_id
+              config:
+                severity: warn
+      - name: constructor_id
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_constructor')
+                field: constructor_id
+              config:
+                severity: warn
+
+  - name: fct_driver_standing
+    description: Driver championship standings after each round (Jolpica).
+    meta: {owner: data-eng}
+    columns:
+      - name: standing_key
+        data_tests:
+          - not_null
+          - unique:
+              config:
+                severity: warn
+
+  - name: fct_constructor_standing
+    description: Constructor championship standings after each round (Jolpica).
+    meta: {owner: data-eng}
+    columns:
+      - name: standing_key
+        data_tests:
+          - not_null
+          - unique:
+              config:
+                severity: warn
+
+  - name: fct_session_weather
+    description: Weather summary per session.
+    meta: {owner: data-eng}
+    columns:
+      - name: session_key
+        data_tests:
+          - unique
+          - relationships:
+              arguments:
+                to: ref('dim_session')
+                field: session_key
+
+  - name: fct_track_status_period
+    description: Track status periods (clear, yellow, safety car, red, VSC) per session, in session seconds.
+    meta: {owner: data-eng}
+    columns:
+      - name: period_key
+        data_tests: [unique, not_null]
+      - name: session_key
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_session')
+                field: session_key

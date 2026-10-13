@@ -109,4 +109,47 @@ q_res = [("Synth Grand Prix", str(num), name, name, did, "Test Team", "ffffff", 
 write("results", "Q", RESULTS_COLS, q_res)
 write("race_control", "Q", RC_COLS, [])
 
+# ---- weather, track status and history (added by patch_dbt_5) ----
+W_COLS = ("event VARCHAR, AirTemp DOUBLE, Humidity DOUBLE, Pressure DOUBLE, Rainfall BOOLEAN, "
+          "TrackTemp DOUBLE, WindDirection BIGINT, WindSpeed DOUBLE, Time_s DOUBLE")
+write("weather", "R", W_COLS, [("Synth Grand Prix", 25.0 + i, 50.0, 1010.0, i == 3, 35.0 + i, 90, 2.0 + i, 60.0 * i)
+                               for i in range(5)])
+write("weather", "Q", W_COLS, [("Synth Grand Prix", 24.0, 55.0, 1010.0, False, 33.0, 80, 1.0, 30.0)])
+TS_COLS = "event VARCHAR, Status VARCHAR, Message VARCHAR, Time_s DOUBLE"
+write("track_status", "R", TS_COLS, [("Synth Grand Prix", "1", "AllClear", 0.0),
+                                     ("Synth Grand Prix", "4", "SCDeployed", 370.0),
+                                     ("Synth Grand Prix", "1", "AllClear", 450.0)])
+
+HIST = OUT / "history"
+HIST.mkdir(parents=True, exist_ok=True)
+
+
+def hist(name, cols, rows):
+    n = len(cols.split(","))
+    con.execute(f"CREATE OR REPLACE TABLE h ({cols})")
+    con.executemany(f"INSERT INTO h VALUES ({','.join(['?'] * n)})", rows)
+    con.execute(f"COPY h TO '{HIST / (name + '.parquet')}' (FORMAT parquet)")
+
+
+hist("circuits", "circuit_id VARCHAR, circuit_name VARCHAR, locality VARCHAR, country VARCHAR, lat DOUBLE, long DOUBLE",
+     [("synth", "Synth Circuit", "Synthville", "Australia", -37.8, 144.9)])
+hist("constructors", "constructor_id VARCHAR, name VARCHAR, nationality VARCHAR", [("test", "Test Team", "Australian")])
+hist("drivers", "driver_id VARCHAR, given_name VARCHAR, family_name VARCHAR, date_of_birth VARCHAR, "
+     "nationality VARCHAR, code VARCHAR, number DOUBLE",
+     [(did, name, "Driver", "1990-01-01", "Australian", name, float(num)) for name, (num, did, _lt) in DRIVERS.items()])
+hist("results", "season BIGINT, round BIGINT, race_name VARCHAR, date VARCHAR, circuit_id VARCHAR, driver_id VARCHAR, "
+     "code VARCHAR, driver VARCHAR, number DOUBLE, constructor_id VARCHAR, constructor VARCHAR, grid DOUBLE, "
+     "position DOUBLE, position_text VARCHAR, points DOUBLE, laps DOUBLE, status VARCHAR, time_ms DOUBLE, "
+     "fastest_rank DOUBLE, fastest_lap DOUBLE, fastest_time VARCHAR",
+     [(2099, 1, "Synth Grand Prix", "2099-01-01", "synth", did, name, name + " Driver", float(num), "test",
+       "Test Team", float(num), float(num), str(num), float(25 - 7 * (num - 1)), 6.0, "Finished", 600000.0 + num,
+       float(num), 3.0, "1:30.000") for name, (num, did, _lt) in DRIVERS.items()])
+hist("driver_standings", "season BIGINT, round BIGINT, position DOUBLE, position_text VARCHAR, points DOUBLE, "
+     "wins DOUBLE, driver_id VARCHAR, driver VARCHAR, constructor VARCHAR",
+     [(2099, 1, float(num), str(num), float(25 - 7 * (num - 1)), 1.0 if num == 1 else 0.0, did, name + " Driver",
+       "Test Team") for name, (num, did, _lt) in DRIVERS.items()])
+hist("constructor_standings", "season BIGINT, round BIGINT, position DOUBLE, points DOUBLE, wins DOUBLE, "
+     "constructor_id VARCHAR, constructor VARCHAR, nationality VARCHAR",
+     [(2099, 1, 1.0, 50.0, 1.0, "test", "Test Team", "Australian")])
+
 print(f"Wrote a synthetic lake to {OUT}/")
