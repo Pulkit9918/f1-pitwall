@@ -11,3 +11,9 @@ logs/
 *.log
 .DS_Store
 *.bak
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+*.duckdb
+ci_lake/
+dbt/.user.yml

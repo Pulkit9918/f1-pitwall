@@ -1,0 +1,28 @@
+name: dbt
+
+on:
+  push:
+    branches: [main]
+    paths: ["dbt/**", "requirements-dbt.txt", ".github/workflows/dbt.yml"]
+  pull_request:
+    paths: ["dbt/**", "requirements-dbt.txt", ".github/workflows/dbt.yml"]
+
+jobs:
+  dbt-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements-dbt.txt
+      - name: Install dbt
+        run: pip install -r requirements-dbt.txt
+      - name: Create a synthetic lake
+        run: python dbt/ci/make_ci_lake.py ci_lake
+      - name: dbt build (models, contracts and tests)
+        env:
+          F1_LAKE: ci_lake
+          F1_DBT_DB: ci_lake/f1.duckdb
+        run: dbt build --project-dir dbt --profiles-dir dbt

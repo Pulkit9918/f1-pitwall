@@ -1,0 +1,11 @@
+# Run from the repository root:
+#   dbt build --project-dir dbt --profiles-dir dbt
+# F1_LAKE: where the Parquet lake is (default data/lake)
+# F1_DBT_DB: where dbt writes its DuckDB file (default data/f1_dbt.duckdb (inside data.nosync, so iCloud does not sync it))
+f1_pitwall:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('F1_DBT_DB', 'data/f1_dbt.duckdb') }}"
+      threads: 4

@@ -1,0 +1,153 @@
+version: 2
+
+models:
+  - name: dim_session
+    description: One row per ingested session. Round numbers are FastF1's, not the official calendar's.
+    meta: {owner: data-eng}
+    config:
+      contract: {enforced: true}
+    columns:
+      - name: session_key
+        data_type: varchar
+        description: "Natural key, e.g. 2025-R07-R."
+        data_tests: [unique, not_null]
+      - {name: year, data_type: integer, data_tests: [not_null]}
+      - {name: round, data_type: integer}
+      - {name: session_code, data_type: varchar}
+      - {name: session_name, data_type: varchar}
+      - {name: event, data_type: varchar}
+      - {name: has_laps, data_type: boolean}
+      - {name: has_results, data_type: boolean}
+      - {name: has_race_control, data_type: boolean}
+
+  - name: dim_driver
+    description: One row per driver (FastF1 DriverId); code and name from the driver's latest session.
+    meta: {owner: data-eng}
+    config:
+      contract: {enforced: true}
+    columns:
+      - name: driver_id
+        data_type: varchar
+        data_tests: [unique, not_null]
+      - {name: driver_code, data_type: varchar}
+      - {name: full_name, data_type: varchar}
+      - {name: country_code, data_type: varchar}
+      - {name: first_year, data_type: integer}
+      - {name: last_year, data_type: integer}
+      - {name: sessions, data_type: bigint}
+
+  - name: fct_lap
+    description: One row per driver lap. is_clean_lap marks laps usable for pace statistics.
+    meta: {owner: data-eng}
+    columns:
+      - name: lap_key
+        data_tests: [unique, not_null]
+      - name: session_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_session')
+                field: session_key
+      - name: driver_id
+        description: Null when the session has no results row for that driver code.
+        data_tests:
+          - not_null:
+              config:
+                severity: warn
+
+  - name: fct_stint
+    description: One row per driver stint, with clean-lap pace.
+    meta: {owner: data-eng}
+    columns:
+      - name: stint_key
+        data_tests: [unique, not_null]
+      - name: session_key
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_session')
+                field: session_key
+
+  - name: fct_pit_stop
+    description: One row per pit stop (in-lap joined to the next lap's out-lap). Lane time, not pit loss.
+    meta: {owner: data-eng}
+    config:
+      contract: {enforced: true}
+    columns:
+      - name: pit_stop_key
+        data_type: varchar
+        data_tests: [unique, not_null]
+      - name: session_key
+        data_type: varchar
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_session')
+                field: session_key
+      - {name: driver_code, data_type: varchar}
+      - {name: driver_id, data_type: varchar}
+      - {name: in_lap, data_type: integer}
+      - {name: pit_in_time_s, data_type: double}
+      - name: pit_out_time_s
+        data_type: double
+        description: Null when the next lap has no pit-out time (stop into retirement, red flag).
+      - {name: pit_lane_time_s, data_type: double}
+      - {name: compound_before, data_type: varchar}
+      - {name: compound_after, data_type: varchar}
+      - {name: in_lap_track_status, data_type: varchar}
+      - {name: out_lap_track_status, data_type: varchar}
+      - {name: is_green_stop, data_type: boolean}
+      - {name: position_before, data_type: integer}
+      - {name: session_code, data_type: varchar}
+      - {name: is_race_session, data_type: boolean}
+
+  - name: fct_result
+    description: One row per driver per session classification.
+    meta: {owner: data-eng}
+    config:
+      contract: {enforced: true}
+    columns:
+      - name: result_key
+        data_type: varchar
+        data_tests: [unique, not_null]
+      - name: session_key
+        data_type: varchar
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_session')
+                field: session_key
+      - {name: driver_code, data_type: varchar}
+      - {name: driver_id, data_type: varchar}
+      - {name: team_name, data_type: varchar}
+      - {name: position, data_type: integer}
+      - {name: grid_position, data_type: integer}
+      - {name: status, data_type: varchar}
+      - {name: points, data_type: double}
+      - {name: laps_completed, data_type: integer}
+      - {name: q1_s, data_type: double}
+      - {name: q2_s, data_type: double}
+      - {name: q3_s, data_type: double}
+
+  - name: fct_race_control_event
+    description: One row per race control message with a coarse event type.
+    meta: {owner: data-eng}
+    columns:
+      - name: event_key
+        data_tests: [unique, not_null]
+      - name: event_type
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [RED_FLAG, VSC_DEPLOYED, VSC_ENDING, SC_DEPLOYED, CHEQUERED,
+                         LAP_DELETED, PENALTY, INVESTIGATION, OTHER]
+
+  - name: rec_finish_order
+    description: >
+      Laps-derived finishing order vs the official classification, per race or sprint.
+      A low exact_pct flags a session whose lap positions or results need a look.
+    meta: {owner: data-eng}
+    columns:
+      - name: session_key
+        data_tests: [unique, not_null]

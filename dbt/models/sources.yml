@@ -1,0 +1,43 @@
+version: 2
+
+sources:
+  - name: lake
+    description: >
+      Bronze layer: the Parquet lake written by ingest.py, read in place (nothing is copied).
+      Hive partitions year=/round=/session= become the columns year, round and session.
+    meta:
+      owner: data-eng
+      layer: bronze
+    tables:
+      - name: laps
+        description: One row per driver lap, as delivered by FastF1.
+        meta:
+          external_location: "read_parquet('{{ env_var('F1_LAKE', 'data/lake') }}/laps/*/*/*/part.parquet', hive_partitioning = true, union_by_name = true)"
+        columns:
+          - name: Driver
+            data_tests:
+              - not_null:
+                  config:
+                    severity: warn
+          - name: LapNumber
+            description: Null on a few raw rows; silver drops them.
+            data_tests:
+              - not_null:
+                  config:
+                    severity: warn
+
+      - name: results
+        description: One row per driver per session (classification, grid, status, points, qualifying times).
+        meta:
+          external_location: "read_parquet('{{ env_var('F1_LAKE', 'data/lake') }}/results/*/*/*/part.parquet', hive_partitioning = true, union_by_name = true)"
+        columns:
+          - name: Abbreviation
+            data_tests:
+              - not_null:
+                  config:
+                    severity: warn
+
+      - name: race_control
+        description: Race control messages (flags, safety car, penalties, lap deletions).
+        meta:
+          external_location: "read_parquet('{{ env_var('F1_LAKE', 'data/lake') }}/race_control/*/*/*/part.parquet', hive_partitioning = true, union_by_name = true)"
