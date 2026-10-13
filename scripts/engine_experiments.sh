@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Experiments on the race-state engine: where do lap boundaries land on the reference line,
-# and do two candidate fixes help? Patches engine_probe.py (safe: stops if text does not match).
+# and do two candidate fixes help? Patches experiments/engine_probe.py (safe: stops if text does not match).
 # Run from anywhere:  bash engine_experiments.sh
 set -u
 cd ~/Desktop/f1-pitwall || exit 1
@@ -8,7 +8,7 @@ cd ~/Desktop/f1-pitwall || exit 1
 python - <<'PYEOF'
 from pathlib import Path
 
-p = Path("engine_probe.py")
+p = Path("experiments/engine_probe.py")
 s = p.read_text()
 
 OLD_PROJECT = '''    s_out, d_out = np.empty(len(xy)), np.empty(len(xy))
@@ -58,27 +58,27 @@ edits = [
     (OLD_PROJECT, NEW_PROJECT),
 ]
 if "HEADING = os.environ" in s:
-    print("engine_probe.py is already patched")
+    print("experiments/engine_probe.py is already patched")
 else:
     for old, new in edits:
         if s.count(old) != 1:
-            print("COULD NOT PATCH engine_probe.py: expected one match for:\n", old[:80])
+            print("COULD NOT PATCH experiments/engine_probe.py: expected one match for:\n", old[:80])
             raise SystemExit(1)
         s = s.replace(old, new)
     if "BOUNDS_DRIVER" not in s:
         s = s.rstrip("\n") + "\n" + BOUNDS
     p.write_text(s)
-    print("engine_probe.py patched")
+    print("experiments/engine_probe.py patched")
 PYEOF
 [ $? -ne 0 ] && exit 1
-python -m py_compile engine_probe.py || { echo "engine_probe.py does not compile"; exit 1; }
+python -m py_compile experiments/engine_probe.py || { echo "experiments/engine_probe.py does not compile"; exit 1; }
 
 echo
 echo "##### WHERE EACH LAP ENDS ON THE REFERENCE LINE #####"
 for spec in "2026 4 R HAD" "2026 4 R SAI" "2026 17 S BOR" "2026 17 R VER"; do
   set -- $spec
   echo "--- $1 round $2 $3, driver $4"
-  BOUNDS_DRIVER=$4 python engine_probe.py $1 $2 $3 | tail -n 2
+  BOUNDS_DRIVER=$4 python experiments/engine_probe.py $1 $2 $3 | tail -n 2
 done
 
 echo
@@ -87,9 +87,9 @@ for race in "2026 4 R" "2026 17 S" "2026 17 R"; do
   for variant in "plain" "BAND=0.08" "HEADING=1" "HEADING=1 BAND=0.08"; do
     echo "=== $race | $variant"
     if [ "$variant" = "plain" ]; then
-      python engine_probe.py $race | grep "engine (GPS"
+      python experiments/engine_probe.py $race | grep "engine (GPS"
     else
-      env $variant python engine_probe.py $race | grep "engine (GPS"
+      env $variant python experiments/engine_probe.py $race | grep "engine (GPS"
     fi
   done
 done
