@@ -160,31 +160,35 @@ Goal: for every car at every moment, a running order and the time gap to the car
 | Race | Sector 1 line, exact order | Sector 2 line | Baseline: last lap-end position |
 |---|---|---|---|
 | 2026 Singapore, race | 97.9% | 99.5% | 92.4% / 91.6% |
-| 2025 Singapore, race | 95.2% <!-- TODO: re-run with the lap-length check --> | 99.8% | 86.2% / 87.5% |
+| 2025 Singapore, race | 95.2% | 99.8% | 86.2% / 87.5% |
 | 2026 Singapore, sprint (wet) | 91.7% | 89.3% | 82.4% / 83.4% |
 | 2026 Miami, race | 96.1% | 96.9% | 88.2% / 87.3% |
 
-Within one place: 98-100% in all four. Median error in predicted sector-line crossing time: 0.04-0.15 s. <!-- TODO: re-run the four races together on the final code and update this table -->
+Within one place: 99.3-100% in all four. Median error in predicted sector-line crossing time: 0.04-0.15 s. The four races were re-run together on the final code and reproduce exactly.
 
-**Known failure modes.** Cars parked in the pit lane under a safety car (timing laps tick on while the car does not move); incidents; lap 1 and the start are untested; races with broken position data.
+**Sweep over every race and sprint with GPS data** (135 sessions, 2022-2026; `experiments/engine_sweep.py`). Median exact order is 97.2% at the first sector line and 99.7% at the second, against 85.9% and 86.1% for the last-lap-end baseline. The engine beats the baseline in 132 of 135 sessions at the first line and in 124 of 135 at the second. The four races above are the ones the engine was developed against, so the other 131 are the fairer test. The 2026 Monaco race gives no result (the probe errors; the hole in its position data, described below, is the likely cause, not checked).
+
+**The second sector line fails at two circuits.** Azerbaijan (6 sessions, median 15.8%, all below 50%) and Japan (5 sessions, median 25.8%, 4 below 50%) are the ten weakest sessions in the sweep; everywhere else the second-line median is 98% or higher. The first line is fine at both, so the fault is local. Suzuka crosses over itself, which could confuse a nearest-point projection onto the reference line; I have no explanation for Baku, and neither idea is tested. Constraining each point to the direction of travel fixed all ten sessions but made about two dozen others worse by more than two points (the 2026 Miami race fell from 96.1% to 90.0% at the first line), so it is not in the app.
+
+**Known failure modes.** Cars parked in the pit lane under a safety car (timing laps tick on while the car does not move); incidents; lap 1 and the start are untested; races with broken position data; the second sector line at Baku and Suzuka (see the sweep above).
 
 ## Strategy models
 
-**Pit-lane time loss.** Measured as the in-lap plus out-lap time minus two laps at the field's pace on the same laps, so the figure does not depend on the driver. Green-flag stops (n = 557 in the first measurement): median 22.4 s, middle half 20.5-24.7 s. <!-- TODO: re-measure on 2022-2026 -->
+**Pit-lane time loss.** Measured as the in-lap plus out-lap time minus two laps at the field's pace on the same laps, so the figure does not depend on the driver. Green-flag stops in 2025-2026 (n = 846, 53 sessions): median 22.4 s, middle half 20.7-24.7 s. Over all nine seasons (n = 4,042, 216 sessions, 2018-2026): median 22.7 s, middle half 20.8-25.1 s. Season medians in the out-of-sample backtest (2022-2026) are 22.1-22.8 s. Safety car, VSC and yellow-flag stops have medians of 17.8 s, 20.8 s and 25.0 s with a far wider spread (some safety-car "losses" are negative), so the figure is used for green-flag stops only.
 
-**A circuit-specific pit loss did not beat a single global figure** in a held-out test (predict each stop from the other sessions): mean error 3.47 s per circuit against 3.20 s global (235 stops). Safety car and VSC stops could not be measured reliably with this method and are not modelled.
+**A circuit-specific pit loss needs more data to win.** In a held-out test (predict each stop from the other sessions) it did not beat a single global figure on 2025-2026 (mean error 3.14 s per circuit against 3.02 s global, 423 stops), but it did on 2018-2026 (2.60 s against 3.19 s, 3,899 stops; median error 1.45 s against 2.06 s). Green-flag medians run from about 19 s at Spa to about 30 s at Singapore. Circuit labels are not yet consistent across seasons (the same track appears under two names, for example Monaco and Monte Carlo), which splits the samples and probably understates the circuit effect; that needs fixing before per-circuit figures are used. Safety car and VSC stops could not be measured reliably with this method and are not modelled.
 
-**Rejoin position** after a green-flag stop, predicted from information available at the time, backtested against the real position at the end of the out-lap (661 stops, 46 sessions, 2025-2026): <!-- TODO: re-run on all seasons -->
+**Rejoin position** after a green-flag stop, predicted from information available at the time, backtested against the real position at the end of the out-lap (2,399 stops, 135 sessions, 2022-2026; on 2025-2026 alone, 763 stops, the lap-end model scores 48.1% exact, 77.2% within one place, mean error 1.01):
 
 | Predictor | Exact | Within one place | Mean error (places) |
 |---|---|---|---|
-| Stay in the same position | 12.9% | 25.6% | 3.53 |
-| Lose the typical 3 places | 12.9% | 42.5% | 2.13 |
-| **Lap-end times + pit loss** | **48.1%** | **77.9%** | **0.95** |
-| Live gaps from the race-state engine | 49.0% | 75.9% | 1.05 |
-| Oracle (peeks at the future) | 49.5% | 77.9% | 0.93 |
+| Stay in the same position | 12.1% | 25.1% | 3.69 |
+| Lose the typical 3 places | 13.2% | 39.6% | 2.21 |
+| **Lap-end times + pit loss** | **45.3%** | **75.7%** | **1.06** |
+| Live gaps from the race-state engine | 44.6% | 72.1% | 1.17 |
+| Oracle (peeks at the future) | 47.9% | 76.7% | 0.97 |
 
-Using the engine's live gaps was **no more accurate** than lap-end times, so the app keeps the simpler model. Not modelled: other cars pitting in the same window, traffic after the stop, safety cars.
+Using the engine's live gaps was **no more accurate** than lap-end times (closer on 510 stops, further on 551, equal on 1,338), so the app keeps the simpler model. The largest live-gap misses include Baku races, where the engine's projection is known to fail (see above), so that row should be re-measured once the problem is fixed. Out of sample, the lap-end model scores 43.9% exact and 74.9% within one place on 2022-2024 (1,622 stops) and 47.8% and 78.7% on 2025-2026 (834 stops; `experiments/oos_backtest.py`, a slightly different stop selection). 2026 alone is better (85.5% within one place) with fewer stops per race (13.5 against 17.5-19.9 in earlier seasons); the cause is not tested. Not modelled: other cars pitting in the same window, traffic after the stop, safety cars.
 
 ## The app
 
@@ -264,14 +268,15 @@ experiments/     measurement scripts behind the numbers above (run from the repo
 - The simulated safety car is placed about 500 m ahead of the leader (no safety car GPS exists).
 - Red-flag periods end at the next pit-exit-open, safety car, track-clear or race-start message; no message states the end.
 - Wind speed is assumed to be in m/s; DRS open codes and the track status code meanings are interpretations of the FastF1 documentation.
-- Gaps are lap-timing based at the lines and GPS based in between; accuracy is validated on four races only.
+- Gaps are lap-timing based at the lines and GPS based in between; the running order is validated against official sector timing on 135 sessions (four of them in detail), the time gaps on those four only.
 - The dbt layer does not cover the telemetry tables yet, and the safety car, VSC and red-flag logic still lives in the app code (`app/racecontrol.py`), not in a model.
 - The reconciliation is against my own ingest of the public feed, so it shows internal consistency and agreement with the official classification, not that the feed itself is right.
 
 ## Roadmap
 
 <!-- TODO: edit -->
-- Re-run every figure above on the full 2022-2026 dataset, once the practice-session ingest finishes
+- Fix the second-sector-line failures at Baku and Suzuka in the race-state engine (a heading constraint fixes them but worsens about two dozen other sessions; a hybrid is untested)
+- A canonical circuit key in the gold layer (labels differ across seasons), then a per-circuit pit loss
 - Orchestration with Airflow: a calendar-driven DAG, one task per session, a rate-limit pool, retries, then `dbt build` and the reconciliation checks
 - Schema checks at ingest time, and a FastAPI layer over the gold tables
 - Tyre degradation and undercut models on the gold tables
