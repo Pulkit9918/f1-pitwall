@@ -45,14 +45,27 @@ print(f"{YEAR} round {RND} {CODE}: {len(laps)} laps, {len(pos):,} position sampl
       f"{laps['Driver'].nunique()} drivers")
 
 # ---- reference track: the winner's fastest clean lap, as a polyline from line to line --------
-winner = res.loc[res["Position"] == 1, "Abbreviation"].iloc[0]
-wl = laps[(laps["Driver"] == winner) & laps["LapTime_s"].notna()
-          & laps["PitInTime_s"].isna() & laps["PitOutTime_s"].isna()]
-ref_row = wl.loc[wl["LapTime_s"].idxmin()]
-num_w = int(ref_row["DriverNumber"])
-pw_ = pos[(pos["driver_number"] == num_w)
-          & (pos["session_time_s"] >= ref_row["LapStartTime_s"])
-          & (pos["session_time_s"] <= ref_row["Time_s"])].sort_values("session_time_s")
+first_winner = res.loc[res["Position"] == 1, "Abbreviation"].iloc[0]
+_order = [first_winner] + [d for d in res.dropna(subset=["Position"]).sort_values("Position")["Abbreviation"]
+                           if d != first_winner]
+ref_row = None
+for winner in _order:  # the winner's best clean lap if it has GPS, otherwise the next finisher's
+    wl = laps[(laps["Driver"] == winner) & laps["LapTime_s"].notna()
+              & laps["PitInTime_s"].isna() & laps["PitOutTime_s"].isna()].sort_values("LapTime_s")
+    for _, cand in wl.head(5).iterrows():
+        num_w = int(cand["DriverNumber"])
+        pw_ = pos[(pos["driver_number"] == num_w)
+                  & (pos["session_time_s"] >= cand["LapStartTime_s"])
+                  & (pos["session_time_s"] <= cand["Time_s"])].sort_values("session_time_s")
+        if len(pw_) >= 100:
+            ref_row = cand
+            break
+    if ref_row is not None:
+        break
+if ref_row is None:
+    raise SystemExit(f"{YEAR} round {RND} {CODE}: no clean lap with position samples, cannot build a reference")
+if winner != first_winner:
+    print(f"note: {first_winner} has no usable GPS lap, reference taken from {winner}")
 ref_xy = pw_[["x", "y"]].to_numpy(float)
 ref_t = pw_["session_time_s"].to_numpy(float)
 seg = np.sqrt((np.diff(ref_xy, axis=0) ** 2).sum(1))
