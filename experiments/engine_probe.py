@@ -49,15 +49,17 @@ first_winner = res.loc[res["Position"] == 1, "Abbreviation"].iloc[0]
 _order = [first_winner] + [d for d in res.dropna(subset=["Position"]).sort_values("Position")["Abbreviation"]
                            if d != first_winner]
 ref_row = None
+_gps_end = float(pos["session_time_s"].max())  # some sessions have GPS for the first part of the race only
 for winner in _order:  # the winner's best clean lap if it has GPS, otherwise the next finisher's
     wl = laps[(laps["Driver"] == winner) & laps["LapTime_s"].notna()
-              & laps["PitInTime_s"].isna() & laps["PitOutTime_s"].isna()].sort_values("LapTime_s")
+              & laps["PitInTime_s"].isna() & laps["PitOutTime_s"].isna()
+              & (laps["Time_s"] <= _gps_end)].sort_values("LapTime_s")
     for _, cand in wl.head(5).iterrows():
         num_w = int(cand["DriverNumber"])
         pw_ = pos[(pos["driver_number"] == num_w)
                   & (pos["session_time_s"] >= cand["LapStartTime_s"])
                   & (pos["session_time_s"] <= cand["Time_s"])].sort_values("session_time_s")
-        if len(pw_) >= 100:
+        if len(pw_) >= 50:
             ref_row = cand
             break
     if ref_row is not None:
