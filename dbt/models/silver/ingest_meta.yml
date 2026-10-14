@@ -5,40 +5,111 @@ models:
     description: The ingest log, typed. One row per ingest or backfill attempt.
     columns:
       - name: run_source
+        description: "ingest for rows from sessions.jsonl, backfill for rows from backfill.jsonl."
         data_tests:
           - accepted_values:
               arguments:
                 values: ['ingest', 'backfill']
       - name: status
+        description: "Status of the run: ok, partial or failed. Runs stopped by the rate limit are not logged."
         data_tests:
           - accepted_values:
               arguments:
                 values: ['ok', 'partial', 'failed']
               config:
                 severity: warn
+      - {name: session_key, description: "Session identifier of the form YYYY-Rnn-CODE, e.g. 2025-R07-R. Round is FastF1's round number, CODE is the session code. Null when the round is unknown."}
+      - {name: manifest_file, description: "Manifest file the row came from: sessions.jsonl (ingest) or backfill.jsonl (backfill)."}
+      - {name: year, description: "Season (calendar year)."}
+      - {name: round, description: "Round number of the weekend as numbered by FastF1 (this can differ from the official calendar). Falls back to the requested round for runs that failed before the event was known."}
+      - {name: session_code, description: "Session code: FP1, FP2, FP3 (practice), Q (qualifying), R (race), S (sprint), SQ (sprint qualifying) or SS (sprint shootout)."}
+      - {name: error, description: "Error text of a failed run."}
+      - {name: ran_at, description: "Time of the run (UTC)."}
+      - {name: with_telemetry, description: "True if the run loaded telemetry."}
+      - {name: seconds, description: "Duration of the run in seconds."}
+      - {name: laps_rows, description: "Rows written to the laps table by this run."}
+      - {name: laps_error, description: "Error text for the laps table, if it failed."}
+      - {name: weather_rows, description: "Rows written to the weather table by this run."}
+      - {name: weather_error, description: "Error text for the weather table, if it failed."}
+      - {name: race_control_rows, description: "Rows written to the race_control table by this run."}
+      - {name: race_control_error, description: "Error text for the race_control table, if it failed."}
+      - {name: results_rows, description: "Rows written to the results table by this run."}
+      - {name: results_error, description: "Error text for the results table, if it failed."}
+      - {name: track_status_rows, description: "Rows written to the track_status table by this run."}
+      - {name: track_status_error, description: "Error text for the track_status table, if it failed."}
+      - {name: session_status_rows, description: "Rows written to the session_status table by this run."}
+      - {name: session_status_error, description: "Error text for the session_status table, if it failed."}
+      - {name: has_tables, description: "True if the log row has a per-table breakdown."}
 
   - name: fct_ingest_session
     description: One row per session in the ingest log, with the latest status and rows per table.
     meta: {owner: data-eng}
     columns:
       - name: session_key
+        description: "Session identifier of the form YYYY-Rnn-CODE, e.g. 2025-R07-R. Round is FastF1's round number, CODE is the session code."
         data_tests: [unique, not_null]
+      - {name: year, description: "Season (calendar year)."}
+      - {name: round, description: "Round number of the weekend as numbered by FastF1 (this can differ from the official calendar)."}
+      - {name: session_code, description: "Session code: FP1, FP2, FP3 (practice), Q (qualifying), R (race), S (sprint), SQ (sprint qualifying) or SS (sprint shootout)."}
+      - {name: n_runs, description: "Ingest and backfill attempts logged for the session."}
+      - {name: n_backfill_runs, description: "How many of those were backfills of a single table."}
+      - {name: first_ran_at, description: "Time of the first logged run (UTC)."}
+      - {name: last_ran_at, description: "Time of the latest logged run (UTC)."}
+      - {name: ever_ok, description: "True once any ingest run for the session ended with status ok. A backfill run does not count."}
+      - {name: latest_status, description: "Status of the latest ingest run: ok, partial, failed."}
+      - {name: with_telemetry, description: "True if any ingest run loaded telemetry."}
+      - {name: total_seconds, description: "Sum of the logged durations of all runs, in seconds."}
+      - {name: laps_rows, description: "Rows written to the laps table by the latest run that wrote it."}
+      - {name: laps_error, description: "Last error for the laps table. Only shown while no run has written that table."}
+      - {name: weather_rows, description: "Rows written to the weather table by the latest run that wrote it."}
+      - {name: weather_error, description: "Last error for the weather table. Only shown while no run has written that table."}
+      - {name: race_control_rows, description: "Rows written to the race_control table by the latest run that wrote it."}
+      - {name: race_control_error, description: "Last error for the race_control table. Only shown while no run has written that table."}
+      - {name: results_rows, description: "Rows written to the results table by the latest run that wrote it."}
+      - {name: results_error, description: "Last error for the results table. Only shown while no run has written that table."}
+      - {name: track_status_rows, description: "Rows written to the track_status table by the latest run that wrote it."}
+      - {name: track_status_error, description: "Last error for the track_status table. Only shown while no run has written that table."}
+      - {name: session_status_rows, description: "Rows written to the session_status table by the latest run that wrote it."}
+      - {name: session_status_error, description: "Last error for the session_status table. Only shown while no run has written that table."}
 
   - name: fct_ingest_summary
     description: One row per year, loaded sessions and last run time.
     meta: {owner: data-eng}
     columns:
       - name: year
+        description: "Season (calendar year)."
         data_tests: [unique, not_null]
+      - {name: sessions_in_log, description: "Sessions that appear in the ingest log."}
+      - {name: sessions_loaded, description: "Sessions with at least one ok ingest run."}
+      - {name: sessions_not_loaded, description: "Sessions in the log with no ok ingest run."}
+      - {name: sessions_with_telemetry, description: "Sessions for which telemetry was loaded."}
+      - {name: first_ran_at, description: "Time of the first logged run (UTC)."}
+      - {name: last_ran_at, description: "Time of the latest logged run (UTC)."}
+      - {name: hours_spent, description: "Total logged run time in hours."}
 
   - name: rec_lake_vs_manifest
     description: Parquet rows against logged rows, per session and table.
     columns:
       - name: check_result
+        description: "match, row_mismatch, missing_in_lake (logged as written but no files) or not_in_manifest (files with no log entry)."
         data_tests:
           - accepted_values:
               arguments:
                 values: ['match', 'row_mismatch', 'missing_in_lake', 'not_in_manifest']
+      - {name: table_name, description: "Lake table compared: laps, weather, race_control, results or track_status."}
+      - {name: year, description: "Season (calendar year)."}
+      - {name: round, description: "Round number of the weekend as numbered by FastF1 (this can differ from the official calendar)."}
+      - {name: session_code, description: "Session code: FP1, FP2, FP3 (practice), Q (qualifying), R (race), S (sprint), SQ (sprint qualifying) or SS (sprint shootout)."}
+      - {name: lake_rows, description: "Rows found in the Parquet files for the session; null when there are no files."}
+      - {name: manifest_rows, description: "Rows the ingest log says were written; null when the log has no entry."}
 
   - name: rec_weekend_coverage
     description: Expected sessions per race weekend and whether each is loaded.
+    columns:
+      - {name: session_key, description: "Session identifier of the form YYYY-Rnn-CODE, e.g. 2025-R07-R. Round is FastF1's round number, CODE is the session code."}
+      - {name: year, description: "Season (calendar year)."}
+      - {name: round, description: "Round number of the weekend as numbered by FastF1 (this can differ from the official calendar)."}
+      - {name: session_code, description: "Expected session code for the weekend format."}
+      - {name: weekend_format, description: "conventional, or sprint when an S, SS or SQ session of the weekend is in the log."}
+      - {name: is_loaded, description: "True when the expected session has an ok ingest run."}
+      - {name: weekend_sessions_loaded, description: "Number of sessions of the weekend that are loaded."}

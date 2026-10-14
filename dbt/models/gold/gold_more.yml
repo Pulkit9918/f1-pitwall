@@ -2,19 +2,20 @@ version: 2
 
 models:
   - name: dim_circuit
-    description: Circuits from the Jolpica history.
+    description: Circuits from the Jolpica history. Not yet linked to FastF1 sessions, because the FastF1 event name is not a circuit key.
     meta: {owner: data-eng}
     config:
       contract: {enforced: true}
     columns:
       - name: circuit_id
+        description: "Jolpica circuit id, the key of this table."
         data_type: varchar
         data_tests: [unique, not_null]
-      - {name: circuit_name, data_type: varchar}
-      - {name: locality, data_type: varchar}
-      - {name: country, data_type: varchar}
-      - {name: lat, data_type: double}
-      - {name: long, data_type: double}
+      - {name: circuit_name, data_type: varchar, description: "Official circuit name."}
+      - {name: locality, data_type: varchar, description: "City or locality of the circuit."}
+      - {name: country, data_type: varchar, description: "Country of the circuit."}
+      - {name: lat, data_type: double, description: "Latitude in degrees."}
+      - {name: long, data_type: double, description: "Longitude in degrees."}
 
   - name: dim_constructor
     description: Constructors from the Jolpica history.
@@ -23,10 +24,11 @@ models:
       contract: {enforced: true}
     columns:
       - name: constructor_id
+        description: "Jolpica constructor id, the key of this table."
         data_type: varchar
         data_tests: [unique, not_null]
-      - {name: name, data_type: varchar}
-      - {name: nationality, data_type: varchar}
+      - {name: name, data_type: varchar, description: "Constructor name."}
+      - {name: nationality, data_type: varchar, description: "Constructor nationality."}
 
   - name: dim_historical_driver
     description: Every driver in the Jolpica history (1950 to now).
@@ -35,15 +37,16 @@ models:
       contract: {enforced: true}
     columns:
       - name: driver_id
+        description: "Jolpica driver id, the key of this table."
         data_type: varchar
         data_tests: [unique, not_null]
-      - {name: given_name, data_type: varchar}
-      - {name: family_name, data_type: varchar}
-      - {name: full_name, data_type: varchar}
-      - {name: date_of_birth, data_type: date}
-      - {name: nationality, data_type: varchar}
-      - {name: driver_code, data_type: varchar}
-      - {name: car_number, data_type: integer}
+      - {name: given_name, data_type: varchar, description: "Given name."}
+      - {name: family_name, data_type: varchar, description: "Family name."}
+      - {name: full_name, data_type: varchar, description: "Given name and family name joined."}
+      - {name: date_of_birth, data_type: date, description: "Date of birth; null if the source value is not a valid date."}
+      - {name: nationality, data_type: varchar, description: "Driver nationality."}
+      - {name: driver_code, data_type: varchar, description: "Three-letter code, where the history has one."}
+      - {name: car_number, data_type: integer, description: "Permanent car number, where the history has one."}
 
   - name: fct_season_result
     description: One row per driver per race, 1950 to now (Jolpica round numbers, not FastF1's).
@@ -57,6 +60,7 @@ models:
       - name: drive_number
         description: 1 for a driver's normal entry, 2 or more for shared drives in the same race.
       - name: driver_id
+        description: "Jolpica driver id; joins to dim_historical_driver."
         data_tests:
           - relationships:
               arguments:
@@ -65,6 +69,7 @@ models:
               config:
                 severity: warn
       - name: circuit_id
+        description: "Jolpica circuit id; joins to dim_circuit."
         data_tests:
           - relationships:
               arguments:
@@ -73,6 +78,7 @@ models:
               config:
                 severity: warn
       - name: constructor_id
+        description: "Jolpica constructor id; joins to dim_constructor."
         data_tests:
           - relationships:
               arguments:
@@ -80,50 +86,104 @@ models:
                 field: constructor_id
               config:
                 severity: warn
+      - {name: race_key, description: "Season and zero-padded round joined with a dash."}
+      - {name: season, description: "Season (calendar year)."}
+      - {name: round, description: "Round number as numbered by Jolpica, not FastF1's. Never join Jolpica and FastF1 tables on round."}
+      - {name: race_name, description: "Race name as delivered by Jolpica."}
+      - {name: race_date, description: "Race date."}
+      - {name: driver_code, description: "Three-letter code, where the history has one."}
+      - {name: grid, description: "Starting grid slot as delivered by Jolpica."}
+      - {name: position, description: "Finishing position; null when not classified."}
+      - {name: points, description: "Championship points awarded in the race."}
+      - {name: laps, description: "Laps completed."}
+      - {name: status, description: "Finishing status text, e.g. Finished, +1 Lap or a retirement reason."}
+      - {name: time_ms, description: "Race time in milliseconds as delivered; null when no time is recorded."}
+      - {name: fastest_rank, description: "Rank of the driver's fastest lap in the race (1 is fastest), where recorded."}
+      - {name: is_win, description: "True when position is 1."}
+      - {name: is_podium, description: "True when position is 3 or better."}
+      - {name: is_classified_finish, description: "True when status is Finished or a lap-down finish (status starting with +)."}
 
   - name: fct_driver_standing
     description: Driver championship standings after each round (Jolpica).
     meta: {owner: data-eng}
     columns:
       - name: standing_key
+        description: "Season, zero-padded round and driver id joined with dashes."
         data_tests:
           - not_null
           - unique:
               config:
                 severity: warn
+      - {name: season, description: "Season (calendar year)."}
+      - {name: round, description: "Round number as numbered by Jolpica, not FastF1's. Never join Jolpica and FastF1 tables on round."}
+      - {name: position, description: "Championship position after the round."}
+      - {name: points, description: "Championship points after the round."}
+      - {name: wins, description: "Wins in the championship after the round (stored as a decimal by the source)."}
+      - {name: driver_id, description: "Jolpica driver id."}
+      - {name: constructor_name, description: "Constructor the driver was listed with at that round."}
 
   - name: fct_constructor_standing
     description: Constructor championship standings after each round (Jolpica).
     meta: {owner: data-eng}
     columns:
       - name: standing_key
+        description: "Season, zero-padded round and constructor id joined with dashes."
         data_tests:
           - not_null
           - unique:
               config:
                 severity: warn
+      - {name: season, description: "Season (calendar year)."}
+      - {name: round, description: "Round number as numbered by Jolpica, not FastF1's. Never join Jolpica and FastF1 tables on round."}
+      - {name: position, description: "Championship position after the round."}
+      - {name: points, description: "Championship points after the round."}
+      - {name: wins, description: "Wins in the championship after the round (stored as a decimal by the source)."}
+      - {name: constructor_id, description: "Jolpica constructor id."}
 
   - name: fct_session_weather
     description: Weather summary per session.
     meta: {owner: data-eng}
     columns:
       - name: session_key
+        description: "Session identifier of the form YYYY-Rnn-CODE, e.g. 2025-R07-R. Round is FastF1's round number, CODE is the session code."
         data_tests:
           - unique
           - relationships:
               arguments:
                 to: ref('dim_session')
                 field: session_key
+      - {name: year, description: "Season (calendar year)."}
+      - {name: round, description: "Round number of the weekend as numbered by FastF1 (this can differ from the official calendar)."}
+      - {name: session_code, description: "Session code: FP1, FP2, FP3 (practice), Q (qualifying), R (race), S (sprint), SQ (sprint qualifying) or SS (sprint shootout)."}
+      - {name: samples, description: "Number of weather samples in the session."}
+      - {name: avg_air_temp, description: "Mean air temperature in degrees Celsius."}
+      - {name: avg_track_temp, description: "Mean track temperature in degrees Celsius."}
+      - {name: min_track_temp, description: "Lowest track temperature in degrees Celsius. Zero values occur in the data."}
+      - {name: max_track_temp, description: "Highest track temperature in degrees Celsius."}
+      - {name: avg_humidity, description: "Mean relative humidity in percent."}
+      - {name: max_wind_speed, description: "Highest wind speed, believed to be metres per second (unverified)."}
+      - {name: any_rain, description: "True if any sample reports rain."}
+      - {name: share_of_samples_raining, description: "Share of samples that report rain, between 0 and 1."}
 
   - name: fct_track_status_period
     description: Track status periods (clear, yellow, safety car, red, VSC) per session, in session seconds.
     meta: {owner: data-eng}
     columns:
       - name: period_key
+        description: "Session key and the period's order within the session, joined with a dash."
         data_tests: [unique, not_null]
       - name: session_key
+        description: "Session identifier of the form YYYY-Rnn-CODE, e.g. 2025-R07-R. Round is FastF1's round number, CODE is the session code."
         data_tests:
           - relationships:
               arguments:
                 to: ref('dim_session')
                 field: session_key
+      - {name: year, description: "Season (calendar year)."}
+      - {name: round, description: "Round number of the weekend as numbered by FastF1 (this can differ from the official calendar)."}
+      - {name: session_code, description: "Session code: FP1, FP2, FP3 (practice), Q (qualifying), R (race), S (sprint), SQ (sprint qualifying) or SS (sprint shootout)."}
+      - {name: status, description: "Track status code: 1 clear, 2 yellow, 4 safety car, 5 red, 6 virtual safety car deployed, 7 virtual safety car ending."}
+      - {name: meaning, description: "Readable status: CLEAR, YELLOW, SAFETY_CAR, RED, VSC, VSC_ENDING or OTHER."}
+      - {name: message, description: "Status label as delivered by the feed, e.g. AllClear or SCDeployed."}
+      - {name: start_s, description: "Session time in seconds at which the status began."}
+      - {name: end_s, description: "Session time in seconds at which the next status change happened; null for the last change of a session."}

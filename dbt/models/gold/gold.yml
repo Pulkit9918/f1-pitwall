@@ -11,14 +11,14 @@ models:
         data_type: varchar
         description: "Natural key, e.g. 2025-R07-R."
         data_tests: [unique, not_null]
-      - {name: year, data_type: integer, data_tests: [not_null]}
-      - {name: round, data_type: integer}
-      - {name: session_code, data_type: varchar}
-      - {name: session_name, data_type: varchar}
-      - {name: event, data_type: varchar}
-      - {name: has_laps, data_type: boolean}
-      - {name: has_results, data_type: boolean}
-      - {name: has_race_control, data_type: boolean}
+      - {name: year, data_type: integer, data_tests: [not_null], description: "Season (calendar year)."}
+      - {name: round, data_type: integer, description: "Round number of the weekend as numbered by FastF1 (this can differ from the official calendar)."}
+      - {name: session_code, data_type: varchar, description: "Session code: FP1, FP2, FP3 (practice), Q (qualifying), R (race), S (sprint), SQ (sprint qualifying) or SS (sprint shootout)."}
+      - {name: session_name, data_type: varchar, description: "Readable name of the session code, e.g. Race for R and Practice 1 for FP1."}
+      - {name: event, data_type: varchar, description: "Grand Prix name as delivered by FastF1. Not normalised: the same circuit can carry different names in different seasons."}
+      - {name: has_laps, data_type: boolean, description: "True if at least one lap row exists for the session."}
+      - {name: has_results, data_type: boolean, description: "True if at least one result row exists for the session."}
+      - {name: has_race_control, data_type: boolean, description: "True if at least one race control message exists for the session."}
 
   - name: dim_driver
     description: One row per driver (FastF1 DriverId); code and name from the driver's latest session.
@@ -27,22 +27,25 @@ models:
       contract: {enforced: true}
     columns:
       - name: driver_id
+        description: "FastF1 DriverId, or the surrogate ff1-code for a practice-only driver with no id anywhere else (see silver_results)."
         data_type: varchar
         data_tests: [unique, not_null]
-      - {name: driver_code, data_type: varchar}
-      - {name: full_name, data_type: varchar}
-      - {name: country_code, data_type: varchar}
-      - {name: first_year, data_type: integer}
-      - {name: last_year, data_type: integer}
-      - {name: sessions, data_type: bigint}
+      - {name: driver_code, data_type: varchar, description: "Three-letter abbreviation from the driver's latest session."}
+      - {name: full_name, data_type: varchar, description: "Latest non-null full name."}
+      - {name: country_code, data_type: varchar, description: "Country code from the driver's latest session."}
+      - {name: first_year, data_type: integer, description: "First season with a result row for the driver."}
+      - {name: last_year, data_type: integer, description: "Last season with a result row for the driver."}
+      - {name: sessions, data_type: bigint, description: "Number of session result rows for the driver."}
 
   - name: fct_lap
     description: One row per driver lap. is_clean_lap marks laps usable for pace statistics.
     meta: {owner: data-eng}
     columns:
       - name: lap_key
+        description: "Session key, driver code and lap number joined with dashes."
         data_tests: [unique, not_null]
       - name: session_key
+        description: "Session identifier of the form YYYY-Rnn-CODE, e.g. 2025-R07-R. Round is FastF1's round number, CODE is the session code."
         data_tests:
           - not_null
           - relationships:
@@ -55,19 +58,59 @@ models:
           - not_null:
               config:
                 severity: warn
+      - {name: year, description: "Season (calendar year)."}
+      - {name: round, description: "Round number of the weekend as numbered by FastF1 (this can differ from the official calendar)."}
+      - {name: session_code, description: "Session code: FP1, FP2, FP3 (practice), Q (qualifying), R (race), S (sprint), SQ (sprint qualifying) or SS (sprint shootout)."}
+      - {name: driver_code, description: "Three-letter driver abbreviation, e.g. VER."}
+      - {name: team, description: "Team name as delivered by FastF1."}
+      - {name: lap_number, description: "Lap number within the session, starting at 1."}
+      - {name: stint, description: "Stint number, a run on one set of tyres, starting at 1."}
+      - {name: compound, description: "Tyre compound as delivered by FastF1 (SOFT, MEDIUM, HARD, INTERMEDIATE, WET, and the 2018-2019 SUPERSOFT, ULTRASOFT, HYPERSOFT, plus TEST_UNKNOWN and UNKNOWN). Missing values appear as null and also as the text nan, None or an empty string."}
+      - {name: tyre_life, description: "Tyre age in laps as delivered by FastF1."}
+      - {name: position, description: "Track position at the end of the lap. Null on about half of all laps."}
+      - {name: track_status, description: "Track status codes that were active during the lap, concatenated as text. A lap that was green throughout is exactly 1; 12 means clear then yellow. Code meanings are in fct_track_status_period."}
+      - {name: is_green, description: "True when track_status is exactly 1, so the lap was green throughout."}
+      - {name: deleted, description: "True when race control deleted the lap time."}
+      - {name: is_accurate, description: "FastF1 flag that the lap start and end times are synced with the other laps. It says nothing about the lap time itself (from the FastF1 documentation, not verified here)."}
+      - {name: lap_time_s, description: "Lap time in seconds; null where FastF1 has none, as on many in-laps and out-laps."}
+      - {name: lap_start_time_s, description: "Session time in seconds at which the lap began."}
+      - {name: time_s, description: "Session time in seconds at which the lap ended (seconds on the session clock, which starts before the session). A few early values are negative."}
+      - {name: pit_in_time_s, description: "Session time in seconds at which the car entered the pit lane on this lap; null on laps without a pit entry."}
+      - {name: pit_out_time_s, description: "Session time in seconds at which the car left the pit lane on this lap; null on laps without a pit exit."}
+      - {name: sector1_s, description: "Sector 1 time in seconds."}
+      - {name: sector2_s, description: "Sector 2 time in seconds."}
+      - {name: sector3_s, description: "Sector 3 time in seconds."}
+      - {name: is_clean_lap, description: "True for a lap usable for pace statistics: green throughout, accurate timing, not deleted, not an in-lap or out-lap, and with a lap time."}
 
   - name: fct_stint
     description: One row per driver stint, with clean-lap pace.
     meta: {owner: data-eng}
     columns:
       - name: stint_key
+        description: "Session key, driver code and stint number joined with dashes."
         data_tests: [unique, not_null]
       - name: session_key
+        description: "Session identifier of the form YYYY-Rnn-CODE, e.g. 2025-R07-R. Round is FastF1's round number, CODE is the session code."
         data_tests:
           - relationships:
               arguments:
                 to: ref('dim_session')
                 field: session_key
+      - {name: year, description: "Season (calendar year)."}
+      - {name: round, description: "Round number of the weekend as numbered by FastF1 (this can differ from the official calendar)."}
+      - {name: session_code, description: "Session code: FP1, FP2, FP3 (practice), Q (qualifying), R (race), S (sprint), SQ (sprint qualifying) or SS (sprint shootout)."}
+      - {name: driver_code, description: "Three-letter driver abbreviation, e.g. VER."}
+      - {name: driver_id, description: "Driver id from the session results; null when the results have no row for the driver code."}
+      - {name: stint, description: "Stint number, starting at 1."}
+      - {name: compound, description: "Tyre compound on the first lap of the stint."}
+      - {name: start_lap, description: "First lap number of the stint."}
+      - {name: end_lap, description: "Last lap number of the stint."}
+      - {name: laps, description: "Number of laps in the stint."}
+      - {name: tyre_life_start, description: "Lowest tyre age in laps seen in the stint."}
+      - {name: tyre_life_end, description: "Highest tyre age in laps seen in the stint."}
+      - {name: clean_laps, description: "Number of clean laps in the stint (see is_clean_lap in fct_lap)."}
+      - {name: median_clean_lap_s, description: "Median lap time in seconds over the stint's clean laps."}
+      - {name: mean_clean_lap_s, description: "Mean lap time in seconds over the stint's clean laps."}
 
   - name: fct_pit_stop
     description: One row per pit stop (in-lap joined to the next lap's out-lap). Lane time, not pit loss.
@@ -76,31 +119,33 @@ models:
       contract: {enforced: true}
     columns:
       - name: pit_stop_key
+        description: "Lap key of the in-lap."
         data_type: varchar
         data_tests: [unique, not_null]
       - name: session_key
+        description: "Session identifier of the form YYYY-Rnn-CODE, e.g. 2025-R07-R. Round is FastF1's round number, CODE is the session code."
         data_type: varchar
         data_tests:
           - relationships:
               arguments:
                 to: ref('dim_session')
                 field: session_key
-      - {name: driver_code, data_type: varchar}
-      - {name: driver_id, data_type: varchar}
-      - {name: in_lap, data_type: integer}
-      - {name: pit_in_time_s, data_type: double}
+      - {name: driver_code, data_type: varchar, description: "Three-letter driver abbreviation, e.g. VER."}
+      - {name: driver_id, data_type: varchar, description: "Driver id from the session results; null when the results have no row for the driver code."}
+      - {name: in_lap, data_type: integer, description: "Lap number of the in-lap (the lap that ends in the pit lane)."}
+      - {name: pit_in_time_s, data_type: double, description: "Session time in seconds at pit-lane entry."}
       - name: pit_out_time_s
         data_type: double
         description: Null when the next lap has no pit-out time (stop into retirement, red flag).
-      - {name: pit_lane_time_s, data_type: double}
-      - {name: compound_before, data_type: varchar}
-      - {name: compound_after, data_type: varchar}
-      - {name: in_lap_track_status, data_type: varchar}
-      - {name: out_lap_track_status, data_type: varchar}
-      - {name: is_green_stop, data_type: boolean}
-      - {name: position_before, data_type: integer}
-      - {name: session_code, data_type: varchar}
-      - {name: is_race_session, data_type: boolean}
+      - {name: pit_lane_time_s, data_type: double, description: "Seconds from pit-lane entry to pit-lane exit as timed by the feed. This is not pit loss, which compares laps against the field's pace."}
+      - {name: compound_before, data_type: varchar, description: "Tyre compound on the in-lap."}
+      - {name: compound_after, data_type: varchar, description: "Tyre compound on the out-lap."}
+      - {name: in_lap_track_status, data_type: varchar, description: "Track status codes during the in-lap."}
+      - {name: out_lap_track_status, data_type: varchar, description: "Track status codes during the out-lap."}
+      - {name: is_green_stop, data_type: boolean, description: "True when both the in-lap and the out-lap were green throughout."}
+      - {name: position_before, data_type: integer, description: "Track position recorded on the in-lap."}
+      - {name: session_code, data_type: varchar, description: "Session code: FP1, FP2, FP3 (practice), Q (qualifying), R (race), S (sprint), SQ (sprint qualifying) or SS (sprint shootout)."}
+      - {name: is_race_session, data_type: boolean, description: "True for R and S. In practice and qualifying a pit visit is a garage visit and can last many minutes."}
 
   - name: fct_result
     description: One row per driver per session classification.
@@ -109,45 +154,70 @@ models:
       contract: {enforced: true}
     columns:
       - name: result_key
+        description: "Session key and driver code joined with a dash."
         data_type: varchar
         data_tests: [unique, not_null]
       - name: session_key
+        description: "Session identifier of the form YYYY-Rnn-CODE, e.g. 2025-R07-R. Round is FastF1's round number, CODE is the session code."
         data_type: varchar
         data_tests:
           - relationships:
               arguments:
                 to: ref('dim_session')
                 field: session_key
-      - {name: driver_code, data_type: varchar}
-      - {name: driver_id, data_type: varchar}
-      - {name: team_name, data_type: varchar}
-      - {name: position, data_type: integer}
-      - {name: grid_position, data_type: integer}
-      - {name: status, data_type: varchar}
-      - {name: points, data_type: double}
-      - {name: laps_completed, data_type: integer}
-      - {name: q1_s, data_type: double}
-      - {name: q2_s, data_type: double}
-      - {name: q3_s, data_type: double}
+      - {name: driver_code, data_type: varchar, description: "Three-letter driver abbreviation, e.g. VER."}
+      - {name: driver_id, data_type: varchar, description: "Driver id; for a practice-only driver this is the surrogate ff1-code."}
+      - {name: team_name, data_type: varchar, description: "Team name as delivered by FastF1."}
+      - {name: position, data_type: integer, description: "Position in the session classification; null where there is none."}
+      - {name: grid_position, data_type: integer, description: "Starting grid slot as delivered; the value 0 occurs in the data and its meaning is not verified."}
+      - {name: status, data_type: varchar, description: "Finishing status text as delivered, e.g. Finished, +1 Lap or a retirement reason."}
+      - {name: points, data_type: double, description: "Championship points awarded for the session."}
+      - {name: laps_completed, data_type: integer, description: "Laps completed according to the official classification."}
+      - {name: q1_s, data_type: double, description: "Qualifying lap time in seconds for this stage; null if the driver did not reach it or the session is not qualifying."}
+      - {name: q2_s, data_type: double, description: "Qualifying lap time in seconds for this stage; null if the driver did not reach it or the session is not qualifying."}
+      - {name: q3_s, data_type: double, description: "Qualifying lap time in seconds for this stage; null if the driver did not reach it or the session is not qualifying."}
 
   - name: fct_race_control_event
     description: One row per race control message with a coarse event type.
     meta: {owner: data-eng}
     columns:
       - name: event_key
+        description: "Session key plus the message's sequence number within the session, ordered by message time."
         data_tests: [unique, not_null]
       - name: event_type
+        description: "Coarse event type derived from the flag and the message text. One of RED_FLAG, VSC_DEPLOYED, VSC_ENDING, SC_DEPLOYED, CHEQUERED, LAP_DELETED, PENALTY, INVESTIGATION, OTHER."
         data_tests:
           - accepted_values:
               arguments:
                 values: [RED_FLAG, VSC_DEPLOYED, VSC_ENDING, SC_DEPLOYED, CHEQUERED,
                          LAP_DELETED, PENALTY, INVESTIGATION, OTHER]
+      - {name: session_key, description: "Session identifier of the form YYYY-Rnn-CODE, e.g. 2025-R07-R. Round is FastF1's round number, CODE is the session code."}
+      - {name: year, description: "Season (calendar year)."}
+      - {name: round, description: "Round number of the weekend as numbered by FastF1 (this can differ from the official calendar)."}
+      - {name: session_code, description: "Session code: FP1, FP2, FP3 (practice), Q (qualifying), R (race), S (sprint), SQ (sprint qualifying) or SS (sprint shootout)."}
+      - {name: message_time, description: "Timestamp of the message as delivered by FastF1."}
+      - {name: lap_number, description: "Lap number the message refers to, where FastF1 gives one."}
+      - {name: category, description: "Message category: Flag, Other, CarEvent, Drs or SafetyCar."}
+      - {name: flag, description: "Flag named in the message (for example RED, YELLOW, DOUBLE YELLOW, CHEQUERED); null for non-flag messages."}
+      - {name: scope, description: "What the message applies to: Track, Sector or Driver; null where not set."}
+      - {name: sector, description: "Marshal sector number when the scope is Sector."}
+      - {name: message, description: "Message text."}
 
   - name: rec_finish_order
     description: >
       Laps-derived finishing order vs the official classification, per race or sprint.
-      A low exact_pct flags a session whose lap positions or results need a look.
+      A low pair_agreement_pct or a lap-count mismatch flags a session that needs a look.
+      Checks run on classified finishers only; retirees are reported separately.
     meta: {owner: data-eng}
     columns:
       - name: session_key
+        description: "Session identifier of the form YYYY-Rnn-CODE, e.g. 2025-R07-R. Round is FastF1's round number, CODE is the session code."
         data_tests: [unique, not_null]
+      - {name: drivers_compared, description: "Drivers with both a lap position and an official position."}
+      - {name: finishers, description: "Classified finishers among them (status Finished or a lap-down finish)."}
+      - {name: pair_agreement_pct, description: "Share of finisher pairs in the same relative order on track and in the official classification, in percent. One post-race penalty costs a few pairs, not a whole grid."}
+      - {name: finisher_laps_agree_pct, description: "Share of finishers whose lap count equals the official laps completed, in percent."}
+      - {name: finisher_laps_mismatch, description: "Finishers whose lap count differs from the official laps completed."}
+      - {name: non_finishers, description: "Drivers not classified as finishers. They are reported separately and never fail a test."}
+      - {name: non_finisher_laps_within_one_pct, description: "Share of non-finishers whose lap count is within one lap of the official count, in percent."}
+      - {name: penalty_events, description: "Penalty-related stewards messages in the session. Context only, not a proven cause of a mismatch."}

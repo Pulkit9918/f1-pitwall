@@ -48,7 +48,7 @@ sources:
           external_location: "read_parquet('{{ env_var('F1_LAKE', 'data/lake') }}/weather/*/*/*/part.parquet', hive_partitioning = true, union_by_name = true)"
 
       - name: track_status
-        description: Track status changes (sessions ingested from 2024 on).
+        description: Track status changes, one file per session.
         meta:
           external_location: "read_parquet('{{ env_var('F1_LAKE', 'data/lake') }}/track_status/*/*/*/part.parquet', hive_partitioning = true, union_by_name = true)"
 

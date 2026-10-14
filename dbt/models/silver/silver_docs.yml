@@ -1,0 +1,164 @@
+version: 2
+
+models:
+  - name: silver_history_constructor_standings
+    description: "Silver: constructor standings after each round, from the Jolpica (Ergast-compatible) history. Round numbers are Jolpica's own."
+    columns:
+      - {name: season, description: "Season (calendar year)."}
+      - {name: round, description: "Round number as numbered by Jolpica, not FastF1's. Never join Jolpica and FastF1 tables on round."}
+      - {name: position, description: "Championship position after the round."}
+      - {name: points, description: "Championship points after the round."}
+      - {name: wins, description: "Wins in the championship after the round."}
+      - {name: constructor_id, description: "Jolpica constructor id."}
+      - {name: constructor_name, description: "Constructor name."}
+      - {name: nationality, description: "Constructor nationality."}
+
+  - name: silver_history_driver_standings
+    description: "Silver: driver championship standings after each round, from the Jolpica history. Round numbers are Jolpica's own."
+    columns:
+      - {name: season, description: "Season (calendar year)."}
+      - {name: round, description: "Round number as numbered by Jolpica, not FastF1's. Never join Jolpica and FastF1 tables on round."}
+      - {name: position, description: "Championship position after the round."}
+      - {name: position_text, description: "Position as text, as delivered."}
+      - {name: points, description: "Championship points after the round."}
+      - {name: wins, description: "Wins in the championship after the round."}
+      - {name: driver_id, description: "Jolpica driver id."}
+      - {name: driver_name, description: "Driver name as delivered."}
+      - {name: constructor_name, description: "Constructor name as delivered."}
+
+  - name: silver_history_results
+    description: "Silver: Jolpica (Ergast-compatible) race results, 1950 to now. Round numbers are Jolpica's own, so these rows are never joined to FastF1 sessions by round."
+    columns:
+      - {name: season, description: "Season (calendar year)."}
+      - {name: round, description: "Round number as numbered by Jolpica, not FastF1's. Never join Jolpica and FastF1 tables on round."}
+      - {name: race_name, description: "Race name as delivered by Jolpica."}
+      - {name: race_date, description: "Race date; null if the source value is not a valid date."}
+      - {name: circuit_id, description: "Jolpica circuit id."}
+      - {name: driver_id, description: "Jolpica driver id."}
+      - {name: driver_code, description: "Three-letter code, where the history has one."}
+      - {name: driver_name, description: "Driver name as delivered."}
+      - {name: car_number, description: "Car number, where given."}
+      - {name: constructor_id, description: "Jolpica constructor id."}
+      - {name: constructor_name, description: "Constructor name as delivered."}
+      - {name: grid, description: "Starting grid slot as delivered."}
+      - {name: position, description: "Finishing position; null when not classified."}
+      - {name: position_text, description: "Finishing position as text (a number, or a letter code for non-classified results), as delivered."}
+      - {name: points, description: "Championship points awarded."}
+      - {name: laps, description: "Laps completed."}
+      - {name: status, description: "Finishing status text."}
+      - {name: time_ms, description: "Race time in milliseconds as delivered."}
+      - {name: fastest_rank, description: "Rank of the driver's fastest lap in the race, where recorded."}
+      - {name: fastest_lap, description: "Lap number of the driver's fastest lap, where recorded."}
+      - {name: fastest_time, description: "Fastest lap time as text, as delivered."}
+
+  - name: silver_laps
+    description: "Silver: typed, deduplicated laps from the lake. One row per session, driver and lap number; rows without a driver or lap number are dropped and duplicates keep the row with the latest end time."
+    columns:
+      - {name: session_key, description: "Session identifier of the form YYYY-Rnn-CODE, e.g. 2025-R07-R. Round is FastF1's round number, CODE is the session code."}
+      - {name: lap_key, description: "Session key, driver code and lap number joined with dashes."}
+      - {name: year, description: "Season (calendar year)."}
+      - {name: round, description: "Round number of the weekend as numbered by FastF1 (this can differ from the official calendar)."}
+      - {name: session_code, description: "Session code: FP1, FP2, FP3 (practice), Q (qualifying), R (race), S (sprint), SQ (sprint qualifying) or SS (sprint shootout)."}
+      - {name: event, description: "Grand Prix name as delivered by FastF1. Not normalised: the same circuit can carry different names in different seasons."}
+      - {name: driver_code, description: "Three-letter driver abbreviation, e.g. VER."}
+      - {name: driver_number, description: "Car number as text."}
+      - {name: team, description: "Team name as delivered by FastF1."}
+      - {name: lap_number, description: "Lap number within the session, starting at 1."}
+      - {name: stint, description: "Stint number, a run on one set of tyres, starting at 1."}
+      - {name: compound, description: "Tyre compound as delivered by FastF1 (SOFT, MEDIUM, HARD, INTERMEDIATE, WET, and the 2018-2019 SUPERSOFT, ULTRASOFT, HYPERSOFT, plus TEST_UNKNOWN and UNKNOWN). Missing values appear as null and also as the text nan, None or an empty string."}
+      - {name: tyre_life, description: "Tyre age in laps as delivered by FastF1."}
+      - {name: fresh_tyre, description: "Whether the set was new at the start of the stint, as delivered by FastF1."}
+      - {name: position, description: "Track position at the end of the lap. Null on about half of all laps."}
+      - {name: track_status, description: "Track status codes that were active during the lap, concatenated as text. A lap that was green throughout is exactly 1; 12 means clear then yellow. Code meanings are in fct_track_status_period."}
+      - {name: is_green, description: "True when track_status is exactly 1."}
+      - {name: deleted, description: "True when race control deleted the lap time; null counts as false."}
+      - {name: deleted_reason, description: "Reason for the deletion, where given."}
+      - {name: is_accurate, description: "FastF1 flag that the lap start and end times are synced with the other laps (from the FastF1 documentation, not verified here); null counts as false."}
+      - {name: fastf1_generated, description: "True when FastF1 added the lap itself and it did not come from the timing feed (from the FastF1 documentation, not verified here)."}
+      - {name: is_personal_best, description: "True when the lap was the driver's personal best at that time."}
+      - {name: lap_time_s, description: "Lap time in seconds; null where FastF1 has none."}
+      - {name: lap_start_time_s, description: "Session time in seconds at which the lap began."}
+      - {name: time_s, description: "Session time in seconds at which the lap ended (seconds on the session clock, which starts before the session). A few early values are negative."}
+      - {name: pit_in_time_s, description: "Session time in seconds of pit-lane entry on this lap; null otherwise."}
+      - {name: pit_out_time_s, description: "Session time in seconds of pit-lane exit on this lap; null otherwise."}
+      - {name: sector1_s, description: "Sector 1 time in seconds."}
+      - {name: sector2_s, description: "Sector 2 time in seconds."}
+      - {name: sector3_s, description: "Sector 3 time in seconds."}
+      - {name: speed_i1, description: "Speed at the first intermediate point, km/h, as delivered."}
+      - {name: speed_i2, description: "Speed at the second intermediate point, km/h, as delivered."}
+      - {name: speed_fl, description: "Speed at the finish line, km/h, as delivered."}
+      - {name: speed_st, description: "Speed on the longest straight, km/h, as delivered."}
+
+  - name: silver_race_control
+    description: "Silver: typed race control messages (flags, safety car, penalties, lap deletions) with a stable per-session sequence number. Messages without text are dropped."
+    columns:
+      - {name: session_key, description: "Session identifier of the form YYYY-Rnn-CODE, e.g. 2025-R07-R. Round is FastF1's round number, CODE is the session code."}
+      - {name: event_key, description: "Session key plus the message's sequence number within the session, ordered by message time."}
+      - {name: year, description: "Season (calendar year)."}
+      - {name: round, description: "Round number of the weekend as numbered by FastF1 (this can differ from the official calendar)."}
+      - {name: session_code, description: "Session code: FP1, FP2, FP3 (practice), Q (qualifying), R (race), S (sprint), SQ (sprint qualifying) or SS (sprint shootout)."}
+      - {name: event, description: "Grand Prix name as delivered by FastF1. Not normalised: the same circuit can carry different names in different seasons."}
+      - {name: message_time, description: "Timestamp of the message as delivered by FastF1."}
+      - {name: category, description: "Message category: Flag, Other, CarEvent, Drs or SafetyCar."}
+      - {name: flag, description: "Flag named in the message; null for non-flag messages."}
+      - {name: scope, description: "Track, Sector or Driver; null where not set."}
+      - {name: sector, description: "Marshal sector number when the scope is Sector."}
+      - {name: racing_number, description: "Car number the message refers to, as text, where given."}
+      - {name: lap_number, description: "Lap number the message refers to, where given."}
+      - {name: message, description: "Message text."}
+      - {name: message_upper, description: "Upper-case copy of the message, used for text matching."}
+
+  - name: silver_results
+    description: "Silver: typed, deduplicated session results. One row per session and driver code. A missing FastF1 driver id is resolved from the Jolpica history, or replaced by a surrogate ff1-code id; driver_id_source records which."
+    columns:
+      - {name: session_key, description: "Session identifier of the form YYYY-Rnn-CODE, e.g. 2025-R07-R. Round is FastF1's round number, CODE is the session code."}
+      - {name: year, description: "Season (calendar year)."}
+      - {name: round, description: "Round number of the weekend as numbered by FastF1 (this can differ from the official calendar)."}
+      - {name: session_code, description: "Session code: FP1, FP2, FP3 (practice), Q (qualifying), R (race), S (sprint), SQ (sprint qualifying) or SS (sprint shootout)."}
+      - {name: event, description: "Grand Prix name as delivered by FastF1. Not normalised: the same circuit can carry different names in different seasons."}
+      - {name: driver_number, description: "Car number as text."}
+      - {name: driver_code, description: "Three-letter driver abbreviation, e.g. VER."}
+      - {name: full_name, description: "Full name; the text None None that FastF1 writes for a missing name becomes null."}
+      - {name: country_code, description: "Country code as delivered by FastF1."}
+      - {name: team_name, description: "Team name as delivered by FastF1."}
+      - {name: team_id, description: "Team id as delivered by FastF1."}
+      - {name: position, description: "Position in the session classification; null where there is none."}
+      - {name: classified_position, description: "Classified position as text: a number, or a letter code such as R (retired), D (disqualified) or W (withdrawn); empty in sessions without a classification."}
+      - {name: grid_position, description: "Starting grid slot as delivered; the value 0 occurs and its meaning is not verified."}
+      - {name: status, description: "Finishing status text as delivered."}
+      - {name: points, description: "Championship points awarded for the session."}
+      - {name: laps_completed, description: "Laps completed according to the official classification."}
+      - {name: q1_s, description: "Qualifying lap time in seconds for this stage; null if the driver did not reach it or the session is not qualifying."}
+      - {name: q2_s, description: "Qualifying lap time in seconds for this stage; null if the driver did not reach it or the session is not qualifying."}
+      - {name: q3_s, description: "Qualifying lap time in seconds for this stage; null if the driver did not reach it or the session is not qualifying."}
+      - {name: time_s, description: "Race time in seconds as delivered by FastF1; whether it is a total time or a gap depends on the row and is not verified here."}
+      - {name: driver_id, description: "FastF1 driver id, or the id resolved from the Jolpica history, or the surrogate ff1-code."}
+      - {name: driver_id_source, description: "How driver_id was obtained: fastf1, jolpica_season, jolpica_any or surrogate."}
+
+  - name: silver_sessions
+    description: "Silver: every session that appears in laps, results or race control, with flags for which of those exist."
+    columns:
+      - {name: session_key, description: "Session identifier of the form YYYY-Rnn-CODE, e.g. 2025-R07-R. Round is FastF1's round number, CODE is the session code."}
+      - {name: year, description: "Season (calendar year)."}
+      - {name: round, description: "Round number of the weekend as numbered by FastF1 (this can differ from the official calendar)."}
+      - {name: session_code, description: "Session code: FP1, FP2, FP3 (practice), Q (qualifying), R (race), S (sprint), SQ (sprint qualifying) or SS (sprint shootout)."}
+      - {name: event, description: "Grand Prix name as delivered by FastF1. Not normalised: the same circuit can carry different names in different seasons. One name per session (the maximum seen)."}
+      - {name: has_laps, description: "True if at least one lap row exists for the session."}
+      - {name: has_results, description: "True if at least one result row exists for the session."}
+      - {name: has_race_control, description: "True if at least one race control message exists for the session."}
+
+  - name: silver_weather
+    description: "Silver: typed weather samples from the lake. One row per session and sample time."
+    columns:
+      - {name: session_key, description: "Session identifier of the form YYYY-Rnn-CODE, e.g. 2025-R07-R. Round is FastF1's round number, CODE is the session code."}
+      - {name: year, description: "Season (calendar year)."}
+      - {name: round, description: "Round number of the weekend as numbered by FastF1 (this can differ from the official calendar)."}
+      - {name: session_code, description: "Session code: FP1, FP2, FP3 (practice), Q (qualifying), R (race), S (sprint), SQ (sprint qualifying) or SS (sprint shootout)."}
+      - {name: time_s, description: "Session time in seconds of the sample."}
+      - {name: air_temp, description: "Air temperature in degrees Celsius."}
+      - {name: track_temp, description: "Track temperature in degrees Celsius. Zero values occur in the data."}
+      - {name: humidity, description: "Relative humidity in percent."}
+      - {name: pressure, description: "Air pressure as delivered, in millibar (hPa)."}
+      - {name: is_raining, description: "True when the sample reports rain; null counts as false."}
+      - {name: wind_speed, description: "Wind speed as delivered, believed to be metres per second (unverified)."}
+      - {name: wind_direction, description: "Wind direction in degrees as delivered; values from -180 to 360 occur, so some are not plain compass bearings."}

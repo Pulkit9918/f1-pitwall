@@ -1,6 +1,6 @@
--- Silver: track status changes (clear, yellow, safety car, red, VSC). Only sessions ingested from 2024 on.
--- Code meanings are my reading of the FastF1 documentation: 1 clear, 2 yellow, 4 safety car, 5 red,
--- 6 VSC deployed, 7 VSC ending. A test warns if other codes appear.
+-- Silver: track status changes (clear, yellow, safety car, red, VSC). Present for every session folder in the lake.
+-- Code meanings, confirmed against the Message column of the lake: 1 AllClear, 2 Yellow, 4 SCDeployed, 5 Red,
+-- 6 VSCDeployed, 7 VSCEnding. A test warns if other codes appear.
 with raw as (
 
     select
