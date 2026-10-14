@@ -49,15 +49,16 @@ There is no warehouse server and no orchestrator yet (see the roadmap). That was
 
 ## Data
 
-**Coverage** <!-- TODO: update after the 2022-2024 practice and 2018-2021 ingest finishes -->
+**Coverage**
 
 | Tier | Years | Content |
 |---|---|---|
 | Results, standings, drivers, teams, circuits | 1950 - 2026 | Jolpica |
 | Full detail | 2022 - 2026 | Races, qualifying, sprints, sprint qualifying: laps, sectors, tyres, weather, race control, track status, car telemetry, GPS position |
-| Laps only | Practice sessions | No telemetry |
+| Laps only | Practice sessions, 2022 - 2026 | No telemetry |
+| Timing without telemetry | 2018 - 2021 | Races and qualifying only (no practice, no 2021 sprints): laps, tyres, weather, race control, track status |
 
-Sessions in the lake at the last dbt build: 369 (2019: 1, 2022: 47, 2023: 56, 2024: 60, 2025: 120, 2026: 85). Practice sessions for 2022-2024 and race and qualifying sessions for 2018-2021 are queued. Total <!-- TODO: final size --> on disk.
+Sessions loaded completely: 706 (2018: 41, 2019: 42, 2020: 34, 2021: 44, 2022: 110, 2023: 110, 2024: 120, 2025: 120, 2026: 85), plus one 2018 race for which FastF1 provides no laps (see known data gaps). Total about 1.8 GB on disk.
 
 **Typical size per session** (zstd Parquet): race with telemetry 9-16 MB, qualifying 4-5 MB, sprint 4-7 MB, practice (laps only) about 0.1 MB.
 
@@ -96,17 +97,35 @@ Run from the repository root: `dbt build --project-dir dbt --profiles-dir dbt`. 
 | Gold (17) | `dim_session`, `dim_driver`, `dim_circuit`, `dim_constructor`, `dim_historical_driver`, `fct_lap`, `fct_stint`, `fct_pit_stop`, `fct_result`, `fct_race_control_event`, `fct_track_status_period`, `fct_session_weather`, `fct_season_result`, `fct_driver_standing`, `fct_constructor_standing`, `fct_ingest_session`, `fct_ingest_summary` | Facts and dimensions the app and any later API read |
 | Reconciliation (3) | `rec_finish_order`, `rec_lake_vs_manifest`, `rec_weekend_coverage` | The pipeline checked against official results and against its own log |
 
-The last build had 92 steps: 30 models and 62 tests. Result: 89 passed, 3 warnings, 0 errors. Five gold models have enforced contracts (declared column names and types that the build checks).
+The last build had 93 steps: 30 models and 63 tests. Result: 90 passed, 3 warnings, 0 errors. Five gold models have enforced contracts (declared column names and types that the build checks).
 
 **What the reconciliation found**
 
 | Check | Result |
 |---|---|
-| Lap counts of classified finishers against the official classification | Match in 1,871 of 1,873 driver-race cases |
-| Finishing order derived from laps against the official order | Exact position match turned out to be a poor metric: post-race penalties shift official positions. The test now compares the order of classified finishers pairwise and flags races with at least 10 finishers that fall below 90% agreement or have more than one lap-count mismatch. Four races are flagged (2023 Australia, 2024 Miami sprint, 2025 Miami sprint, 2026 Monaco). Post-race time penalties are a candidate explanation and have not been tested yet |
-| Pit lane time (timed lane transit) for green-flag race stops | Median about 23 s. Different from the 22.4 s pit *loss* used in the strategy models below, which includes the in-lap and out-lap. Two stops fall outside the 5-300 s plausibility window (one in the 2026 round 1 race, one in the 2026 round 12 sprint), cause not investigated |
+| Lap counts of classified finishers against the official classification | Match in 3,116 of 3,183 classified finishers (67 mismatches; 65 of them are in the four races whose lap counts disagree, listed under known data gaps below) |
+| Finishing order derived from laps against the official order | Exact position match turned out to be a poor metric: post-race penalties shift official positions. The test now compares the order of classified finishers pairwise and flags races with at least 10 finishers that fall below 90% agreement or have more than one lap-count mismatch. Ten races are flagged, all listed under known data gaps below: four have penalty events in race control (whether they explain the order is untested), two have low order agreement and no recorded penalty, and four have lap counts that disagree with the official classification |
+| Pit lane time (timed lane transit) for green-flag race stops | Median about 23 s. Different from the 22.4 s pit *loss* used in the strategy models below, which includes the in-lap and out-lap. Two stops fall outside the 5-300 s plausibility window (one in the 2026 round 1 race, one in the 2026 round 12 sprint); neither is a red flag, cause unknown (see known data gaps) |
 | Lake files against the ingest log, five tables per session | Row counts agreed for every session at the last build |
-| Race weekends against the expected set of sessions | 177 gaps, all in the 2022-2024 practice sessions that are not ingested yet. Expected sessions by weekend format are my reading of FastF1's session names |
+| Race weekends against the expected set of sessions | No gaps. A session counts as present if any of its tables has data, so this check does not see the 2018 Italian GP race (results but no laps). Expected sessions by weekend format are my reading of FastF1's session names |
+| Sessions with results but no laps | One: the 2018 Italian GP race (`session_missing_laps`) |
+
+**Known data gaps**
+
+Every warning left in the build is listed here, with what was measured and what is still unexplained.
+
+| Session | What the data shows | Status |
+|---|---|---|
+| 2018 Italian GP, race | FastF1 reports "Failed to load timing data" and the failure repeated on a retry. Results, weather, race control and track status are in the lake; laps are not | Source gap, caught by `session_missing_laps` |
+| 2021 Belgian GP, race | Red flags on lap 1 and lap 3. The classification counts 1 lap, the laps table has 3 | Explained by the red flags (not checked against the sporting rules) |
+| 2020 Austrian GP, race | The laps table ends at lap 68 for the winner and 67 for most others; the classification and the chequered flag say 71. No red flag in race control | Gap in the source timing laps |
+| 2019 Japanese GP, race | The laps table has 53 laps for the winner, the classification 52. Race control logs the chequered flag twice, at lap 53 | Cause unknown |
+| 2018 Canadian GP, race | The source classification gives the winner 68 laps, the laps table has 70, race control logs the chequered flag at lap 70 | Cause unknown |
+| 2018 Bahrain GP and 2019 German GP, races | Pairwise order agreement 88.2% and 87.2%; lap counts match; no penalty events in race control | Cause unknown |
+| 2023 Australian GP, 2024 and 2025 Miami sprints, 2026 Monaco GP | Order agreement 76-90%; race control holds penalty events (1, 6, 1 and 15) | Penalties are the candidate cause; not tested |
+| 2026 round 1 race (STR, lap 34) and round 12 sprint (HUL, lap 5) | One car spends 18 and 21 minutes between pit entry and pit exit (1,082 s and 1,270 s). The track status has no red flag, and only one driver has a long lap at those lap numbers | Cause unknown: a long garage stop or a timing artefact. A third long lap (lap 13, 1,070 s, same race) was not flagged by the plausibility check |
+
+For the four lap-count cases I compared the raw Parquet files with the gold tables for the winner: the row counts agree, so the transformation does not lose laps and the disagreement is between the source's timing laps and its classification. The explanations above are readings of this data, not confirmed against official documents.
 
 **Data problems the tests found, and what was done**
 
