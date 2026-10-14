@@ -3,9 +3,9 @@ name: dbt
 on:
   push:
     branches: [main]
-    paths: ["dbt/**", "requirements-dbt.txt", "constraints/dbt.txt", ".github/workflows/dbt.yml"]
+    paths: ["dbt/**", "requirements-dbt.txt", "constraints/dbt.txt", "scripts/doc_coverage.py", ".github/workflows/dbt.yml"]
   pull_request:
-    paths: ["dbt/**", "requirements-dbt.txt", "constraints/dbt.txt", ".github/workflows/dbt.yml"]
+    paths: ["dbt/**", "requirements-dbt.txt", "constraints/dbt.txt", "scripts/doc_coverage.py", ".github/workflows/dbt.yml"]
 
 jobs:
   dbt-build:
@@ -28,3 +28,10 @@ jobs:
           F1_LAKE: ci_lake
           F1_DBT_DB: ci_lake/f1.duckdb
         run: dbt build --project-dir dbt --profiles-dir dbt
+      - name: dbt docs (catalog)
+        env:
+          F1_LAKE: ci_lake
+          F1_DBT_DB: ci_lake/f1.duckdb
+        run: dbt docs generate --project-dir dbt --profiles-dir dbt
+      - name: Documentation coverage (every model, and every gold column, needs a description)
+        run: python scripts/doc_coverage.py --check
