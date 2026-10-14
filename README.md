@@ -79,7 +79,7 @@ Round numbers follow FastF1's numbering for the season. They do not always match
 ## Ingestion
 
 - **One session at a time**, written then recorded in the ingest log, so an interrupted run loses at most the session in progress.
-- **Rate limits.** FastF1 limits itself to about 500 requests an hour (200 for ergast.com hosts), counted in a sliding window inside the Python process; it raises an error when the window is full. The batch runner detects this, waits, and retries. Observed behaviour: a burst of roughly 40 sessions, then about an hour before the first retry succeeds. A season takes 2-3 hours unattended. <!-- TODO: confirm wording after the 2022-2023 runs -->
+- **Rate limits.** FastF1 limits itself to about 500 requests an hour (200 for ergast.com hosts), counted in a sliding window inside the Python process; it raises an error when the window is full. The batch runner detects this, waits in 5-minute steps (up to 30 in a row; the first runs used 15-minute steps), and retries. Observed over 15 waits in the full ingest: a burst of 20-82 sessions (median 40), then a wait of 17-61 minutes (median 50) before ingesting resumes. Runs of 60, 103 and 106 sessions took 1 h 13 min, 3 h 35 min and 2 h 40 min unattended; the last overnight run (332 sessions, 2022-2024 practice plus 2018-2021 races and qualifying) took 7 h 39 min, about six hours of it waiting. The median session takes 16 seconds to ingest, so the rate limit, not the work, sets the wall-clock time.
 - **Resumable.** Finished sessions are skipped; `--retry-failed` redoes failures; `--dry-run` prints the plan.
 - **Scratch cache** is deleted after every session, so disk use stays flat.
 - **Status per session:** ok, partial or failed, with the reason.
