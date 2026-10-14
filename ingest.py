@@ -152,6 +152,8 @@ def report(row: dict) -> None:
         if "bytes" in info:
             total += info["bytes"]
             print(f"  {table:24} {info['rows']:9d} rows {info['bytes'] / 1e6:7.2f} MB")
+            for fnd in info.get("contract", []):
+                print(f"    contract: {fnd['rule']} ({fnd['share']:.2%} of rows)")
         else:
             print(f"  {table:24} FAILED {info['error']}")
     print(f"  {'total':24} {'':>14} {total / 1e6:7.2f} MB")
@@ -173,6 +175,7 @@ def ingest(year: int, event, code: str, force: bool = False, keep_cache: bool = 
     if not force and already_done(year, event, code, telemetry):
         print(f"{year} {event} {code}: already ingested, skipping (use --force to redo)")
         return {"status": "skipped"}
+    from contracts import validate as validate_contract  # noqa: PLC0415  (pandera is only needed when ingesting)
     t0 = time.monotonic()
     row = {"year": year, "requested_event": event, "session": code,
            "fastf1_version": fastf1.__version__,
@@ -224,8 +227,11 @@ def ingest(year: int, event, code: str, force: bool = False, keep_cache: bool = 
             try:
                 df = build()
                 df.insert(0, "event", name)
+                findings = validate_contract(table, df)  # a hard failure raises: nothing is written
                 tables[table] = {"rows": len(df),
                                  "bytes": write(df, part_path(table, year, rnd, code))}
+                if findings:
+                    tables[table]["contract"] = findings  # soft findings: stored, never blocking
             except Exception as e:
                 tables[table] = {"error": f"{type(e).__name__}: {e}"}
         row["tables"] = tables
