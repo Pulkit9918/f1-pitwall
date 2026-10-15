@@ -13,3 +13,8 @@ dbt/dbt_packages/
 dbt/.user.yml
 *.duckdb
 ci_lake/
+
+# Airflow (local stack)
+airflow/.env
+airflow/logs/
+airflow/config/airflow.cfg
