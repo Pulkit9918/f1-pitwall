@@ -5,9 +5,9 @@
 -- 1.2533 * standard deviation / sqrt(stints), the standard error of a median if stints were
 -- independent and roughly normal; it is a guide, not a guarantee. is_reliable is true only with at
 -- least tyre_min_stints stints from at least tyre_min_races races (defaults 20 and 3, a judgement
--- call, override with --vars). The trend constant behind each stint is the same for every race, so a
--- circuit whose real fuel and track trend differs from it carries that difference as a bias that more
--- stints do not remove.
+-- call, override with --vars). The trend behind each stint scales with the race's median lap time
+-- (a line fitted in-sample over 118 races), so it is least certain at the shortest and longest
+-- circuits; any remaining circuit-specific difference is a bias that more stints do not remove.
 select
     c.circuit_layout_key || '-' || d.compound                                     as circuit_compound_key,
     c.circuit_layout_key,

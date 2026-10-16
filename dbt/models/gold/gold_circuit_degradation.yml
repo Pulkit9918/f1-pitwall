@@ -7,9 +7,10 @@ models:
       over every dry-race stint at that layout, from fct_stint_degradation. One stint is noisy (about
       0.02 s per lap), so read the stint and race counts and approx_se_median_s_per_lap next to the
       figure, and prefer rows where is_reliable is true. The fuel and track trend removed from every
-      stint is one constant for all races, so a circuit whose real trend differs from it carries that
-      difference as a bias that more stints do not remove. Layouts that changed over the years are
-      separate rows (see circuit_layouts).
+      stint scales with the race's median lap time (a line fitted in-sample over 118 races), so it
+      is least certain at the shortest and longest circuits, such as Red Bull Ring and Spa, and any
+      remaining circuit-specific difference is a bias that more stints do not remove. Layouts that
+      changed over the years are separate rows (see circuit_layouts).
     columns:
       - name: circuit_compound_key
         description: Circuit layout key and compound joined with a dash. Unique.
