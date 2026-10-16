@@ -1,0 +1,27 @@
+version: 2
+
+seeds:
+  - name: circuit_layouts
+    description: >
+      Eras in which a circuit's track layout changed, so that results from before and after are not
+      pooled. One row per era other than the default; a circuit that is not listed has a single layout,
+      'v1'. Built from the corner maps in the lake and from fastest clean race laps, with the evidence
+      for each row written down. Changes that neither source shows are not detected here.
+    config:
+      column_types:
+        circuit_id: varchar
+        layout_id: varchar
+        from_key: integer
+        to_key: integer
+        evidence: varchar
+    columns:
+      - name: circuit_id
+        description: Jolpica circuit id (see dim_circuit).
+      - name: layout_id
+        description: Name of the layout era, v2 for the first change, outer for the 2020 Sakhir outer layout.
+      - name: from_key
+        description: First race in the era as year * 100 + round (for example 202300 is 2023 round 0).
+      - name: to_key
+        description: Last race in the era in the same form; 999999 means still current.
+      - name: evidence
+        description: How the change was established, and its limits.

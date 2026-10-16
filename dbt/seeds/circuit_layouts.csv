@@ -1,0 +1,6 @@
+circuit_id,layout_id,from_key,to_key,evidence
+albert_park,v2,202200,999999,"First race after the 2022 layout change. The fastest clean race lap fell from 85.6 s (2019) to 80.3 s (2022). The corner map did not change, so this is lap-time evidence only."
+bahrain,outer,202016,202016,"2020 Sakhir Grand Prix on the short outer layout: fastest clean lap 55.4 s against 92.0 s at the Grand Prix layout. The corner map for this race shows the Grand Prix layout, so the map is wrong here."
+catalunya,v2,202300,999999,The corner map went from 16 corners (2022) to 14 corners (2023).
+marina_bay,v2,202200,999999,The corner map went from 23 corners (2019) to 19 corners (2022); there was no race in 2020 or 2021.
+yas_marina,v2,202100,999999,The corner map went from 21 corners (2020) to 16 corners (2021) and the fastest clean lap from 100.9 s to 86.1 s.

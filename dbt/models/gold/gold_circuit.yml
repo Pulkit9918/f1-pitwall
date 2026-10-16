@@ -1,0 +1,42 @@
+version: 2
+
+models:
+  - name: dim_session_circuit
+    description: >
+      One row per session with its physical circuit and track layout. The circuit comes from Jolpica's
+      circuit id for the same year and round, which stays the same when event names change between
+      seasons. The layout comes from the circuit_layouts seed, which lists the eras in which the track
+      itself changed; any circuit not in the seed has one layout, v1. circuit_layout_key joins the two
+      and is the grouping key for per-circuit statistics.
+    columns:
+      - name: session_key
+        description: Key of the session (see dim_session).
+        data_tests: [unique, not_null]
+      - name: year
+        description: Season year.
+      - name: round
+        description: Round number within the season.
+      - name: session_code
+        description: FastF1 session code such as R, Q, S, FP1.
+      - name: event
+        description: Event name as FastF1 delivers it; it can differ between seasons for the same circuit.
+      - name: circuit_id
+        description: Jolpica circuit id (see dim_circuit). Null if the round is not in the Jolpica history yet.
+        data_tests:
+          - not_null:
+              config:
+                severity: warn
+          - relationships:
+              arguments:
+                to: ref('dim_circuit')
+                field: circuit_id
+              config:
+                severity: warn
+      - name: circuit_name
+        description: Circuit name from dim_circuit.
+      - name: country
+        description: Country of the circuit from dim_circuit.
+      - name: layout_id
+        description: Track layout era from the circuit_layouts seed, v1 unless a listed change applies.
+      - name: circuit_layout_key
+        description: circuit_id and layout_id joined with a colon. Group per-circuit statistics by this.
