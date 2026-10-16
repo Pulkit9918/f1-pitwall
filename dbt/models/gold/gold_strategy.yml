@@ -6,8 +6,10 @@ models:
       One row per driver stint in a dry race, with tyre degradation in seconds lost per lap of tyre age.
       Within a stint, tyre age rises one per lap, so the slope of lap time on lap number is the
       lap-number trend (fuel burn plus track evolution) plus the degradation; degradation is the raw
-      slope minus the trend constant, set by the dbt variable tyre_trend_s_per_lap (default -0.056,
-      the median over 131 dry races in experiments/tyre_probe.py; it varies by race). A single stint is noisy (about 0.02 s per lap of
+      slope minus the lap-number trend, which scales with the race's median clean lap time (a robust
+      line fitted to experiments/tyre_probe.py trends over 118 dry races: -0.00118 per second of
+      lap time plus 0.0514; dbt variables tyre_trend_slope_per_lap_s and tyre_trend_intercept_s_per_lap).
+      A single stint is noisy (about 0.02 s per lap of
       standard error), so use medians over many stints. Only clean laps on SOFT, MEDIUM or HARD tyres
       in races without rain samples, and stints of at least 8 clean laps.
     columns:
@@ -39,8 +41,10 @@ models:
         description: Tyre age at the last clean lap.
       - name: raw_slope_s_per_lap
         description: Slope of lap time on lap number within the stint, in seconds per lap. Includes the fuel and track trend.
+      - name: median_clean_lap_s
+        description: Median clean lap time of the race in seconds, the input to the lap-number trend.
       - name: trend_s_per_lap
-        description: The lap-number trend constant subtracted from the raw slope (dbt variable tyre_trend_s_per_lap).
+        description: The lap-number trend subtracted from the raw slope, computed from the race's median clean lap time (dbt variables tyre_trend_slope_per_lap_s and tyre_trend_intercept_s_per_lap).
       - name: degradation_s_per_lap
         description: Seconds lost per lap of tyre age, the raw slope minus the trend. Positive means the tyre is slowing. Noisy per stint; aggregate by median.
       - name: slope_r2
