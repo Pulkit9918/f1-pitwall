@@ -6,8 +6,10 @@
 -- independent and roughly normal; it is a guide, not a guarantee. is_reliable is true only with at
 -- least tyre_min_stints stints from at least tyre_min_races races (defaults 20 and 3, a judgement
 -- call, override with --vars). The trend behind each stint scales with the race's median lap time
--- (a line fitted in-sample over 118 races), so it is least certain at the shortest and longest
--- circuits; any remaining circuit-specific difference is a bias that more stints do not remove.
+-- (a line fitted over 118 races). Leave-one-circuit-out (experiments/trend_loco.py) cut the robust
+-- trend error from 0.0206 to 0.0081 s per lap, but Jeddah and Las Vegas stay understated (about
+-- 0.028 and 0.017) and Marina Bay overstated (about 0.019), from 3 to 5 races each. is_reliable does
+-- not detect this, and a circuit-specific difference is a bias that more stints do not remove.
 select
     c.circuit_layout_key || '-' || d.compound                                     as circuit_compound_key,
     c.circuit_layout_key,

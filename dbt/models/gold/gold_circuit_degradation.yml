@@ -7,9 +7,12 @@ models:
       over every dry-race stint at that layout, from fct_stint_degradation. One stint is noisy (about
       0.02 s per lap), so read the stint and race counts and approx_se_median_s_per_lap next to the
       figure, and prefer rows where is_reliable is true. The fuel and track trend removed from every
-      stint scales with the race's median lap time (a line fitted in-sample over 118 races), so it
-      is least certain at the shortest and longest circuits, such as Red Bull Ring and Spa, and any
-      remaining circuit-specific difference is a bias that more stints do not remove. Layouts that
+      stint scales with the race's median lap time (a line fitted over 118 races). Predicting each
+      circuit's trend without its own races cut the robust trend error from 0.0206 to 0.0081 s per
+      lap, but a few circuits keep a bias as large as the degradation itself: Jeddah and Las Vegas
+      are understated (by about 0.028 and 0.017 s per lap) and Marina Bay is overstated (by about
+      0.019), from only 3 to 5 races each, so these are noisy. is_reliable does not detect this, and
+      any such circuit-specific difference is a bias that more stints do not remove. Layouts that
       changed over the years are separate rows (see circuit_layouts).
     columns:
       - name: circuit_compound_key
