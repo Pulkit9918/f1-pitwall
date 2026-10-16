@@ -1,0 +1,43 @@
+version: 2
+
+models:
+  - name: fct_circuit_degradation
+    description: >
+      Tyre degradation per circuit layout and compound, in seconds lost per lap of tyre age: the median
+      over every dry-race stint at that layout, from fct_stint_degradation. One stint is noisy (about
+      0.02 s per lap), so read the stint and race counts and approx_se_median_s_per_lap next to the
+      figure, and prefer rows where is_reliable is true. The fuel and track trend removed from every
+      stint is one constant for all races, so a circuit whose real trend differs from it carries that
+      difference as a bias that more stints do not remove. Layouts that changed over the years are
+      separate rows (see circuit_layouts).
+    columns:
+      - name: circuit_compound_key
+        description: Circuit layout key and compound joined with a dash. Unique.
+        data_tests: [unique, not_null]
+      - name: circuit_layout_key
+        description: Circuit and layout era (see dim_session_circuit).
+        data_tests: [not_null]
+      - name: circuit_id
+        description: Jolpica circuit id (see dim_circuit).
+      - name: layout_id
+        description: Track layout era, v1 unless a change is listed in the circuit_layouts seed.
+      - name: circuit_name
+        description: Circuit name from dim_circuit.
+      - name: compound
+        description: Tyre compound, one of SOFT, MEDIUM, HARD.
+      - name: stints
+        description: Number of stints behind the figure.
+      - name: races
+        description: Number of distinct dry races those stints come from.
+      - name: seasons
+        description: Number of distinct seasons those races span.
+      - name: median_degradation_s_per_lap
+        description: Median seconds lost per lap of tyre age over the stints. Positive means the tyre slows.
+      - name: p25_degradation_s_per_lap
+        description: 25th percentile of the stint figures.
+      - name: p75_degradation_s_per_lap
+        description: 75th percentile of the stint figures.
+      - name: approx_se_median_s_per_lap
+        description: Approximate standard error of the median, 1.2533 times the standard deviation over the square root of the stints. A guide that assumes independent, roughly normal stints.
+      - name: is_reliable
+        description: True when there are at least tyre_min_stints stints (default 20) from at least tyre_min_races races (default 3). A judgement threshold, not a statistical guarantee.
