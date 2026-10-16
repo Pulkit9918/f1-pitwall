@@ -181,7 +181,7 @@ Within one place: 99.3-100% in all four. Median error in predicted sector-line c
 
 **Pit-lane time loss.** Measured as the in-lap plus out-lap time minus two laps at the field's pace on the same laps, so the figure does not depend on the driver. Green-flag stops in 2025-2026 (n = 846, 53 sessions): median 22.4 s, middle half 20.7-24.7 s. Over all nine seasons (n = 4,042, 216 sessions, 2018-2026): median 22.7 s, middle half 20.8-25.1 s. Season medians in the out-of-sample backtest (2022-2026) are 22.1-22.8 s. Safety car, VSC and yellow-flag stops have medians of 17.8 s, 20.8 s and 25.0 s with a far wider spread (some safety-car "losses" are negative), so the figure is used for green-flag stops only.
 
-**A circuit-specific pit loss needs more data to win.** In a held-out test (predict each stop from the other sessions) it did not beat a single global figure on 2025-2026 (mean error 3.14 s per circuit against 3.02 s global, 423 stops), but it did on 2018-2026 (2.60 s against 3.19 s, 3,899 stops; median error 1.45 s against 2.06 s). Green-flag medians run from about 19 s at Spa to about 30 s at Singapore. Circuit labels are not yet consistent across seasons (the same track appears under two names, for example Monaco and Monte Carlo), which splits the samples and probably understates the circuit effect; that needs fixing before per-circuit figures are used. Safety car and VSC stops could not be measured reliably with this method and are not modelled.
+**A circuit-specific pit loss needs more data to win.** In a held-out test (predict each stop from the other sessions) it did not beat a single global figure on 2025-2026 (mean error 3.14 s per circuit against 3.02 s global, 423 stops), but it did on 2018-2026 (2.60 s against 3.19 s, 3,899 stops; median error 1.45 s against 2.06 s). Green-flag medians run from about 19 s at Spa to about 30 s at Singapore. Circuit labels are not yet consistent across seasons (the same track appears under two names, for example Monaco and Monte Carlo), which splits the samples and probably understates the circuit effect; that needs fixing before per-circuit figures are used. Safety car and VSC stops could not be measured reliably with this method and are not modelled. The gold layer now has a canonical circuit key (`dim_session_circuit`: one name per circuit, with layouts that changed split apart); this test predates it and has not been re-run.
 
 **Rejoin position** after a green-flag stop, predicted from information available at the time, backtested against the real position at the end of the out-lap (2,399 stops, 135 sessions, 2022-2026; on 2025-2026 alone, 763 stops, the lap-end model scores 48.1% exact, 77.2% within one place, mean error 1.01):
 
@@ -194,6 +194,8 @@ Within one place: 99.3-100% in all four. Median error in predicted sector-line c
 | Oracle (peeks at the future) | 47.9% | 76.7% | 0.97 |
 
 Using the engine's live gaps was **no more accurate** than lap-end times (closer on 510 stops, further on 551, equal on 1,338), so the app keeps the simpler model. The largest live-gap misses include Baku races, where the engine's projection is known to fail (see above), so that row should be re-measured once the problem is fixed. Out of sample, the lap-end model scores 43.9% exact and 74.9% within one place on 2022-2024 (1,622 stops) and 47.8% and 78.7% on 2025-2026 (834 stops; `experiments/oos_backtest.py`, a slightly different stop selection). 2026 alone is better (85.5% within one place) with fewer stops per race (13.5 against 17.5-19.9 in earlier seasons); the cause is not tested. Not modelled: other cars pitting in the same window, traffic after the stop, safety cars.
+
+**Tyre degradation** (seconds lost per lap of tyre age; `fct_stint_degradation` per stint, `fct_circuit_degradation` per circuit layout and compound). Within a stint tyre age rises by one each lap, so the slope of lap time on lap number is the degradation plus a fuel-burn and track-evolution trend, and the trend is subtracted. `experiments/tyre_probe.py` (lap time on driver, compound, lap number and age by compound, errors clustered by driver, 131 dry races) put the trend at about -0.055 s per lap but varying by race, and it scales with lap length: a robust fit on 118 races gives -0.00118 x median clean lap + 0.0514 s per lap, which `fct_stint_degradation` uses. Leaving each circuit out and predicting its trend from the rest cut the robust trend error from 0.0206 to 0.0081 s per lap and was closer than one constant for 80% of races (`experiments/trend_loco.py`). One stint's slope is noisy (about 0.02 s per lap), so circuit figures are medians over many stints, shown with a standard error and a reliability flag (at least 20 stints from 3 races). Known problems: Jeddah and Las Vegas stay understated (by about 0.028 and 0.017 s per lap) and Marina Bay overstated (about 0.019), from 3 to 5 races each; Silverstone (about 0.02 on MEDIUM and HARD), Losail (negative on MEDIUM) and Baku look low and I have not explained them. These figures are measured from the timing data and checked only for internal consistency, not against an outside source, and the undercut model that would use them is not built.
 
 ## The app
 
@@ -300,6 +302,7 @@ experiments/     measurement scripts behind the numbers above (run from the repo
 - **Direction-aware map matching made things worse** (Miami exact order fell from 93% to 87%), so it was dropped. A stricter lap-length check helped (93% to 96%).
 - **Circuit-specific pit loss did not help** against a single global figure.
 - **A live-gap rejoin model was no better** than lap-end times.
+- **One tyre trend constant was biased by lap length.** Short circuits looked worse and long ones better than they are. A lap-length line fixed most of it out of sample; three circuits still carry a bias as large as the effect.
 - **Streamlit, not a Next.js front end,** for now: all the logic is Python, and a web front end would need a server. A smooth replay would be a static page built from precomputed files; parked.
 - **Live timing was dropped:** live car positions need an F1 TV subscription.
 
@@ -312,15 +315,16 @@ experiments/     measurement scripts behind the numbers above (run from the repo
 - Gaps are lap-timing based at the lines and GPS based in between; the running order is validated against official sector timing on 135 sessions (four of them in detail), the time gaps on those four only.
 - The dbt layer does not cover the telemetry tables yet, and the safety car, VSC and red-flag logic still lives in the app code (`app/racecontrol.py`), not in a model.
 - The reconciliation is against my own ingest of the public feed, so it shows internal consistency and agreement with the official classification, not that the feed itself is right.
+- Tyre degradation is measured from the timing data alone and has not been compared with any outside source; three circuits are known to be biased (see Strategy models).
 
 ## Roadmap
 
 - Fix the second-sector-line failures at Baku and Suzuka in the race-state engine (a heading constraint fixes them but worsens about two dozen other sessions, and a hybrid did not help; next idea: apply the constraint only where the samples around a point are reliable)
-- A canonical circuit key in the gold layer (labels differ across seasons), then a per-circuit pit loss
+- A per-circuit pit loss on the canonical circuit key (`dim_session_circuit`); the earlier test used the old labels
 - Run the Airflow DAG through a live race weekend (telemetry ingest, memory use) and add failure alerts
 - A FastAPI layer over the gold tables, the single access path for the app and anything built on top
 - dbt models over the telemetry tables, and the safety car, VSC and red-flag logic moved out of the app code into SQL
-- Tyre degradation and undercut models on the gold tables
+- An undercut model on the gold tables using the degradation figures, and a per-circuit trend with shrinkage for the biased circuits
 - Public deployment (hosting undecided)
 - A web front end (Next.js) with a smooth replay page, fed by precomputed replay files and the API, replacing the Streamlit app
 - A question-answering agent over the gold tables, evaluated against a fixed set of questions with known answers, including questions the data cannot answer
