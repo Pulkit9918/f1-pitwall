@@ -1,0 +1,47 @@
+version: 2
+
+models:
+  - name: fct_stint_degradation
+    description: >
+      One row per driver stint in a dry race, with tyre degradation in seconds lost per lap of tyre age.
+      Within a stint, tyre age rises one per lap, so the slope of lap time on lap number is the
+      lap-number trend (fuel burn plus track evolution) plus the degradation; degradation is the raw
+      slope minus the trend constant, set by the dbt variable tyre_trend_s_per_lap (default -0.056,
+      the median over 131 dry races in experiments/tyre_probe.py; it varies by race). A single stint is noisy (about 0.02 s per lap of
+      standard error), so use medians over many stints. Only clean laps on SOFT, MEDIUM or HARD tyres
+      in races without rain samples, and stints of at least 8 clean laps.
+    columns:
+      - name: stint_key
+        description: Session key, driver code and stint number joined with dashes. Unique.
+        data_tests: [unique, not_null]
+      - name: session_key
+        description: Key of the race session (see dim_session).
+        data_tests: [not_null]
+      - name: year
+        description: Season year.
+      - name: round
+        description: Round number within the season.
+      - name: driver_code
+        description: Three-letter driver code.
+      - name: stint
+        description: Stint number within the race (1 is the opening stint).
+      - name: compound
+        description: Tyre compound of the stint, one of SOFT, MEDIUM, HARD.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['SOFT', 'MEDIUM', 'HARD']
+      - name: clean_laps
+        description: Number of clean laps in the stint used for the slope.
+      - name: tyre_life_first
+        description: Tyre age (laps on this set, including any earlier use) at the first clean lap.
+      - name: tyre_life_last
+        description: Tyre age at the last clean lap.
+      - name: raw_slope_s_per_lap
+        description: Slope of lap time on lap number within the stint, in seconds per lap. Includes the fuel and track trend.
+      - name: trend_s_per_lap
+        description: The lap-number trend constant subtracted from the raw slope (dbt variable tyre_trend_s_per_lap).
+      - name: degradation_s_per_lap
+        description: Seconds lost per lap of tyre age, the raw slope minus the trend. Positive means the tyre is slowing. Noisy per stint; aggregate by median.
+      - name: slope_r2
+        description: R squared of the lap-time slope fit within the stint; low values mean the stint is mostly noise.
