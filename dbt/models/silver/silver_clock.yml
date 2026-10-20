@@ -1,0 +1,31 @@
+version: 2
+
+models:
+  - name: silver_session_clock
+    description: >
+      The UTC clock time of session second zero, one row per session that has it. Taken from the laps table
+      (LapStartDate minus LapStartTime_s) and checked against the first position sample, which is what the
+      Race scrubber page uses: identical in all 269 sessions that have both. Sessions ingested without lap
+      start dates have no row, so anything that needs session seconds from a UTC timestamp covers only 2022 onward.
+    columns:
+      - name: session_key
+        description: One row per session; joins to the other session-level tables.
+        data_tests:
+          - unique
+          - not_null
+      - name: year
+        description: Season.
+      - name: round
+        description: Round number within the season.
+      - name: session_code
+        description: Session type, for example R for the race and Q for qualifying.
+      - name: session_zero_epoch_s
+        description: Seconds since 1970-01-01 UTC at session second zero (median over the session's laps).
+        data_tests:
+          - not_null
+      - name: session_zero_utc
+        description: The same instant as a timestamp, to the microsecond.
+      - name: spread_s
+        description: Difference between the 90th and 10th percentile of the per-lap estimate, in seconds; near zero when the clock is steady.
+      - name: laps_used
+        description: Number of laps with both a lap start date and a lap start time that went into the estimate.

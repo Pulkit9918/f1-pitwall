@@ -1,0 +1,64 @@
+version: 2
+
+models:
+  - name: fct_race_control_period
+    description: >
+      Safety car, virtual safety car and red flag periods per session, read from the wording of the race
+      control messages. One row per period. This is the SQL version of build_periods in app/racecontrol.py,
+      which stays as the reference; experiments/rc_periods_reconcile.py compares the two. UTC times exist for
+      every session; the columns in session seconds exist only where silver_session_clock has a row.
+      Messages in the same second are ordered by text, which changes no period on the current lake.
+      The periods can disagree with the track status feed in two known ways: a message sent after the
+      session's last lap (2022 round 12, a VSC deployed about ten minutes after it), and a second
+      deployed message inside one continuous safety car (2026 round 9), which starts a new period.
+    columns:
+      - name: period_key
+        description: Session key and period number.
+        data_tests:
+          - unique
+          - not_null
+      - name: session_key
+        description: Session the period belongs to.
+        data_tests:
+          - not_null
+      - name: year
+        description: Season.
+      - name: round
+        description: Round number within the season.
+      - name: session_code
+        description: Session type, for example R for the race.
+      - name: period_no
+        description: Order of the period within the session, starting at 1; gaps appear where a period lasted zero seconds and was dropped.
+      - name: kind
+        description: SC for a safety car, VSC for a virtual safety car, RED for a red flag.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['SC', 'VSC', 'RED']
+      - name: start_time
+        description: UTC time of the message that started the period.
+        data_tests:
+          - not_null
+      - name: end_time
+        description: UTC time of the message that ended the period; null when the messages stop first.
+      - name: is_open
+        description: True when no message ended the period; the app closes such periods at the end of the race.
+        data_tests:
+          - not_null
+      - name: pit_in_time
+        description: For a safety car, UTC time of the first "in this lap" message; null for other kinds or if there was none.
+      - name: lights_off_time
+        description: For a safety car, UTC time of the first "lights off" message; null for other kinds or if there was none.
+      - name: start_s
+        description: start_time in session seconds, like the lap tables; null when the session has no clock.
+      - name: end_s
+        description: end_time in session seconds; null when the period is open or the session has no clock.
+      - name: pit_in_s
+        description: pit_in_time in session seconds; null when missing or the session has no clock.
+      - name: lights_off_s
+        description: lights_off_time in session seconds; null when missing or the session has no clock.
+      - name: has_session_clock
+        description: Whether the session has a row in silver_session_clock, so the session-second columns are filled.
+        data_tests:
+          - not_null
