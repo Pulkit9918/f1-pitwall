@@ -52,6 +52,21 @@ sources:
         meta:
           external_location: "read_parquet('{{ env_var('F1_LAKE', 'data/lake') }}/track_status/*/*/*/part.parquet', hive_partitioning = true, union_by_name = true)"
 
+      - name: telemetry_car
+        description: >
+          Car telemetry per driver (speed, rpm, gear, throttle, DRS, brake), about 3.8 samples per second,
+          one file per session. 2022 onward, and only for non-practice sessions.
+        meta:
+          external_location: "read_parquet('{{ env_var('F1_LAKE', 'data/lake') }}/telemetry_car/*/*/*/part.parquet', hive_partitioning = true, union_by_name = true)"
+
+      - name: telemetry_pos
+        description: >
+          Car position (x, y, z) and an on-track or off-track status per driver, about 3.8 samples per second,
+          one file per session. Same sessions as telemetry_car.
+        meta:
+          external_location: "read_parquet('{{ env_var('F1_LAKE', 'data/lake') }}/telemetry_pos/*/*/*/part.parquet', hive_partitioning = true, union_by_name = true)"
+
+
   - name: history
     description: Jolpica (Ergast-compatible) history tables, 1950 to now, one Parquet file each.
     meta:

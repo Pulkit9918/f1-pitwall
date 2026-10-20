@@ -1,0 +1,77 @@
+version: 2
+
+models:
+  - name: rec_telemetry_coverage
+    description: >
+      Telemetry coverage per session from 2022 on, checked against the laps table; one row per session that
+      has laps. Telemetry is expected for every session except practice: in the lake all 269 non-practice
+      sessions have both tables and no practice session has either. The flags use two tolerances, the
+      variables telemetry_end_tolerance_s (60) and telemetry_min_rate_hz (3), set just outside the range seen
+      in the lake. On the current lake two sessions are flagged: the 2026 round 6 race, whose position data
+      ends about 87 minutes before the last lap and averages 1.2 samples per second, and the 2023 round 17
+      sprint shootout, whose telemetry starts 78 seconds after the first lap began. Telemetry drivers with no
+      laps (23 sessions) show up in the drivers_minus_laps columns but are not flagged: they transmit for the
+      whole session. The results table explains 19 of the 30 telemetry-only drivers (16 did not start,
+      one retired, one withdrew, one had an accident); 9 more are in qualifying sessions, where the status
+      is blank, and 2 are in races with a blank status (2022 round 2 and 2024 round 21), which is not
+      explained (experiments/telemetry_probe3.py).
+    columns:
+      - name: session_key
+        description: One row per session; joins to the other session-level tables.
+        data_tests:
+          - unique
+          - not_null
+      - name: year
+        description: Season.
+      - name: round
+        description: Round number within the season.
+      - name: session_code
+        description: Session type, for example R for the race and FP1 for first practice.
+      - name: telemetry_expected
+        description: True for every session except practice.
+      - name: laps_drivers
+        description: Number of drivers with at least one lap in the session.
+      - name: first_lap_start_s
+        description: Start of the earliest lap in the session, in session seconds.
+      - name: last_lap_end_s
+        description: End of the latest lap in the session, in session seconds.
+      - name: has_car
+        description: Whether the session has car telemetry.
+      - name: car_rows
+        description: Number of car telemetry rows in the session; null without car telemetry.
+      - name: car_drivers
+        description: Number of drivers in the car telemetry.
+      - name: car_start_s
+        description: First car telemetry sample, in session seconds.
+      - name: car_end_s
+        description: Last car telemetry sample, in session seconds.
+      - name: car_rate_hz
+        description: Car telemetry rows per driver per second over its own time span.
+      - name: has_pos
+        description: Whether the session has position telemetry.
+      - name: pos_rows
+        description: Number of position rows in the session; null without position telemetry.
+      - name: pos_drivers
+        description: Number of drivers in the position telemetry.
+      - name: pos_start_s
+        description: First position sample, in session seconds.
+      - name: pos_end_s
+        description: Last position sample, in session seconds.
+      - name: pos_rate_hz
+        description: Position rows per driver per second over its own time span.
+      - name: car_drivers_minus_laps_drivers
+        description: Car telemetry drivers minus lap drivers; positive when cars transmit without a lap, negative when a driver with laps has no telemetry.
+      - name: pos_drivers_minus_laps_drivers
+        description: Position telemetry drivers minus lap drivers; same reading as the car column.
+      - name: telemetry_missing
+        description: True when telemetry is expected but car or position data is absent.
+      - name: ends_early
+        description: True when car or position data ends more than the end tolerance before the last lap ends.
+      - name: starts_late
+        description: True when car or position data starts after the first lap has begun.
+      - name: thin
+        description: True when the car or position sample rate is below the minimum rate.
+      - name: has_issue
+        description: True when any of the four flags is true.
+        data_tests:
+          - not_null
