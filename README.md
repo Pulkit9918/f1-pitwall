@@ -221,6 +221,31 @@ Using the engine's live gaps was **no more accurate** than lap-end times (closer
 | Race scrubber | All cars on the track at any moment; timing tower with sector colours; flags, weather and race control feed; follow drivers; auto-play 0.5x-60x |
 | Session timing | Best laps, sectors and ideal lap for qualifying and practice |
 
+## The API
+
+A small read-only FastAPI service (`api/main.py`) serves the gold tables as JSON, so anything that is not Streamlit can read the same numbers.
+
+```
+pip install -r requirements-api.txt
+uvicorn api.main:app --port 8000      # interactive docs at http://localhost:8000/docs
+```
+
+| Endpoint | Returns |
+|---|---|
+| `/sessions`, `/sessions/{session_key}` | Sessions in the lake, filterable by year, round and session code |
+| `/sessions/{session_key}/laps`, `/stints`, `/stint-degradation`, `/pit-stops`, `/race-control-periods` | The matching gold table for one session |
+| `/circuits/pit-loss`, `/circuits/degradation` | Per-circuit tables; unreliable circuits are left out unless `reliable_only=false` |
+
+How it behaves:
+
+- The database is opened read-only on each request, so a running dbt build makes the API answer 503 until the build ends. `F1_API_DB` points it at another file.
+- Every value from the URL goes in as a SQL parameter; table and column names are fixed in the code. `limit` accepts 1 to 5000.
+- NaN and infinity come back as `null`.
+- There is no authentication and no CORS configuration yet. It is meant to run on localhost; both come with deployment.
+- The figures carry the same caveats as the gold tables: they are checked for internal consistency, not against an outside source.
+
+`tests/test_api.py` runs against a small synthetic gold database, and includes a test that calls every endpoint on the real database when one is present. CI installs the API dependencies in a separate step.
+
 ## Run it locally
 
 ```bash
@@ -300,7 +325,8 @@ dbt/             models (silver, gold, reconciliation), tests, macros, CI lake g
 airflow/         Docker Compose stack (Airflow 3, Postgres), image with the ingest and dbt virtualenvs, the f1_weekly DAG
 scripts/         start_batch.sh (refuses a second run), status.sh, backfill_track_status.py, check_contracts.py, doc_coverage.py, freeze_constraints.sh, airflow_ingest.py (plan and run entry points for the DAG)
 app/             Streamlit app: pitwall.py (data access), engine.py (race state), racelib.py, pages/
-tests/           unit tests for the race engine, race-control logic, history fetching and app helpers
+api/             read-only FastAPI service over the gold tables (main.py); requirements-api.txt
+tests/           unit tests for the race engine, race-control logic, history fetching, app helpers and the API
 experiments/     measurement scripts behind the numbers above (run from the repository root)
 .github/         CI: ci.yml (tests, lint) and dbt.yml (dbt build on a synthetic lake, documentation gate)
 ```
@@ -334,8 +360,8 @@ experiments/     measurement scripts behind the numbers above (run from the repo
 
 - Fix the second-sector-line failures at Baku and Suzuka in the race-state engine (a heading constraint fixes them but worsens about two dozen other sessions, and a hybrid did not help; next idea: apply the constraint only where the samples around a point are reliable)
 - Run the Airflow DAG through a live race weekend (telemetry ingest, memory use). Blocked for now: see the first Limitations bullet. Failure alerts are done.
-- A FastAPI layer over the gold tables, the single access path for the app and anything built on top
-- dbt models over the telemetry tables, and the safety car, VSC and red-flag logic moved out of the app code into SQL
+- Make the API the single access path for the app and anything built on top; for now the Streamlit app does not use it
+- Per-lap or per-sample telemetry models, only if something needs them, and switching the Race scrubber to the SQL race-control periods
 - Public deployment (hosting undecided)
 - A web front end (Next.js) with a smooth replay page, fed by precomputed replay files and the API, replacing the Streamlit app
 - A question-answering agent over the gold tables, evaluated against a fixed set of questions with known answers, including questions the data cannot answer
