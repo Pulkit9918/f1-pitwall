@@ -266,6 +266,7 @@ plan_sessions -> ingest_session[ ] -+-> dbt_build -> dbt_docs -> doc_coverage -+
 
 - `plan_sessions` asks the ingest environment which sessions are finished but not yet in the lake, with the same rules as `batch.py` (earlier failed or partial sessions are skipped unless `retry_failed` is set).
 - `ingest_session` is one mapped task per new session, in a pool with a single slot, so FastF1 is called one session at a time. FastF1's rate limit (500 calls per hour) is counted per process, so a rate limit fails the task and Airflow retries it up to four times, 20 minutes apart. An already-ingested session is skipped; a failed one is not retried.
+- A failed run sends one push notification (ntfy) and appends a line to `airflow/logs/alerts.log`. Set `F1_ALERT_NTFY_TOPIC` in `airflow/.env` to turn the push on; without it only the log line is written. The alert was tested with a deliberately failing run.
 - The dbt build, contract check and documentation gate run even if one session failed, so a single bad session does not stall the pipeline. `pipeline_ok` is the last task and turns the run red if anything upstream failed.
 - Ingest and dbt run in separate virtual environments inside the image, installed from the same pinned constraints as CI.
 
@@ -311,6 +312,7 @@ experiments/     measurement scripts behind the numbers above (run from the repo
 
 ## Limitations
 
+- New sessions cannot be ingested at the moment. Since about 15 October 2026 F1's timing archive (`livetiming.formula1.com/static`) answers HTTP 401 to unauthenticated requests (FastF1 issue #978, open, no fix posted when I checked). The lake is complete through round 17 of 2026 (Singapore); later sessions cannot be loaded until access changes. Everything downstream (dbt, the app, the analyses) works on the existing lake.
 - GPS position is already snapped to a common line, so cars cannot be shown side by side.
 - The simulated safety car is placed about 500 m ahead of the leader (no safety car GPS exists).
 - Red-flag periods end at the next pit-exit-open, safety car, track-clear or race-start message; no message states the end.
@@ -323,7 +325,7 @@ experiments/     measurement scripts behind the numbers above (run from the repo
 ## Roadmap
 
 - Fix the second-sector-line failures at Baku and Suzuka in the race-state engine (a heading constraint fixes them but worsens about two dozen other sessions, and a hybrid did not help; next idea: apply the constraint only where the samples around a point are reliable)
-- Run the Airflow DAG through a live race weekend (telemetry ingest, memory use) and add failure alerts
+- Run the Airflow DAG through a live race weekend (telemetry ingest, memory use). Blocked for now: see the first Limitations bullet. Failure alerts are done.
 - A FastAPI layer over the gold tables, the single access path for the app and anything built on top
 - dbt models over the telemetry tables, and the safety car, VSC and red-flag logic moved out of the app code into SQL
 - A per-circuit trend with shrinkage for the biased circuits (Jeddah, Las Vegas, Marina Bay)
