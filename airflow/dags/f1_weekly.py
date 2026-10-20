@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import urllib.request
 from datetime import timedelta
 
 import pendulum
@@ -39,6 +40,34 @@ def _stream(cmd: list[str]) -> tuple[int, list[str]]:
         lines.append(line)
     return proc.wait(), lines
 
+
+def _alert_failed_run(context) -> None:
+    """DAG failure callback: one line in logs/alerts.log, plus a phone push when
+    F1_ALERT_NTFY_TOPIC is set. Never raises, so it cannot hide the real failure."""
+    try:
+        run_id = getattr(context.get("dag_run"), "run_id", "unknown run")
+        reason = str(context.get("reason") or "run failed")
+    except Exception:
+        run_id, reason = "unknown run", "run failed"
+    text = f"f1_weekly {run_id} failed ({reason}). Check the red tasks at http://localhost:8081"
+    try:
+        path = os.path.join(os.environ.get("AIRFLOW_HOME", "/opt/airflow"), "logs", "alerts.log")
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(f"{pendulum.now('UTC').to_iso8601_string()} {text}\n")
+    except Exception as e:
+        print(f"alert: could not write the local log: {e}", flush=True)
+    topic = os.environ.get("F1_ALERT_NTFY_TOPIC", "").strip()
+    if not topic:
+        return
+    try:
+        req = urllib.request.Request(
+            f"https://ntfy.sh/{topic}",
+            data=text.encode("utf-8"),
+            headers={"Title": "F1 pipeline failed", "Priority": "high", "Tags": "rotating_light"},
+        )
+        urllib.request.urlopen(req, timeout=15).close()
+    except Exception as e:
+        print(f"alert: could not send the push: {e}", flush=True)
 
 @task
 def plan_sessions() -> list[dict]:
@@ -93,6 +122,7 @@ with DAG(
     catchup=False,
     max_active_runs=1,
     default_args={"owner": "pulkit"},
+    on_failure_callback=_alert_failed_run,
     params={
         "years": Param("", type="string", description="blank = current year; or 2022-2026"),
         "rounds": Param("", type="string", description="blank = all; or 5 or 5-9"),
