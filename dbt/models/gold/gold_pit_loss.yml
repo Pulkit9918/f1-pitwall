@@ -1,0 +1,69 @@
+version: 2
+
+models:
+  - name: fct_pit_loss
+    description: >
+      One row per green-flag pit stop whose time loss could be measured, in races and sprints from 2018.
+      The loss is the in-lap plus the out-lap time, each minus the field's median time on that lap and the
+      driver's own gap to the field around the stop, so it is the extra time the stop costs over two laps
+      and does not depend on the driver. Both laps must be on track status 1 (all clear); safety car, VSC
+      and yellow-flag stops are not measured because the method does not work for them. The median is
+      about 22.7 s with a middle half of 20.8 to 25.1 s. Same method as experiments/pitloss_probe.py.
+    columns:
+      - name: pit_loss_key
+        description: Session key, driver code and in-lap number joined with dashes. Unique.
+        data_tests: [unique, not_null]
+      - name: session_key
+        description: The session (race or sprint) the stop was made in. Key of dim_session.
+        data_tests: [not_null]
+      - name: year
+        description: Season year.
+      - name: round
+        description: Round number within the season.
+      - name: session_code
+        description: R for a race or S for a sprint.
+      - name: driver_code
+        description: Three-letter driver code.
+      - name: in_lap
+        description: Lap number on which the driver entered the pit lane.
+      - name: circuit_id
+        description: Canonical circuit, from dim_session_circuit. The same circuit keeps one id across seasons.
+      - name: circuit_name
+        description: Circuit name from dim_session_circuit.
+      - name: circuit_layout_key
+        description: Circuit and layout joined with a colon, from dim_session_circuit. Pit loss is aggregated by circuit_id, not layout, because splitting by layout did not improve predictions.
+      - name: pit_loss_s
+        description: Seconds the stop cost over the in-lap and out-lap, measured against the field's pace on the same laps with the driver's own offset removed. Heavy-tailed on the slow side, so use medians.
+        data_tests: [not_null]
+      - name: driver_offset_s
+        description: The driver's median gap to the field, in seconds per lap, over the 4 laps before and 4 laps after the stop (clean, all-clear laps only).
+      - name: offset_laps
+        description: Number of laps behind driver_offset_s. At least 3 for a stop to be measured, at most 8.
+
+  - name: fct_circuit_pit_loss
+    description: >
+      Green-flag pit loss per circuit: the median over every measured stop, layouts merged. In a held-out
+      test (each session predicted from the other sessions, 4,042 stops, 2018 to 2026) the circuit median
+      had a mean error of 2.67 s against 3.24 s for one global figure. A circuit seen in only one race, or
+      with few stops, mostly reflects that one race, so use the global median where is_reliable is false.
+      Not checked going forward in time, and the gain was smaller in 2025 and 2026.
+    columns:
+      - name: circuit_id
+        description: Canonical circuit id. Unique.
+        data_tests: [unique, not_null]
+      - name: circuit_name
+        description: Circuit name.
+      - name: stops
+        description: Number of measured green-flag stops at the circuit.
+      - name: sessions
+        description: Number of sessions (races and sprints) those stops come from.
+      - name: seasons
+        description: Number of seasons those stops come from.
+      - name: median_pit_loss_s
+        description: Median pit loss in seconds.
+      - name: p25_pit_loss_s
+        description: First quartile of pit loss in seconds.
+      - name: p75_pit_loss_s
+        description: Third quartile of pit loss in seconds.
+      - name: is_reliable
+        description: True when the circuit has at least pit_loss_min_stops stops (default 10) from at least pit_loss_min_sessions sessions (default 2); both defaults are judgement calls.
