@@ -1,0 +1,231 @@
+version: 2
+
+models:
+  - name: fct_pit_loss_neutralised
+    description: >
+      One row per pit stop made entirely under a safety car or a virtual safety car, races and sprints from
+      2018. Same arithmetic as fct_pit_loss (in-lap plus out-lap against the median of the cars that did not
+      pit on that lap) but both laps must be on one track status, exactly 4 (safety car) or exactly 6 (VSC),
+      and the driver's own pace offset is taken as zero because there are no clean laps to measure it from.
+      Rougher than the green-flag figures: an estimate of what a neutralised stop costs, not a measurement
+      of any one driver.
+    config:
+      contract:
+        enforced: true
+    columns:
+      - name: pit_loss_key
+        description: Session key, driver code and in-lap number joined with dashes. Unique.
+        data_type: varchar
+        data_tests: [unique, not_null]
+      - name: session_key
+        description: The session (race or sprint) the stop was made in. Key of dim_session.
+        data_type: varchar
+      - name: year
+        description: Season year.
+        data_type: integer
+      - name: round
+        description: Round number within the season.
+        data_type: integer
+      - name: session_code
+        description: R for a race or S for a sprint.
+        data_type: varchar
+      - name: driver_code
+        description: Three-letter driver code.
+        data_type: varchar
+      - name: in_lap
+        description: Lap number on which the driver entered the pit lane.
+        data_type: integer
+      - name: regime
+        description: sc for a safety car, vsc for a virtual safety car.
+        data_type: varchar
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [sc, vsc]
+      - name: circuit_id
+        description: Canonical circuit, from dim_session_circuit. Null when the session has no circuit record.
+        data_type: varchar
+      - name: pit_loss_s
+        description: Seconds the stop cost over the in-lap and out-lap against the field's pace on the same laps, with no driver offset removed.
+        data_type: double
+        data_tests: [not_null]
+
+  - name: fct_pit_loss_ratio
+    description: >
+      What a stop costs under each track regime, across all circuits, and the ratio to a green-flag stop. One
+      row for green (ratio 1) and one for each of sc and vsc. The neutralised ratios scale a circuit's own
+      green-flag loss inside fct_pit_now. is_reliable needs at least 30 measured stops.
+    config:
+      contract:
+        enforced: true
+    columns:
+      - name: regime
+        description: green, sc or vsc.
+        data_type: varchar
+        data_tests: [unique, not_null]
+      - name: stops
+        description: Number of measured stops behind the figures.
+        data_type: integer
+      - name: median_loss_s
+        description: Median seconds lost over the in-lap and out-lap.
+        data_type: double
+      - name: p25_loss_s
+        description: Lower quartile of the loss, in seconds.
+        data_type: double
+      - name: p75_loss_s
+        description: Upper quartile of the loss, in seconds.
+        data_type: double
+      - name: ratio_to_green
+        description: Median loss divided by the all-circuit green-flag median loss.
+        data_type: double
+      - name: p25_ratio_to_green
+        description: Lower quartile of the loss divided by the green-flag median loss.
+        data_type: double
+      - name: p75_ratio_to_green
+        description: Upper quartile of the loss divided by the green-flag median loss.
+        data_type: double
+      - name: is_reliable
+        description: True when at least 30 stops are behind the figures.
+        data_type: boolean
+
+  - name: fct_pit_now
+    description: >
+      One row per driver per lap of a race or sprint: where the driver would rejoin if they pitted at the end
+      of that lap, as a position with a fast-to-slow range. The driver rejoins behind every car that is
+      currently within the stop's time loss behind them. The loss is the circuit's median green-flag loss (the
+      all-circuit median where the circuit is not reliable), scaled by the measured ratio under a safety car or
+      VSC; there is no prediction under a red flag. Assumes every other car keeps its pace and does not stop
+      in the meantime. margin_s says how close the answer is to changing. A prediction from lap-end gaps, not
+      a simulation, and not a recommendation.
+    config:
+      contract:
+        enforced: true
+    columns:
+      - name: pit_now_key
+        description: Key of the lap in fct_lap. Unique.
+        data_type: varchar
+        data_tests: [unique, not_null]
+      - name: session_key
+        description: The race or sprint. Key of dim_session.
+        data_type: varchar
+      - name: year
+        description: Season year.
+        data_type: integer
+      - name: round
+        description: Round number within the season.
+        data_type: integer
+      - name: session_code
+        description: R for a race or S for a sprint.
+        data_type: varchar
+      - name: driver_code
+        description: Three-letter driver code.
+        data_type: varchar
+      - name: lap_number
+        description: The lap just finished. The hypothetical stop happens on the next lap.
+        data_type: integer
+      - name: position_now
+        description: Running order at the end of this lap.
+        data_type: integer
+      - name: regime
+        description: Track regime of the lap just finished, from its track status codes (red takes precedence over sc, then vsc, else green).
+        data_type: varchar
+      - name: loss_source
+        description: circuit when the circuit's own green-flag loss was used, global when the all-circuit median was used instead. Null under a red flag.
+        data_type: varchar
+      - name: pit_loss_s
+        description: Seconds the hypothetical stop is assumed to cost. Null under a red flag.
+        data_type: double
+      - name: predicted_position
+        description: Position the driver would rejoin in using the median loss. Null under a red flag.
+        data_type: integer
+      - name: predicted_position_fast
+        description: Position using the lower quartile loss, so the best case of the middle half of stops.
+        data_type: integer
+      - name: predicted_position_slow
+        description: Position using the upper quartile loss, so the worst case of the middle half of stops.
+        data_type: integer
+      - name: predicted_position_global
+        description: Position using the all-circuit green-flag median loss whatever the circuit or regime. A baseline to judge the circuit figure against.
+        data_type: integer
+      - name: margin_s
+        description: Seconds of extra or lost pit time that would move the driver one place, measured to the nearest car behind. Small means the prediction is on the edge.
+        data_type: double
+
+  - name: fct_pit_now_check
+    description: >
+      fct_pit_now against what happened: one row for every real stop (in-lap L+1) with a prediction made at
+      the end of lap L. actual_position is the position at the end of the out-lap. is_quiet marks stops where no
+      other driver pitted on laps L+1 or L+2, and regime_matches marks stops whose own lap had the track regime
+      the prediction assumed; judge the predictor on rows where both are true. The circuit loss includes the
+      stops being tested (nothing held out), so the error is a little flattering.
+    config:
+      contract:
+        enforced: true
+    columns:
+      - name: pit_now_key
+        description: Key of the prediction row in fct_pit_now. Unique.
+        data_type: varchar
+        data_tests: [unique, not_null]
+      - name: session_key
+        description: The race or sprint. Key of dim_session.
+        data_type: varchar
+      - name: year
+        description: Season year.
+        data_type: integer
+      - name: round
+        description: Round number within the season.
+        data_type: integer
+      - name: session_code
+        description: R for a race or S for a sprint.
+        data_type: varchar
+      - name: driver_code
+        description: Three-letter driver code.
+        data_type: varchar
+      - name: lap_number
+        description: The lap at whose end the prediction was made. The real stop was on the next lap.
+        data_type: integer
+      - name: regime
+        description: Track regime the prediction assumed (that of lap_number).
+        data_type: varchar
+      - name: stop_regime
+        description: Track regime of the stop's own in-lap.
+        data_type: varchar
+      - name: regime_matches
+        description: True when the prediction's regime equals the regime of the lap the stop was made on.
+        data_type: boolean
+      - name: loss_source
+        description: circuit or global, as in fct_pit_now.
+        data_type: varchar
+      - name: position_now
+        description: Position at the end of the lap before the stop.
+        data_type: integer
+      - name: predicted_position
+        description: Predicted rejoin position from fct_pit_now.
+        data_type: integer
+      - name: predicted_position_fast
+        description: Predicted rejoin position with the lower-quartile loss.
+        data_type: integer
+      - name: predicted_position_slow
+        description: Predicted rejoin position with the upper-quartile loss.
+        data_type: integer
+      - name: predicted_position_global
+        description: Baseline prediction using the all-circuit green-flag loss.
+        data_type: integer
+      - name: actual_position
+        description: Position at the end of the out-lap of the real stop.
+        data_type: integer
+      - name: error_places
+        description: Actual minus predicted position; positive means the driver rejoined further back than predicted.
+        data_type: integer
+      - name: abs_error_places
+        description: Absolute error of the prediction, in places.
+        data_type: integer
+      - name: abs_error_global_places
+        description: Absolute error of the all-circuit baseline, in places.
+        data_type: integer
+      - name: within_range
+        description: True when the actual position fell between the fast and slow predictions.
+        data_type: boolean
+      - name: is_quiet
+        description: True when no other driver pitted on the two laps after the prediction lap, so other stops did not reshuffle the field.
+        data_type: boolean
