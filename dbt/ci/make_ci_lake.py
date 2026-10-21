@@ -161,7 +161,7 @@ hist("driver_standings", "season BIGINT, round BIGINT, position DOUBLE, position
        "Test Team") for name, (num, did, _lt) in DRIVERS.items()])
 hist("constructor_standings", "season BIGINT, round BIGINT, position DOUBLE, points DOUBLE, wins DOUBLE, "
      "constructor_id VARCHAR, constructor VARCHAR, nationality VARCHAR",
-     [(2099, 1, 1.0, 50.0, 1.0, "test", "Test Team", "Australian")])
+     [(2099, 1, 1.0, float(sum(25 - 7 * (num - 1) for num, _i, _l in DRIVERS.values())), 1.0, "test", "Test Team", "Australian")])
 
 # patch_dbt_8: an ingest log that matches the synthetic files. The race's track_status is only in the backfill log.
 import json

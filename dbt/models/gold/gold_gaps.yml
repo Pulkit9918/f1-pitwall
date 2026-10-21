@@ -1,0 +1,143 @@
+version: 2
+
+models:
+  - name: fct_lap_gap
+    description: >
+      One row per driver per lap of a race or sprint with the gap to the leader, the interval to the car
+      ahead and the gap to the car behind, measured at the timing line where the lap ends. Built from the
+      session clock at the end of each lap and the order recorded for that lap in fct_lap. A gap that would
+      be negative (recorded order disagrees with the clock) is left null and flagged. These are once-per-lap
+      gaps, not continuous timing.
+    config:
+      contract:
+        enforced: true
+    columns:
+      - name: lap_key
+        description: Key of the lap in fct_lap. Unique.
+        data_type: varchar
+        data_tests: [unique, not_null]
+      - name: session_key
+        description: The race or sprint. Key of dim_session.
+        data_type: varchar
+        data_tests: [not_null]
+      - name: year
+        description: Season year.
+        data_type: integer
+      - name: round
+        description: Round number within the season.
+        data_type: integer
+      - name: session_code
+        description: R for a race or S for a sprint.
+        data_type: varchar
+      - name: driver_code
+        description: Three-letter driver code.
+        data_type: varchar
+      - name: lap_number
+        description: Lap number, counted from 1.
+        data_type: integer
+      - name: position
+        description: Running order at the end of the lap, 1 for the leader, as recorded in fct_lap.
+        data_type: integer
+      - name: time_s
+        description: Session clock in seconds at the end of the lap.
+        data_type: double
+      - name: track_status
+        description: Track status codes seen during the lap, as in fct_lap (1 is all clear).
+        data_type: varchar
+      - name: gap_to_leader_s
+        description: Seconds behind the leader at the end of this lap number. 0 for the leader. Null when the recorded order disagrees with the clock. Can exceed one lap time for a lapped car.
+        data_type: double
+      - name: car_ahead_code
+        description: Driver code of the car in the position directly ahead at the end of the lap. Null for the leader.
+        data_type: varchar
+      - name: interval_s
+        description: Seconds behind the car directly ahead at the end of the lap. Null for the leader or when the order disagrees with the clock.
+        data_type: double
+      - name: car_behind_code
+        description: Driver code of the car in the position directly behind at the end of the lap. Null for the last car.
+        data_type: varchar
+      - name: gap_behind_s
+        description: Seconds between this car and the car directly behind at the end of the lap. Null for the last car or when the order disagrees with the clock.
+        data_type: double
+      - name: is_lapped
+        description: True when the gap to the leader is longer than the leader's lap time, so the car is a lap or more down.
+        data_type: boolean
+      - name: order_disagrees_with_clock
+        description: True when the recorded order and the lap-end times conflict for this row or for the car behind it. Gaps affected are left null.
+        data_type: boolean
+
+  - name: fct_stop_battle
+    description: >
+      One row per pit stop made while a rival was within 3 seconds at the end of the previous lap, with what
+      happened to the pair once both had stopped. A rival ahead means the stopper attempted an undercut; a
+      rival behind means the rival stayed out longer, an overcut attempt. The outcome is read on the rival's
+      out lap. This detects an order change between two cars around their stops; it does not prove the stop
+      caused it, because traffic, other stops, tyres, safety cars and pace move the same two cars. Rows where
+      either stop was not under green flag are flagged is_neutralised.
+    config:
+      contract:
+        enforced: true
+    columns:
+      - name: battle_key
+        description: Session key, first stopper, first stop lap and rival joined with dashes. Unique.
+        data_type: varchar
+        data_tests: [unique, not_null]
+      - name: session_key
+        description: The race or sprint. Key of dim_session.
+        data_type: varchar
+        data_tests: [not_null]
+      - name: year
+        description: Season year.
+        data_type: integer
+      - name: round
+        description: Round number within the season.
+        data_type: integer
+      - name: session_code
+        description: R for a race or S for a sprint.
+        data_type: varchar
+      - name: kind
+        description: undercut when the attacker stopped first, overcut when the attacker stayed out and the defender stopped first.
+        data_type: varchar
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [undercut, overcut]
+      - name: attacker_code
+        description: The driver who was behind at the end of the lap before the first stop.
+        data_type: varchar
+      - name: defender_code
+        description: The driver who was directly ahead of the attacker at the end of the lap before the first stop.
+        data_type: varchar
+      - name: first_stopper_code
+        description: The driver who pitted first.
+        data_type: varchar
+      - name: second_stopper_code
+        description: The rival who pitted next, within 12 laps.
+        data_type: varchar
+      - name: first_stop_lap
+        description: In-lap of the first stop.
+        data_type: integer
+      - name: second_stop_lap
+        description: In-lap of the rival's response stop.
+        data_type: integer
+      - name: laps_between_stops
+        description: Laps between the two stops, 1 to 12.
+        data_type: integer
+      - name: gap_before_s
+        description: Seconds between the two cars at the end of the lap before the first stop, 3.0 at most.
+        data_type: double
+      - name: first_compound_after
+        description: Tyre compound the first stopper fitted.
+        data_type: varchar
+      - name: second_compound_after
+        description: Tyre compound the second stopper fitted.
+        data_type: varchar
+      - name: attacker_ahead_after
+        description: True when the attacker finished the rival's out lap ahead of the defender.
+        data_type: boolean
+      - name: margin_after_s
+        description: Seconds by which the attacker was ahead at the end of the rival's out lap; negative when still behind.
+        data_type: double
+      - name: is_neutralised
+        description: True when either stop was not under green flag (safety car, VSC or yellow), or the flag is unknown.
+        data_type: boolean
