@@ -1,4 +1,5 @@
 import { fmtClock, statusAt, weatherAt, type Replay } from "@/lib/replay";
+import { tempUnit, tempValue, windUnit, windValue, type Units } from "@/lib/units";
 
 export function StatusStrip({
   replay,
@@ -7,6 +8,7 @@ export function StatusStrip({
   lap,
   totalLaps,
   clock,
+  units,
 }: {
   replay: Replay;
   t: number;
@@ -14,6 +16,7 @@ export function StatusStrip({
   lap: number;
   totalLaps: number;
   clock: number;
+  units: Units;
 }) {
   const status = statusAt(replay.file, t);
   const w = weatherAt(replay.file.weather, t);
@@ -39,10 +42,10 @@ export function StatusStrip({
       )}
       {w && (
         <dl className="rp-weather" aria-label="Weather">
-          <div><dt>Track</dt><dd className="num">{num(w.track, "°C")}</dd></div>
-          <div><dt>Air</dt><dd className="num">{num(w.air, "°C")}</dd></div>
+          <div><dt>Track</dt><dd className="num">{num(w.track == null ? w.track : tempValue(w.track, units), tempUnit(units))}</dd></div>
+          <div><dt>Air</dt><dd className="num">{num(w.air == null ? w.air : tempValue(w.air, units), tempUnit(units))}</dd></div>
           <div><dt>Humidity</dt><dd className="num">{num(w.humidity, "%", 0)}</dd></div>
-          <div><dt>Wind</dt><dd className="num">{num(w.wind, " m/s")}</dd></div>
+          <div><dt>Wind</dt><dd className="num">{num(w.wind == null ? w.wind : windValue(w.wind, units), windUnit(units))}</dd></div>
           <div><dt>Rain</dt><dd>{w.rain ? "Yes" : "No"}</dd></div>
         </dl>
       )}

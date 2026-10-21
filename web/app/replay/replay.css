@@ -121,3 +121,29 @@ span.swatch.rp-band-yellow { background: rgba(240, 196, 85, 0.5); }
   .rp-msg-lap, .rp-msg-flag { display: none; }
   .rp-skips { display: none; }
 }
+
+/* ---- upgrade: gap to a driver, pit prediction, flags on the track, jump to lap, full screen, units ---- */
+.rp-board-opts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 10px; }
+.rp-check { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--ink-2); cursor: pointer; }
+.rp-row-pred { grid-template-columns: 4px 26px 62px 1fr 42px 34px 62px; }
+.rp-predcell { color: var(--ink-2); font-size: 0.85rem; text-align: right; }
+.chip:disabled { opacity: 0.45; cursor: not-allowed; }
+.rp-edge-yellow { stroke: #b88a1e; }
+.rp-edge-sc { stroke: #d4a017; }
+.rp-edge-red { stroke: #c0403d; }
+.rp-map-flag { fill: var(--ink); font-size: 26px; font-weight: 800; letter-spacing: 0.02em; paint-order: stroke; stroke: var(--surface); stroke-width: 6px; }
+.rp-lapjump { display: inline-flex; gap: 4px; align-items: center; }
+.rp-lapjump input { width: 64px; padding: 5px 8px; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius); font: inherit; font-size: 0.82rem; }
+.rp-units { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; }
+.rp-lapcell { display: inline-flex; align-items: center; gap: 8px; }
+.rp-screen:fullscreen { background: var(--ground); padding: 18px 22px; overflow: auto; }
+.rp-screen:fullscreen .rp-map { max-height: 68vh; }
+
+.chip-on:hover { color: var(--ground); border-color: var(--ink); }
+
+.rp-band-pre { background: rgba(140, 150, 170, 0.28); }
+span.swatch.rp-band-pre { background: rgba(140, 150, 170, 0.45); }
+.rp-startline { position: absolute; top: -2px; bottom: -2px; width: 2px; background: #3ecf6e; z-index: 1; }
+.rp-tick-start { position: absolute; transform: translateX(-50%); color: #3ecf6e; font-weight: 700; z-index: 1; background: var(--ground); padding: 0 3px; }
+.rp-phase { font-size: 0.85rem; color: var(--ink-3); font-weight: 600; }
+.rp-phase-pre { color: #8ea0c4; }

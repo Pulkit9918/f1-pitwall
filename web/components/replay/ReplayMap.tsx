@@ -6,6 +6,21 @@ import { cumAt, hasData, trackPoint, type CarState, type Replay } from "@/lib/re
 
 const PAD = 36;
 
+function flagText(code: string | undefined): string {
+  if (code === "2") return "YELLOW FLAG";
+  if (code === "5") return "RED FLAG";
+  if (code === "6" || code === "7") return "VIRTUAL SAFETY CAR";
+  return "SAFETY CAR";
+}
+
+// The track edge changes colour with the flag; the label next to the map always says which one it is.
+function tintClass(code: string | undefined): string {
+  if (code === "2") return " rp-edge-yellow";
+  if (code === "4" || code === "6" || code === "7") return " rp-edge-sc";
+  if (code === "5") return " rp-edge-red";
+  return "";
+}
+
 export function ReplayMap({
   replay,
   t,
@@ -13,6 +28,7 @@ export function ReplayMap({
   leader,
   slots,
   onToggle,
+  status,
 }: {
   replay: Replay;
   t: number;
@@ -20,6 +36,7 @@ export function ReplayMap({
   leader: string | null;
   slots: (string | null)[];
   onToggle: (code: string) => void;
+  status: { code: string; label: string } | null;
 }) {
   const { w, h, pts } = replay.file.track;
   const outline = useMemo(() => `M${pts.map((p) => p.join(",")).join("L")}Z`, [pts]);
@@ -47,9 +64,12 @@ export function ReplayMap({
       role="img"
       aria-label={`Track map with ${cars.length} cars. The leaderboard lists them in order.`}
     >
-      <path d={outline} className="rp-road-edge" />
+      <path d={outline} className={`rp-road-edge${tintClass(status?.code)}`} />
       <path d={outline} className="rp-road" />
       <line {...finish} className="rp-finish" />
+      {tintClass(status?.code) && (
+        <text x={0} y={-12} className="rp-map-flag">{flagText(status?.code)}</text>
+      )}
       {cars.map(({ c, x, y, slot }) => {
         const picked = slot >= 0;
         const pit = states.get(c) === "pit";

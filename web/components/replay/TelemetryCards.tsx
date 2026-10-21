@@ -1,5 +1,6 @@
 import { DRIVER_COLORS } from "@/lib/colors";
 import { channelAt, drsOpen, type BoardRow, type Replay } from "@/lib/replay";
+import { speedUnit, speedValue, type Units } from "@/lib/units";
 
 export function TelemetryCards({
   replay,
@@ -7,12 +8,14 @@ export function TelemetryCards({
   rows,
   kind,
   slots,
+  units,
 }: {
   replay: Replay;
   t: number;
   rows: BoardRow[];
   kind: "race" | "quali";
   slots: (string | null)[];
+  units: Units;
 }) {
   const picked = slots.flatMap((code, slot) => (code ? [{ code, slot }] : []));
   if (picked.length === 0) return <p className="muted">Select up to three drivers in the list to see their speed, gear, throttle and brake.</p>;
@@ -33,7 +36,7 @@ export function TelemetryCards({
             {ch ? (
               <>
                 <div className="rp-speed">
-                  <span className="num">{ch.speed}</span> <small>km/h</small>
+                  <span className="num">{speedValue(ch.speed, units)}</span> <small>{speedUnit(units)}</small>
                 </div>
                 <dl className="rp-kv">
                   <div><dt>Gear</dt><dd className="num">{ch.gear || "N"}</dd></div>

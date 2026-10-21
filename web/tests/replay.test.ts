@@ -8,9 +8,13 @@ import {
   fmtClock,
   fmtGap,
   frame,
+  gapsToDriver,
   hasData,
   inPit,
   lapEnds,
+  lapHistory,
+  lapsDoneAt,
+  lapStartTime,
   leaderLap,
   messagesUpTo,
   qualiBoard,
@@ -269,5 +273,55 @@ describe("team colours", () => {
   });
   it("has no teams when the file has none", () => {
     expect(decodeReplay(file).teams).toEqual({});
+  });
+});
+
+describe("gap to a chosen driver", () => {
+  const facts = driverFacts(idx);
+  it("is plus for cars behind the driver and minus for cars ahead, by the same method as the board", () => {
+    const rows = raceBoard(r, facts, 15, OPTS);
+    const g = gapsToDriver(r, rows, 15, "BBB", OPTS.start);
+    expect(g.get("BBB")).toBe("Selected");
+    expect(g.get("AAA")).toBe("-3.500");       // A was where B is now 11.5 s in; 15 - 11.5
+    expect(g.get("CCC")).toBe("+8.750");       // B was where C is now 6.25 s in; 15 - 6.25
+  });
+  it("shows whole laps when a car is a lap or more apart", () => {
+    const rows = raceBoard(r, facts, 36, OPTS);
+    const g = gapsToDriver(r, rows, 36, "AAA", OPTS.start);
+    expect(g.get("CCC")).toMatch(/^\+\d LAPS?$/);
+    const back = gapsToDriver(r, rows, 36, "CCC", OPTS.start);
+    expect(back.get("AAA")).toMatch(/^-\d LAPS?$/);
+  });
+  it("is blank before the start and empty for a driver that is not on the board", () => {
+    const rows = raceBoard(r, facts, 0.2, OPTS);
+    expect(gapsToDriver(r, rows, 0.2, "AAA", OPTS.start).get("BBB")).toBe("");
+    expect(gapsToDriver(r, rows, 0.2, "ZZZ", OPTS.start).size).toBe(0);
+  });
+});
+
+describe("laps done, lap start and lap history", () => {
+  it("counts the last lap finished by a time", () => {
+    expect(lapsDoneAt(idx.get("AAA")!, 5)).toBe(0);
+    expect(lapsDoneAt(idx.get("AAA")!, 10.5)).toBe(1);
+    expect(lapsDoneAt(idx.get("AAA")!, 25)).toBe(2);
+    expect(lapsDoneAt(idx.get("BBB")!, 99)).toBe(2);     // lap 3 never finished
+  });
+  it("starts lap 1 at the race start and lap n at the end of lap n - 1", () => {
+    const ends = lapEnds(idx);
+    expect(lapStartTime(ends, 1, 0.5)).toBe(0.5);
+    expect(lapStartTime(ends, 2, 0.5)).toBe(ends[0]);
+    expect(lapStartTime(ends, 99, 0.5)).toBeNull();
+  });
+  it("lists finished laps newest first for the chosen drivers only, and marks the bests", () => {
+    const h = lapHistory(idx, ["AAA", "BBB"], 26);
+    expect(h.laps).toEqual([2, 1]);
+    expect(h.rows.get(2)!.has("CCC")).toBe(false);
+    expect(h.sessionBest).toBeCloseTo(9.9);               // A's lap 2: 20.4 - 10.5
+    expect(h.own.get("BBB")).toBeCloseTo(12.5);
+    expect(lapHistory(idx, ["AAA"], 5).laps).toEqual([]);
+  });
+  it("ignores laps the stewards deleted when finding the best", () => {
+    const idx2: LapIndex = new Map([["AAA", [lap(1, 0, 8, { deleted: true }), lap(2, 8, 20)]]]);
+    expect(lapHistory(idx2, ["AAA"], 30).sessionBest).toBeCloseTo(12);
   });
 });

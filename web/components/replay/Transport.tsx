@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { SPEEDS } from "@/lib/usePlayback";
 import { fmtClock, type TimeBand } from "@/lib/replay";
 
@@ -21,6 +22,11 @@ export function Transport({
   onSeek,
   onSkip,
   onSpeed,
+  totalLaps,
+  onLap,
+  onFullscreen,
+  fullscreen,
+  raceStart,
 }: {
   start: number;
   end: number;
@@ -34,7 +40,13 @@ export function Transport({
   onSeek: (t: number) => void;
   onSkip: (dt: number) => void;
   onSpeed: (s: number) => void;
+  totalLaps?: number;
+  onLap?: (n: number) => void;
+  onFullscreen?: () => void;
+  fullscreen?: boolean;
+  raceStart?: number;
 }) {
+  const [lapText, setLapText] = useState("");
   const span = Math.max(1, end - start);
   const pct = (x: number) => `${Math.max(0, Math.min(100, ((x - start) / span) * 100))}%`;
   return (
@@ -57,13 +69,41 @@ export function Transport({
             <button key={s} type="button" className={`rp-speed-btn${s === speed ? " on" : ""}`} aria-pressed={s === speed} onClick={() => onSpeed(s)}>{s}x</button>
           ))}
         </div>
+        {onLap && totalLaps ? (
+          <form
+            className="rp-lapjump"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const n = Math.round(Number(lapText));
+              if (Number.isFinite(n) && n >= 1) onLap(Math.min(n, totalLaps));
+            }}
+          >
+            <label>
+              <span className="sr-only">Jump to lap</span>
+              <input type="number" min={1} max={totalLaps} inputMode="numeric" placeholder="Lap" value={lapText} onChange={(e) => setLapText(e.target.value)} />
+            </label>
+            <button type="submit" className="rp-skip">Go to lap</button>
+          </form>
+        ) : null}
+        {onFullscreen && (
+          <button type="button" className="rp-skip" onClick={onFullscreen} aria-pressed={!!fullscreen}>
+            {fullscreen ? "Exit full screen" : "Full screen"}
+          </button>
+        )}
+        {raceStart !== undefined && (
+          <span className={`rp-phase${t < raceStart ? " rp-phase-pre" : ""}`}>{t < raceStart ? "Pre-race / formation lap" : "Race"}</span>
+        )}
         <span className="rp-clock num">{fmtClock(t - clock0)}</span>
       </div>
       <div className="rp-scrub">
         <div className="rp-scrub-bands" aria-hidden="true">
+          {raceStart !== undefined && raceStart > start && (
+            <span className="rp-band rp-band-pre" style={{ left: "0%", width: pct(raceStart) }} />
+          )}
           {bands.map((b, i) => (
             <span key={i} className={`rp-band rp-band-${b.kind.toLowerCase()}`} style={{ left: pct(b.t0), width: `max(2px, calc(${pct(b.t1)} - ${pct(b.t0)}))` }} />
           ))}
+          {raceStart !== undefined && raceStart > start && <span className="rp-startline" style={{ left: pct(raceStart) }} />}
           <span className="rp-scrub-fill" style={{ width: pct(t) }} />
         </div>
         <input
@@ -77,12 +117,14 @@ export function Transport({
           aria-valuetext={fmtClock(t - clock0)}
         />
         <div className="rp-ticks" aria-hidden="true">
+          {raceStart !== undefined && raceStart > start && <span className="rp-tick-start" style={{ left: pct(raceStart) }}>Race start</span>}
           {ticks.map((k) => (
             <span key={k.label} style={{ left: pct(k.t) }}>{k.label}</span>
           ))}
         </div>
       </div>
       <ul className="legend rp-legend" aria-label="Timeline markers">
+        {raceStart !== undefined && <li><span className="swatch rp-band-pre" /> Pre-race / formation lap</li>}
         <li><span className="swatch rp-band-yellow" /> Yellow flag</li>
         <li><span className="swatch band-sc" /> Safety car</li>
         <li><span className="swatch band-vsc" /> Virtual safety car</li>

@@ -523,3 +523,69 @@ export function timeBands(r: Replay, doc: Maybe<SessionDoc>): TimeBand[] {
   }
   return out.filter((b) => b.t1 > b.t0).sort((a, b) => a.t0 - b.t0);
 }
+
+// ---- gap to a chosen driver, and laps done ----
+
+// For every row, the time to the chosen driver: "+" when the car is behind them, "-" when it is ahead. Same method as the
+// gaps on the board: the time since the car in front was at the point the other car has now reached. A lap or more apart
+// is shown in laps. Blank before the start, or when the data does not reach.
+export function gapsToDriver(r: Replay, rows: BoardRow[], t: number, selected: string, start: number): Map<string, string> {
+  const out = new Map<string, string>();
+  const sel = rows.find((x) => x.code === selected);
+  if (!sel) return out;
+  for (const row of rows) {
+    if (row.code === selected) {
+      out.set(row.code, "Selected");
+      continue;
+    }
+    if (t < start) {
+      out.set(row.code, "");
+      continue;
+    }
+    const diff = sel.progress - row.progress; // positive: this car is behind the chosen driver
+    const sign = diff >= 0 ? "+" : "-";
+    if (Math.abs(diff) >= 1) {
+      const k = Math.floor(Math.abs(diff) + 1e-9);
+      out.set(row.code, `${sign}${k} ${k === 1 ? "LAP" : "LAPS"}`);
+      continue;
+    }
+    const reached = diff >= 0 ? timeAtCum(r, selected, row.progress) : timeAtCum(r, row.code, sel.progress);
+    out.set(row.code, reached == null ? "" : `${sign}${Math.max(0, t - reached).toFixed(3)}`);
+  }
+  return out;
+}
+
+// The number of the last lap a driver has finished by time t, 0 before the first.
+export function lapsDoneAt(recs: LapRec[], t: number): number {
+  let n = 0;
+  for (const l of recs) if (fin(l.end) && l.end <= t && l.lap > n) n = l.lap;
+  return n;
+}
+
+// The session time at which lap n starts for the leader: the end of lap n - 1, or the race start for lap 1.
+export function lapStartTime(ends: number[], n: number, start: number): number | null {
+  if (n <= 1) return start;
+  const e = ends[n - 2];
+  return e === undefined ? null : e;
+}
+
+// One row per lap, one column per selected driver, up to the time shown. Purple is the best lap of the session so far
+// among all drivers, green the driver's own best so far; laps deleted by the stewards are struck out and not counted.
+export function lapHistory(idx: LapIndex, codes: string[], t: number) {
+  const all: { code: string; rec: LapRec }[] = [];
+  for (const [code, recs] of idx) for (const rec of recs) if (completed(rec) && !rec.deleted && rec.end! <= t) all.push({ code, rec });
+  const rows = new Map<number, Map<string, LapRec>>();
+  for (const code of codes) {
+    for (const rec of idx.get(code) ?? []) {
+      if (!completed(rec) || rec.end! > t) continue;
+      const row = rows.get(rec.lap) ?? new Map<string, LapRec>();
+      row.set(code, rec);
+      rows.set(rec.lap, row);
+    }
+  }
+  const laps = [...rows.keys()].sort((a, b) => b - a); // newest first
+  const bestOf = (code: string) => Math.min(...all.filter((x) => x.code === code).map((x) => x.rec.time!), Infinity);
+  const sessionBest = Math.min(...all.map((x) => x.rec.time!), Infinity);
+  return { laps, rows, sessionBest, own: new Map(codes.map((c) => [c, bestOf(c)])) };
+}
+
