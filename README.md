@@ -221,6 +221,29 @@ Using the engine's live gaps was **no more accurate** than lap-end times (closer
 | Race scrubber | All cars on the track at any moment; timing tower with sector colours; flags, weather and race control feed; follow drivers; auto-play 0.5x-60x |
 | Session timing | Best laps, sectors and ideal lap for qualifying and practice |
 
+## Web app and race replay
+
+A static Next.js site (`web/`) shows the analytics tables and a race replay for every race and qualifying
+session from 2022: track map with playback, leaderboard with gaps, driver telemetry cards, weather,
+race control messages and timing, with drivers coloured by team. It is built as plain static files, so it
+needs no server.
+
+```bash
+python scripts/export_static.py      # analytics JSON  -> web/public/data
+python scripts/export_replay.py      # one file per session -> web/public/replay-data (about 9 minutes, 440 MB)
+cd web && npm install && npm run dev
+```
+
+`export_replay.py` reads the Parquet lake and the gold lap table. Car positions are matched to the circuit
+outline, and progress is checked against the lap table at the end of every lap; where a car is a whole
+number of laps out, it is put right using the lap table. Sessions it cannot do honestly are skipped with a
+reason (2026 round 6: position data covers 5% of the race; 2026 round 11: the position feed stops matching
+the cars' clock from lap 7). Use `--only 2026-R17-R --force` to rebuild one session.
+
+Known limits: a few cars have position data that stops moving before the race ends (for example Russell in
+2025 round 4), so their marker stands still while the leaderboard follows the lap table. The replay data is
+generated, not committed (`web/public/replay-data/` is git-ignored).
+
 ## The API
 
 A small read-only FastAPI service (`api/main.py`) serves the gold tables as JSON, so anything that is not Streamlit can read the same numbers.

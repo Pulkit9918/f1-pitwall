@@ -20,3 +20,4 @@ airflow/logs/
 airflow/config/airflow.cfg
 web/public/data/
 web/public/replay-data/
+.wrangler/
