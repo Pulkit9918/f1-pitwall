@@ -5,8 +5,8 @@ models:
     description: >
       One row per pit stop made entirely under a safety car or a virtual safety car, races and sprints from
       2018. Same arithmetic as fct_pit_loss (in-lap plus out-lap against the median of the cars that did not
-      pit on that lap) but both laps must be on one track status, exactly 4 (safety car) or exactly 6 (VSC),
-      and the driver's own pace offset is taken as zero because there are no clean laps to measure it from.
+      pit on that lap) but both laps must be under a safety car (exactly status 4) or a virtual safety car (both
+      laps contain a 6 or 7 and neither a 4 or 5; some are partly green), and the driver's own pace offset is taken as zero because there are no clean laps to measure it from.
       Rougher than the green-flag figures: an estimate of what a neutralised stop costs, not a measurement
       of any one driver.
     config:
