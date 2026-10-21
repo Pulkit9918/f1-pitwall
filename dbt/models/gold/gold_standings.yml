@@ -1,0 +1,90 @@
+version: 2
+
+models:
+  - name: fct_points_progression
+    config:
+      contract: {enforced: true}
+    description: >
+      Championship points per driver after every round of every season, race plus sprint, with the running win count
+      and the championship position after the round. One row per driver per round, with zero points before a driver's
+      first round, so a series can be plotted without gaps. Reconciled to the official final standings from 2018 onward,
+      except 2021: its three sprint races are not in the lake, so 2021 totals are short by the sprint points. A sprint
+      whose results have positions but no points (2024 Brazil and Qatar) is scored from the finishing position on the
+      8-7-6-5-4-3-2-1 scale and flagged in sprint_points_imputed. Shared drives in the 1950s are added up per round.
+      Ties in position are broken by wins and then driver_id; the official countback is not applied.
+    columns:
+      - name: progression_key
+        data_type: varchar
+        description: Season, round and driver_id joined with dashes. Unique.
+        data_tests: [unique, not_null]
+      - name: season
+        data_type: integer
+        description: Season year.
+        data_tests: [not_null]
+      - name: round
+        data_type: integer
+        description: Round number within the season, as in the race results.
+        data_tests: [not_null]
+      - name: driver_id
+        data_type: varchar
+        description: Driver, as in dim_historical_driver and the race results.
+        data_tests: [not_null]
+      - name: constructor_id
+        data_type: varchar
+        description: The constructor the driver raced for in that round. Null in a round the driver did not enter and has no other round to borrow from; for a sprint-only driver it is the team they raced for elsewhere in the season.
+      - name: points_in_round
+        data_type: double
+        description: Points scored in the round, race plus sprint, including the fastest-lap point where it was awarded.
+      - name: sprint_points
+        data_type: double
+        description: The part of points_in_round that came from the sprint. Zero in rounds without a sprint.
+      - name: sprint_points_imputed
+        data_type: boolean
+        description: True when the sprint points were worked out from the finishing position because the lake has no points for that sprint (2024 Brazil and Qatar).
+      - name: cumulative_points
+        data_type: double
+        description: Points after this round, summed from the start of the season.
+        data_tests: [not_null]
+      - name: cumulative_wins
+        data_type: integer
+        description: Race wins after this round (sprint wins do not count).
+      - name: championship_position
+        data_type: integer
+        description: Position in the drivers' championship after this round, by points, then wins, then driver_id.
+
+  - name: fct_constructor_points_progression
+    config:
+      contract: {enforced: true}
+    description: >
+      Championship points per constructor after every round of every season, race plus sprint, and the constructors'
+      championship position after the round. Built from fct_points_progression, so it carries the same caveats: 2021
+      is short by the sprint points, and a constructor's points follow the team each driver raced for in that round.
+      Points deductions and disqualified teams in the official standings are not reproduced. Ties are broken by
+      constructor_id.
+    columns:
+      - name: progression_key
+        data_type: varchar
+        description: Season, round and constructor_id joined with dashes. Unique.
+        data_tests: [unique, not_null]
+      - name: season
+        data_type: integer
+        description: Season year.
+        data_tests: [not_null]
+      - name: round
+        data_type: integer
+        description: Round number within the season.
+        data_tests: [not_null]
+      - name: constructor_id
+        data_type: varchar
+        description: Constructor, as in dim_constructor.
+        data_tests: [not_null]
+      - name: points_in_round
+        data_type: double
+        description: Points the constructor's drivers scored in the round, race plus sprint.
+      - name: cumulative_points
+        data_type: double
+        description: Points after this round, summed from the start of the season.
+        data_tests: [not_null]
+      - name: championship_position
+        data_type: integer
+        description: Position in the constructors' championship after this round, by points, then constructor_id.
