@@ -18,3 +18,5 @@ ci_lake/
 airflow/.env
 airflow/logs/
 airflow/config/airflow.cfg
+web/public/data/
+web/public/replay-data/
