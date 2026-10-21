@@ -3,15 +3,19 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState } from "react";
+import { BattleTable } from "@/components/BattleTable";
 import { DriverPicker } from "@/components/DriverPicker";
+import { GapChart } from "@/components/GapChart";
 import { LapChart } from "@/components/LapChart";
+import { PitNowPanel } from "@/components/PitNowPanel";
 import { PitTable } from "@/components/PitTable";
 import { PositionChart } from "@/components/PositionChart";
 import { ReplayLink } from "@/components/ReplayLink";
 import { Loading, Ready } from "@/components/State";
 import { StrategyChart } from "@/components/StrategyChart";
 import { MAX_COMPARED } from "@/lib/colors";
-import { useSession } from "@/lib/data";
+import { useAnalysis, useSession } from "@/lib/data";
+import type { GapMetric } from "@/lib/analysis";
 import { isPractice, sessionLabel } from "@/lib/format";
 import { assignSlots, driverOrder, hasPositions, maxLap, pitRows, toggleDriver } from "@/lib/race";
 import type { SessionDoc } from "@/lib/types";
@@ -67,9 +71,55 @@ function RaceView({ doc }: { doc: SessionDoc }) {
         )}
       </section>
 
+      <Analysis doc={doc} order={order} slots={slots} onToggle={toggle} />
+
       <section aria-labelledby="pits">
         <h2 id="pits">Pit stops</h2>
         <PitTable stops={pits} />
+      </section>
+    </>
+  );
+}
+
+function Analysis({ doc, order, slots, onToggle }: { doc: SessionDoc; order: string[]; slots: (string | null)[]; onToggle: (code: string) => void }) {
+  const code = doc.session.session_code;
+  const load = useAnalysis(code === "R" || code === "S" ? doc.session.session_key : null);
+  const [metric, setMetric] = useState<GapMetric>("leader");
+  if (code !== "R" && code !== "S") return null;
+  if (load.state === "loading") return <Loading label="Loading gap analysis" />;
+  if (load.state === "error") {
+    return (
+      <section aria-labelledby="gaps">
+        <h2 id="gaps">Gaps and strategy</h2>
+        <p className="muted">{load.message.startsWith("404") ? "There is no gap analysis for this session." : load.message}</p>
+      </section>
+    );
+  }
+  const analysis = load.data;
+  return (
+    <>
+      <section aria-labelledby="gaps">
+        <h2 id="gaps">Gaps</h2>
+        <p className="muted small">Uses the drivers picked above.</p>
+        <div className="filters">
+          <div role="group" aria-label="Gap measure" className="chips">
+            {(["leader", "interval"] as const).map((m) => (
+              <button key={m} type="button" className={`chip${m === metric ? " chip-on" : ""}`} aria-pressed={m === metric} onClick={() => setMetric(m)}>
+                {m === "leader" ? "Gap to leader" : "Interval to car ahead"}
+              </button>
+            ))}
+          </div>
+        </div>
+        <DriverPicker order={order} slots={slots} onToggle={onToggle} />
+        <GapChart doc={doc} analysis={analysis} slots={slots} metric={metric} />
+      </section>
+      <section aria-labelledby="battles">
+        <h2 id="battles">Undercuts and overcuts</h2>
+        <BattleTable analysis={analysis} />
+      </section>
+      <section aria-labelledby="pitnow">
+        <h2 id="pitnow">If they pit now</h2>
+        <PitNowPanel analysis={analysis} />
       </section>
     </>
   );

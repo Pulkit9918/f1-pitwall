@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { AnalysisDoc } from "./analysis";
 import type { Circuit, Manifest, SessionDoc, SessionMeta } from "./types";
 
 const cache = new Map<string, Promise<unknown>>();
@@ -44,3 +45,5 @@ export const useCircuits = () => useJson<{ circuits: Circuit[] }>("/data/circuit
 export const useSessions = () => useJson<{ sessions: SessionMeta[] }>("/data/sessions.json");
 export const useSession = (key: string | null) =>
   useJson<SessionDoc>(key ? `/data/sessions/${encodeURIComponent(key)}.json` : null);
+export const useAnalysis = (key: string | null) =>
+  useJson<AnalysisDoc>(key ? `/analysis-data/${encodeURIComponent(key)}.json` : null);

@@ -188,3 +188,11 @@ table.narrow { max-width: 860px; }
 .race-card { border-bottom: 1px solid var(--line-soft); padding-bottom: 20px; }
 .race-card h3 { margin: 0; font-size: 1.05rem; }
 .podium { display: flex; flex-wrap: wrap; gap: 4px 20px; margin: 10px 0 6px; font-weight: 600; }
+
+/* ---- race analysis ---- */
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field.grow { flex: 1 1 260px; }
+.field select { background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 8px; font: inherit; }
+.field input[type="range"] { width: 100%; accent-color: var(--ink-2); }
+.pitnow { margin: 12px 0 8px; }
+.notice-inline { border-left: 3px solid var(--medium); padding: 6px 12px; margin: 8px 0; color: var(--ink-2); font-size: 0.9rem; }
