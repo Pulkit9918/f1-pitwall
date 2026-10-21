@@ -32,8 +32,6 @@ export function onCompound(c: string | null | undefined): string {
   return k === "SOFT" || k === "WET" ? "#ffffff" : "#14171f";
 }
 
-// Team colours come from the data (the lake's results table). They colour dots and list bars only, never text, and a
-// colour too dark to see on the page background is lightened until it reaches 3:1 against it.
 const PAGE_GROUND = "#0f1218";
 
 function channels(hex: string): [number, number, number] {
@@ -66,6 +64,5 @@ function rgb([r, g, b]: [number, number, number]): string {
   return `#${[r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
 }
 
-// Three slots, assigned in fixed order. Checked with the dataviz palette validator (dark surface, all pairs).
 export const DRIVER_COLORS = ["#3987e5", "#d95926", "#199e70"];
 export const MAX_COMPARED = DRIVER_COLORS.length;

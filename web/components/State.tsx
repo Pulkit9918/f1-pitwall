@@ -20,7 +20,6 @@ export function Loading({ label = "Loading" }: { label?: string }) {
   );
 }
 
-// Renders the right thing for a loading, failed or ready request.
 export function Ready<T>({ load, children, label }: { load: Load<T>; children: (data: T) => React.ReactNode; label?: string }) {
   if (load.state === "loading") return <Loading label={label} />;
   if (load.state === "error") return <LoadError message={load.message} />;

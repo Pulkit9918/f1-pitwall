@@ -75,8 +75,6 @@ export function ReplayMap({
         const pit = states.get(c) === "pit";
         const team = replay.teams[c];
         const color = teamFill(team?.color);
-        // With a team colour the dot is that colour; a pit car is a ring of it, the leader has a light rim, and a
-        // selected driver gets a thick ring in the colour of their card below. Without one, the plain grey dots are used.
         const style = color
           ? {
               fill: pit ? "var(--ground)" : color,

@@ -5,8 +5,6 @@ import { clamp } from "./replay";
 
 export const SPEEDS = [1, 2, 5, 10, 20];
 
-// A clock that runs at `speed` times real time between `start` and `end`. `t` updates every frame, for drawing cars;
-// `slow` updates four times a second, for the panels that would only flicker if redrawn every frame.
 export function usePlayback(start: number, end: number, initial = start) {
   const [t, setT] = useState(initial);
   const [slow, setSlow] = useState(initial);
@@ -24,7 +22,7 @@ export function usePlayback(start: number, end: number, initial = start) {
     let raf = 0;
     let last = performance.now();
     const tick = (now: number) => {
-      const dt = Math.min(0.25, (now - last) / 1000); // a hidden tab must not make the clock jump
+      const dt = Math.min(0.25, (now - last) / 1000); 
       last = now;
       let next = live.current.t + dt * live.current.speed;
       let stop = false;

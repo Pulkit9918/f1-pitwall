@@ -1,4 +1,4 @@
-// The shapes written by scripts/export_static.py (web/public/data). Tables are stored column by column.
+// Tables are stored column by column.
 
 export type Maybe<T> = T | null;
 
@@ -127,7 +127,6 @@ export interface Manifest {
   seasons: number[];
 }
 
-// One row per tyre stint, after the columns are zipped back together.
 export interface Stint {
   driver: string;
   stint: number;
@@ -150,7 +149,6 @@ export interface PitStop {
   positionBefore: Maybe<number>;
 }
 
-// A race-control period in lap units: lap n spans [n - 1, n].
 export interface LapBand {
   kind: PeriodKind;
   x0: number;

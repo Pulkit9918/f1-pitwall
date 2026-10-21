@@ -114,7 +114,6 @@ export function ReplayView({ doc, replay }: { doc: SessionDoc; replay: Replay })
     [ends, clock0, play],
   );
 
-  // Space plays and pauses, the arrow keys skip and change speed. Buttons and the slider keep their own keys.
   const { toggle: togglePlay, skip, setSpeed, speed } = play;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -136,7 +135,6 @@ export function ReplayView({ doc, replay }: { doc: SessionDoc; replay: Replay })
         setSpeed(SPEEDS[Math.max(0, Math.min(SPEEDS.length - 1, i + (e.key === "ArrowUp" ? 1 : -1)))]);
       }
     };
-    // After a mouse click, a button gives up focus so that Space still plays and pauses (a keyboard click has detail 0).
     const onClick = (e: MouseEvent) => {
       const el = e.target instanceof Element ? e.target.closest("button") : null;
       if (el && e.detail > 0) el.blur();
@@ -224,9 +222,7 @@ export function ReplayView({ doc, replay }: { doc: SessionDoc; replay: Replay })
       </div>
       <p className="axis-caption">
         Dot colours are the teams' own; a dark centre marks a team's second car, and a ring in blue, orange or green marks a selected driver
-        and the card that goes with them. Positions come from snapping each car's x and y to one lap of the circuit, so cars in the pit lane are drawn on the track. Gaps are
-        the time since the car ahead was at the same point. Wind is shown in metres per second, as FastF1 documents it; neither this nor the
-        DRS reading has been checked against an outside source.
+        and the card that goes with them. 
       </p>
     </>
   );

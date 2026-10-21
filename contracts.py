@@ -38,8 +38,6 @@ def _numeric_cols(names, nullable=True):
                          checks=pa.Check(_numeric, name="is_numeric", error="column is not numeric"))
             for n in names}
 
-
-# ------------------------------------------------------------------ hard (structure)
 _LAPS_TEXT = ["event", "Driver", "DriverNumber", "IsPersonalBest", "Compound", "FreshTyre", "Team",
               "LapStartDate", "TrackStatus", "Deleted", "DeletedReason", "FastF1Generated", "IsAccurate"]
 _LAPS_NUM = ["Stint", "SpeedI1", "SpeedI2", "SpeedFL", "SpeedST", "TyreLife", "Position", "LapTime_s",
@@ -88,8 +86,6 @@ HARD = {
         "Time_s": pa.Column(required=True, nullable=False)}, strict=False),
 }
 
-
-# ------------------------------------------------------------------ soft (values)
 def _range(table, col, lo, hi):
     name = f"{table}.{col} in [{lo}, {hi}]"
     return col, pa.Check(lambda s, lo=lo, hi=hi: s.between(lo, hi), name=name)

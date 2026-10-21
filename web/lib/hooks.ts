@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, type RefObject } from "react";
 
-// The width of an element, kept up to date, so charts can draw to the space they have.
 export function useWidth(): [RefObject<HTMLDivElement | null>, number] {
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);

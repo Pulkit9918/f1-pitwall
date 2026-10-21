@@ -6,7 +6,6 @@ export function fmtLap(s: number | null | undefined): string {
   return m > 0 ? `${m}:${sec}` : rest.toFixed(3);
 }
 
-// A y-axis tick for lap times: 1:32.5 or 92.5
 export function fmtLapTick(s: number): string {
   const m = Math.floor(s / 60);
   const rest = s - m * 60;

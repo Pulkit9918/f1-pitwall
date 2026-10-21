@@ -49,7 +49,6 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0
 .small { font-size: 0.875rem; }
 .num { font-variant-numeric: tabular-nums; text-align: right; }
 
-/* ---- navigation ---- */
 .nav { border-bottom: 1px solid var(--line); background: var(--ground); position: sticky; top: 0; z-index: 5; }
 .nav-inner { display: flex; align-items: center; justify-content: space-between; height: 56px; }
 .wordmark { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-stretch: 68%; font-weight: 800; font-size: 1.6rem; letter-spacing: -0.01em; line-height: 1; }
@@ -62,7 +61,6 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0
 .nav a:hover { color: var(--ink); }
 .nav a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--ink); }
 
-/* ---- type ---- */
 h1, h2, h3 { font-stretch: 72%; font-weight: 800; letter-spacing: -0.005em; margin: 0; }
 h1 { font-size: clamp(2.6rem, 7.2vw, 5.2rem); line-height: 0.95; max-width: 19ch; }
 h2 { font-size: 1.7rem; line-height: 1.1; margin: 0 0 6px; }
@@ -90,12 +88,10 @@ section { margin-bottom: 48px; }
 .facts dt { font-size: 0.8rem; color: var(--ink-3); max-width: 24ch; line-height: 1.25; }
 .facts dd { margin: 0; font-stretch: 72%; font-weight: 800; font-size: 2.2rem; line-height: 1.05; }
 
-/* ---- notices ---- */
 .notice { display: grid; gap: 4px; padding: 14px 16px; border: 1px solid var(--line); border-left: 3px solid var(--soft); background: var(--surface); border-radius: var(--radius); max-width: 70ch; color: var(--ink-2); }
 .notice strong { color: var(--ink); }
 .loading { color: var(--ink-3); padding: 28px 0; }
 
-/* ---- charts ---- */
 .chart { position: relative; width: 100%; }
 .chart svg { display: block; overflow: visible; }
 .chart-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin: 6px 0 10px; }
@@ -127,7 +123,6 @@ section { margin-bottom: 48px; }
 .tip-row { display: flex; align-items: center; gap: 6px; }
 .tip-row .num { margin-left: auto; padding-left: 12px; color: var(--ink); }
 
-/* ---- controls ---- */
 .picker { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 4px; }
 .pick { display: inline-flex; align-items: center; gap: 7px; padding: 5px 10px 5px 8px; background: var(--surface); color: var(--ink-2); border: 1px solid var(--line); border-radius: var(--radius); font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
 .pick:hover { border-color: var(--ink-3); color: var(--ink); }
@@ -143,7 +138,6 @@ section { margin-bottom: 48px; }
 .check { display: inline-flex; align-items: center; gap: 8px; margin: 4px 0 28px; color: var(--ink-2); font-size: 0.95rem; cursor: pointer; }
 .check input { width: 16px; height: 16px; accent-color: var(--ink); }
 
-/* ---- sessions ---- */
 .rounds { list-style: none; margin: 0; padding: 0; }
 .rounds > li { display: grid; grid-template-columns: minmax(240px, 1fr) 2fr; gap: 12px 24px; padding: 16px 0; border-top: 1px solid var(--line); align-items: start; }
 .round-title { display: flex; gap: 14px; align-items: baseline; }
@@ -154,7 +148,6 @@ section { margin-bottom: 48px; }
 .session-links a { display: inline-block; padding: 6px 12px; border: 1px solid var(--line); border-radius: var(--radius); text-decoration: none; color: var(--ink); font-size: 0.9rem; background: var(--surface); }
 .session-links a:hover { border-color: var(--ink-3); background: var(--raised); }
 
-/* ---- tables ---- */
 .table-wrap { overflow-x: auto; }
 table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
 th { text-align: left; font-weight: 600; font-size: 0.8rem; color: var(--ink-3); padding: 8px 12px 8px 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
@@ -182,14 +175,12 @@ table.narrow { max-width: 860px; }
   * { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
 }
 
-/* ---- seasons ---- */
 .two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 32px; margin-top: 20px; }
 .race-list { list-style: none; margin: 20px 0 0; padding: 0; display: grid; gap: 22px; }
 .race-card { border-bottom: 1px solid var(--line-soft); padding-bottom: 20px; }
 .race-card h3 { margin: 0; font-size: 1.05rem; }
 .podium { display: flex; flex-wrap: wrap; gap: 4px 20px; margin: 10px 0 6px; font-weight: 600; }
 
-/* ---- race analysis ---- */
 .field { display: flex; flex-direction: column; gap: 4px; }
 .field.grow { flex: 1 1 260px; }
 .field select { background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 8px; font: inherit; }

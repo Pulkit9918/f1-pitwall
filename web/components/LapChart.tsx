@@ -19,7 +19,6 @@ interface Series {
   pts: Point[];
 }
 
-// Break the line wherever a lap is missing (pit laps, safety car laps and other laps that are not clean).
 function withGaps(pts: Point[]): Point[] {
   const out: Point[] = [];
   pts.forEach((p, i) => {

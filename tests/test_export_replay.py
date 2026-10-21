@@ -18,7 +18,7 @@ SPEC.loader.exec_module(mod)
 BASE_EPOCH = 1_750_000_000.0   # wall clock at session time 0
 DRIVERS = {1: "VER", 4: "NOR", 16: "LEC", 44: "HAM"}
 LAPS = 5
-# team name and colour as the lake has them: FastF1 writes the colour without a '#'; some are missing or malformed
+# team name and colour as the lake has them
 TEAMS = {"VER": ("Red Bull", "3671c6"), "NOR": ("McLaren", "zzz"), "LEC": ("Ferrari", "#E80020"), "HAM": ("Ferrari", None)}
 
 

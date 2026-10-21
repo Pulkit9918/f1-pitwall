@@ -61,8 +61,6 @@ export function pitRows(doc: SessionDoc): PitStop[] {
   return rows.sort((a, b) => a.lap - b.lap || a.driver.localeCompare(b.driver));
 }
 
-// Drivers in finishing order: most laps first, then position on their last lap. Without positions (practice),
-// alphabetical.
 export function driverOrder(doc: SessionDoc): string[] {
   const last = new Map<string, { lap: number; pos: number | null }>();
   const { driver_code, lap_number, position } = doc.laps;
@@ -88,7 +86,6 @@ interface Bound {
   end: number;
 }
 
-// Session-clock start and end of each lap, taken as the median across drivers.
 export function lapBounds(doc: SessionDoc): Bound[] {
   const ends = new Map<number, number[]>();
   const starts = new Map<number, number[]>();
@@ -109,7 +106,6 @@ export function lapBounds(doc: SessionDoc): Bound[] {
   return out;
 }
 
-// A session time in seconds as a position along the lap axis (lap n spans [n - 1, n]).
 export function timeToLap(t: number, bounds: Bound[]): number | null {
   if (bounds.length === 0) return null;
   if (t <= bounds[0].start) return bounds[0].lap - 1;
@@ -158,7 +154,6 @@ export function hasPositions(doc: SessionDoc): boolean {
   return doc.laps.position.some(finite);
 }
 
-// y-range for lap-time lines: from the fastest lap to the 98th percentile, so one slow lap does not flatten the rest.
 export function lapDomain(series: Point[][]): [number, number] | null {
   const all = series.flatMap((s) => s.map((p) => p.value)).sort((a, b) => a - b);
   if (all.length === 0) return null;
@@ -168,8 +163,6 @@ export function lapDomain(series: Point[][]): [number, number] | null {
   return [lo - pad, hi + pad];
 }
 
-// Colour slots are assigned in fixed order and stay with a driver while they remain selected, so removing one
-// driver never repaints the others.
 export function toggleDriver(selected: string[], code: string, max: number): string[] {
   if (selected.includes(code)) return selected.filter((c) => c !== code);
   return selected.length >= max ? selected : [...selected, code];

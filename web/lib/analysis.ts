@@ -12,7 +12,7 @@ export interface DriverAnalysis {
   fast: (number | null)[];
   slow: (number | null)[];
   margin: (number | null)[];
-  regime: string; // one letter per lap: g green, s safety car, v virtual safety car, r red, . unknown
+  regime: string; 
 }
 export interface Battle {
   kind: "undercut" | "overcut";
@@ -77,7 +77,7 @@ export interface PitNow {
   loss: number | null;
   margin: number | null;
   stopsNextLap: boolean;
-  actualAfter: number | null; // position at the end of the out-lap, only when the driver really stopped on lap + 1
+  actualAfter: number | null; 
 }
 
 export function pitNowAt(doc: AnalysisDoc, driver: string, lap: number): PitNow | null {
@@ -98,7 +98,6 @@ export function pitNowAt(doc: AnalysisDoc, driver: string, lap: number): PitNow 
   };
 }
 
-// Lines of the pit-now chart for one driver: where they are, and where a stop at the end of each lap would put them.
 export function pitNowSeries(doc: AnalysisDoc, driver: string): { now: Point[]; predicted: Point[]; fast: Point[]; slow: Point[] } {
   const d = doc.series[driver];
   const pick = (arr: (number | null)[]) => {
@@ -126,7 +125,6 @@ export function battleSummary(rows: Battle[]): { undercut: [number, number]; ove
   return { undercut: tally("undercut"), overcut: tally("overcut") };
 }
 
-// A plain-words caution for a prediction, from the regime it was made under and how widely the measured losses spread.
 export function confidenceNote(regime: Regime, ratios: Record<string, RatioRow>): string | null {
   if (regime === "red") return "No prediction under a red flag: the pit lane is closed and the field queues.";
   if (regime === "green") return null;
@@ -140,7 +138,6 @@ export function confidenceNote(regime: Regime, ratios: Record<string, RatioRow>)
   return `Low confidence: the cost of a stop under a ${REGIME_NAME[regime]} is much less certain than under a green flag.${figures}${part}`;
 }
 
-// The prediction made at the end of a driver's lap `lapsDone`, for the replay board. Null before the first lap or where there is none.
 export function predictionAt(doc: AnalysisDoc | null, code: string, lapsDone: number): { position: number | null; regime: Regime } | null {
   const d = doc?.series[code];
   if (!d || lapsDone < 1 || lapsDone > doc!.laps) return null;

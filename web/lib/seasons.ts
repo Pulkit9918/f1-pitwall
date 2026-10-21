@@ -37,12 +37,10 @@ export function lastName(full: string): string {
   return parts[parts.length - 1] ?? full;
 }
 
-// Podium of a race as surnames, in finishing order.
 export function podiumNames(race: SeasonRace): string[] {
   return race.results.filter((r) => r.position !== null && r.position <= 3).sort((a, b) => a.position! - b.position!).map((r) => lastName(r.name));
 }
 
-// The classified driver who gained the most places from the grid, and the one who lost the most. Null when nobody moved.
 export function biggestMovers(race: SeasonRace): { gain: RaceResult | null; loss: RaceResult | null } {
   const moved = race.results.filter((r) => r.classified && r.gained !== null);
   const gain = moved.reduce<RaceResult | null>((b, r) => (r.gained! > 0 && (!b || r.gained! > b.gained!) ? r : b), null);
@@ -52,7 +50,6 @@ export function biggestMovers(race: SeasonRace): { gain: RaceResult | null; loss
 
 export interface RoundPoint { round: number; value: number }
 
-// One value per round for a driver; rounds before the driver's first entry are skipped.
 export function seriesPoints(rounds: number[], values: (number | null)[]): RoundPoint[] {
   const out: RoundPoint[] = [];
   rounds.forEach((round, i) => {
