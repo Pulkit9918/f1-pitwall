@@ -66,3 +66,6 @@ function rgb([r, g, b]: [number, number, number]): string {
 
 export const DRIVER_COLORS = ["#3987e5", "#d95926", "#199e70"];
 export const MAX_COMPARED = DRIVER_COLORS.length;
+
+export const TRACE_COLORS = ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#008300", "#9085e9", "#e66767"];
+export const TRACE_DASH: (string | undefined)[] = [undefined, undefined, undefined, undefined, "7 4", "7 4", "7 4", "7 4"];

@@ -1,0 +1,25 @@
+.lap-picker { display: grid; gap: 14px; margin-top: 8px; }
+.lap-chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.lap-chip { display: inline-flex; align-items: center; gap: 8px; padding: 5px 6px 5px 10px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); font-size: 0.88rem; }
+.lap-chip-ref { border-color: var(--ink-3); background: var(--raised); }
+.lap-chip-name { font-weight: 600; color: var(--ink); }
+.lap-chip .link-button { padding: 0 2px; }
+.lap-chip .link-button:disabled { color: var(--ink-3); text-decoration: none; cursor: default; }
+.lap-remove { width: 24px; height: 24px; border: 0; border-radius: 4px; background: transparent; color: var(--ink-2); font-size: 1.1rem; line-height: 1; cursor: pointer; }
+.lap-remove:hover { background: var(--line); color: var(--ink); }
+.lap-add { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+.lap-select { flex: 1 1 260px; min-width: 0; max-width: 460px; }
+.lap-select select { width: 100%; min-width: 0; }
+.lap-chip { max-width: 100%; flex-wrap: wrap; }
+.btn { padding: 7px 14px; background: var(--ink); color: var(--ground); border: 1px solid var(--ink); border-radius: var(--radius); font: inherit; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-quiet { background: transparent; color: var(--ink-2); border-color: var(--line); font-weight: 500; }
+.btn-quiet:not(:disabled):hover { color: var(--ink); border-color: var(--ink-3); }
+.trace-legend { margin-top: 14px; }
+.trace-legend li svg { flex: none; }
+.trace-stack { margin-top: 8px; }
+.trace-panel { position: relative; margin-bottom: 4px; }
+.trace-title { margin: 14px 0 0; font-size: 0.85rem; font-weight: 600; color: var(--ink); }
+.trace-zero { stroke: var(--ink-3); stroke-width: 1; }
+.grid-v { stroke: var(--line-soft); stroke-width: 1; opacity: 0.5; }
+.notice-inline { margin: 8px 0; padding: 8px 12px; border-left: 3px solid var(--ink-3); background: var(--surface); color: var(--ink-2); font-size: 0.88rem; max-width: 80ch; }

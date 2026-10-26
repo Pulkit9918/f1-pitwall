@@ -7,6 +7,7 @@ const LINKS = [
   { href: "/seasons", label: "Seasons" },
   { href: "/sessions", label: "Sessions" },
   { href: "/circuits", label: "Circuits" },
+  { href: "/telemetry", label: "Telemetry" },
 ];
 
 export function Nav() {
