@@ -7,7 +7,7 @@ Race-strategy analytics for Formula 1 on a local Parquet lakehouse: a resumable 
 
 <!-- readme-v2 -->
 
-> **Unofficial.** This project is not associated with the Formula 1 companies. F1, FORMULA ONE, FORMULA 1, GRAND PRIX and related marks are trade marks of Formula One Licensing B.V. Data comes from the public timing feed via [FastF1](https://github.com/theOehrly/Fast-F1) and from the [Jolpica](https://github.com/jolpica/jolpica-f1) Ergast-compatible API. The raw feed data is not redistributed in this repository. The repository does contain tables derived from it that the web app reads (lap and sector times, season results, pit-stop scores); see Limitations. Personal, non-commercial use.
+> **Unofficial.** This project is not associated with the Formula 1 companies. F1, FORMULA ONE, FORMULA 1, GRAND PRIX and related marks are trade marks of Formula One Licensing B.V. Data comes from the public timing feed via [FastF1](https://github.com/theOehrly/Fast-F1) and from the [Jolpica](https://github.com/jolpica/jolpica-f1) Ergast-compatible API. No F1 data is redistributed in this repository or hosted by it: the lake, the database and every JSON file the web app reads are generated locally by the scripts. See Data terms. Personal, non-commercial use.
 
 <!-- TODO: add docs/screenshots/{predictor,drivers,telemetry,replay}.png and reference them here -->
 
@@ -255,8 +255,8 @@ cd web && npm install && npm run dev      # npm run build writes the static site
 ```
 
 `web/public/trace-data` (83 sessions, about 37 MB gzipped) and `web/public/replay-data` (about 440 MB) are
-git-ignored and rebuilt with the exporters. The other JSON is committed. `export_replay.py --only 2026-R17-R
---force` rebuilds one session.
+git-ignored and rebuilt with the exporters, like all the other JSON the site reads (none of it is committed).
+`export_replay.py --only 2026-R17-R --force` rebuilds one session.
 
 ### Telemetry against distance
 
@@ -465,7 +465,7 @@ experiments/     measurement scripts behind the numbers above (run from the repo
 - Tyre degradation is measured from the timing data alone and has not been validated against any outside source (an attempt to test it against undercut outcomes was inconclusive); three circuits are known to be biased (see Strategy models).
 
 - The web app's JSON is a snapshot of the gold tables at export time. Nothing refreshes it automatically: the Airflow DAG does not run the exporters.
-- The repository holds tables derived from the timing feed (lap and sector times, season results, pit-stop scores) because the web app reads them. I have not checked what the data terms allow for publishing them; until I do, the repository stays private or the files come out.
+- The web app has no public demo: it needs the JSON that the exporters generate from a local lake, and I have found nothing that allows publishing F1 timing data (see Data terms). Screenshots in `docs/screenshots` show it running.
 - The pit-stop predictor does not model other cars pitting around the stop, traffic after it, or safety cars; held-out scoring covers green-flag stops only (see Web app).
 - Trace distances are derived from positions, and sector colours are computed here, not taken from the feed (see Web app).
 
@@ -475,11 +475,23 @@ experiments/     measurement scripts behind the numbers above (run from the repo
 - Run the Airflow DAG through a live race weekend (telemetry ingest, memory use). Blocked for now: see the first Limitations bullet. Failure alerts are done.
 - Make the API the single access path for the app and anything built on top; for now the Streamlit app does not use it
 - Switch the Race scrubber to the SQL race-control periods
-- Deploy the static site on a free host (Cloudflare Pages is the candidate). The replay data is large and git-ignored, so how it is built and hosted needs deciding first, and so does the data-terms question above
+- A public demo, only with data the terms allow: aggregated outputs, or a sample with the rights holder's permission. The F1-derived JSON is not hosted
 - Mark stale or frozen car positions on the replay (2026 round 11), and a formation-lap marker
 - A question-answering agent over the gold tables, evaluated against a fixed set of questions with known answers, including questions the data cannot answer
 - An S3-compatible object store (MinIO) for the lake, set up with Terraform and run locally
 
+## Data terms
+
+What I found when I checked in October 2026. This is my reading of public pages, not legal advice.
+
+- **FastF1.** The code is MIT-licensed. Its [documentation](https://docs.fastf1.dev/index.html) says it is unofficial and not associated with the Formula 1 companies, and that F1 and related marks are trade marks of Formula One Licensing B.V. It grants no rights to the data itself.
+- **Formula 1.** The [legal notices](https://formula1.com/en/information/legal-notices.7egvZU48hzrypubGBNcQKt) limit site content to personal, non-commercial use and forbid distributing, copying, extracting or commercially exploiting it, and list live timing data and historical race data as covered material. The F1 App terms say results, timing data and certain other content are copyright Formula One World Championship Limited. Those terms are written for F1's own site and app, not for the feed FastF1 reads, but the position on timing data is clear.
+- **Jolpica.** I could not find a statement of its data licence or terms; FastF1's documentation says only that Jolpica's rate limits apply.
+
+What I did about it: no F1 data is committed to this repository or hosted from it. The lake, the database and the JSON for the web app are generated on your own machine from your own ingest, for personal, non-commercial analysis, and the repository ships code, tests and documentation. Anyone running it should read the same terms. If a rights holder objects to anything here, it comes out.
+
 ## Credits and licence
 
-Built on [FastF1](https://github.com/theOehrly/Fast-F1) (MIT) and the Jolpica API. The design was informed by several open-source F1 projects (f1-race-replay, F1ReplayTiming, undercut-f1); no code from them is used here. <!-- TODO: choose a licence for this repository and add a LICENSE file -->
+Built on [FastF1](https://github.com/theOehrly/Fast-F1) (MIT) and the Jolpica API. The design was informed by several open-source F1 projects (f1-race-replay, F1ReplayTiming, undercut-f1); no code from them is used here.
+
+The code is MIT-licensed (see `LICENSE`). The licence covers the code only, not F1 data or marks.

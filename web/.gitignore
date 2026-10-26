@@ -4,3 +4,8 @@ out/
 next-env.d.ts
 *.tsbuildinfo
 public/trace-data/
+public/analysis-data/
+public/lap-data/
+public/predictor-data/
+public/season-data/
+public/data/
