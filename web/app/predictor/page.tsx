@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Loading, Ready } from "@/components/State";
 import {
-  REGIME_NAME, byMargin, byRegime, overall, pct, places, sessionsWithStops, signedPlaces, stopRows, verdict,
-  type ScoreRow, type StopsDoc,
+  REGIME_NAME, byMargin, byRegime, heldOut, heldOutCost, overall, pct, places, sessionsWithStops, signedPlaces, stopRows, verdict,
+  type HeldOutRow, type ScoreRow, type StopsDoc,
 } from "@/lib/predictor";
 import { useScore, useStops } from "@/lib/predictorData";
 import "../telemetry/telemetry.css";
@@ -51,6 +51,31 @@ function Headline({ rows, scope }: { rows: ScoreRow[]; scope: ScoreRow["scope"] 
           : "On average the predicted place matches the place the driver got. "}
         The real place fell inside the prediction&apos;s own fast-to-slow range {pct(o.in_range)} of the time.
         {!o.reliable && " This is under 30 stops, so treat it as indicative only."}
+      </p>
+    </>
+  );
+}
+
+function HeldOutTable({ rows, scope }: { rows: HeldOutRow[]; scope: ScoreRow["scope"] }) {
+  const h = heldOut(rows, scope);
+  if (!h) return null;
+  const cost = heldOutCost(h);
+  return (
+    <>
+      <div className="table-wrap">
+        <table className="narrow">
+          <caption className="sr-only">The same green-flag stops, scored with the pit loss estimated with and without the race itself</caption>
+          <thead><tr><th scope="col">Pit loss estimated</th><th scope="col" className="num">Exact place</th><th scope="col" className="num">Average miss, in places</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">From every race, including the one scored</th><td className="num">{pct(h.in_sample_hit)}</td><td className="num">{places(h.in_sample_mae)}</td></tr>
+            <tr><th scope="row">From the other races only</th><td className="num">{pct(h.held_out_hit)}</td><td className="num">{places(h.held_out_mae)}</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p className="axis-caption">
+        {h.stops.toLocaleString()} green-flag stops. Leaving the scored race out of the pit-loss estimate{" "}
+        {cost == null ? "changes the hit rate by an unknown amount" : Math.abs(cost) < 0.05 ? "does not change the hit rate" : cost > 0 ? `costs ${cost.toFixed(1)} points of hit rate` : `raises the hit rate by ${(-cost).toFixed(1)} points`}
+        {h.loss_shift_s != null && `, and moves the assumed loss by ${Math.abs(h.loss_shift_s).toFixed(2)} s on average`}. {pct(h.circuit_share)} of these stops used the circuit&apos;s other races; the rest fell back to the all-circuit figure because the circuit had too few.
       </p>
     </>
   );
@@ -167,6 +192,9 @@ export default function PredictorPage() {
               The prediction assumes every other car stays out and keeps its pace. {scope === "all" ? "These figures include stops where other cars pitted close by, which the prediction cannot know about." : "These stops had no other driver pitting from the lap before to the out-lap, so they test the pit-loss figure by itself."}
             </p>
             <section aria-labelledby="headline"><h2 id="headline">How often it was right</h2><Headline rows={doc.rows} scope={scope} /></section>
+            <section aria-labelledby="heldout"><h2 id="heldout">Is it just remembering the answers?</h2>
+              <p className="muted small">The pit loss is estimated from the same races the prediction is scored on. This repeats the green-flag stops with each race left out of its own estimate.</p>
+              <HeldOutTable rows={doc.heldout ?? []} scope={scope} /></section>
             <section aria-labelledby="regime"><h2 id="regime">By track state</h2><RegimeTable rows={doc.rows} scope={scope} />
               <p className="axis-caption">Rows with fewer than 30 stops are faded.</p>
               {byRegime(doc.rows, scope).filter((r) => r.mae != null && r.no_loss_mae != null && r.mae > r.no_loss_mae).map((r) => (
@@ -190,7 +218,7 @@ export default function PredictorPage() {
       <section aria-labelledby="notes">
         <h2 id="notes">What this does and does not show</h2>
         <ul className="notes">
-          <li>The prediction uses one pit-loss figure per circuit and track state, taken from the same races it is now scored on. It has not been tested on races it never saw, so the scores are probably a little flattering.</li>
+          <li>The headline figures use a pit loss estimated from all races, including the one being scored. The held-out table above repeats the green-flag stops without that, and is the fairer number. Safety car and virtual safety car stops are not held out, because their ratios are estimated across all races.</li>
           <li>The outcome is the position at the end of the out-lap. Cars that retire or are lapped out of the data are left out, and so are stops under a red flag, where no prediction is made.</li>
           <li>Other drivers&apos; stops move the order, and the prediction assumes they do not. The &quot;nobody else pitted near&quot; view removes those stops.</li>
           <li>Race strategy decisions depend on tyre life, traffic and the rest of the race. This only checks one thing: whether the place after the stop was predicted correctly.</li>

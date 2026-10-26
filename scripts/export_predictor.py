@@ -3,7 +3,8 @@
     python scripts/export_predictor.py [--db data/f1_dbt.duckdb] [--out web/public/predictor-data] [--from-year 2000]
 
 Reads fct_pit_prediction_score and fct_pit_prediction_check from the gold layer and writes
-  score.json   one row per scope, regime and margin bucket: hit rates and errors for the model and for two naive guesses
+  score.json   one row per scope, regime and margin bucket: hit rates and errors for the model and for two naive guesses,
+               and heldout: the same green-flag stops scored with the pit loss estimated without the race itself
   stops.json   every checked stop from --from-year on (by default all of them, matching score.json) as columns of equal
                length, with the sessions they belong to
 and index.json, which marks the folder as written by this script. Like the other exporters it only writes into an empty
@@ -54,6 +55,11 @@ def export(db, out, from_year=2000, log=print):
                 "no_loss_hit_rate, no_loss_mae, global_hit_rate, global_mae, is_reliable "
                 "from f1.gold.fct_pit_prediction_score order by scope, regime, margin_bucket").fetchall()]
 
+    heldout = [dict(scope=a, stops=int(b), in_sample_hit=r(c), held_out_hit=r(d), in_sample_mae=r(e), held_out_mae=r(f), loss_shift_s=r(g), circuit_share=r(h))
+               for a, b, c, d, e, f, g, h in con.execute(
+                   "select scope, stops, in_sample_hit_rate, held_out_hit_rate, in_sample_mae, held_out_mae, loss_shift_s, held_out_circuit_share "
+                   "from f1.gold.fct_pit_prediction_heldout_score order by scope").fetchall()]
+
     checked = con.execute(
         "select c.session_key, c.year, c.round, c.driver_code, c.in_lap, c.regime, c.position_now, c.predicted_position, "
         "c.predicted_position_fast, c.predicted_position_slow, c.actual_position, c.margin_s, c.other_stops_nearby "
@@ -67,7 +73,7 @@ def export(db, out, from_year=2000, log=print):
             keys.append({"key": key, "year": int(year), "round": int(rnd), "event": events.get(key)})
         for k, v in zip(cols, (index[key], drv, int(lap), regime[0], int(now), int(pred), int(fast), int(slow), int(actual), r(margin, 2), int(other))):
             cols[k].append(v)
-    (out / "score.json").write_text(dumps({"schema": SCHEMA, "rows": rows}), encoding="utf-8")
+    (out / "score.json").write_text(dumps({"schema": SCHEMA, "rows": rows, "heldout": heldout}), encoding="utf-8")
     (out / "stops.json").write_text(dumps({"schema": SCHEMA, "sessions": keys, **cols}), encoding="utf-8")
     marker.write_text(dumps({"generator": GENERATOR, "schema": SCHEMA, "stops": len(checked), "sessions": len(keys)}), encoding="utf-8")
     log(f"wrote {len(checked)} stops in {len(keys)} sessions and {len(rows)} score rows to {out}")

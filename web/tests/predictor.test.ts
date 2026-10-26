@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { byMargin, byRegime, overall, pct, places, sessionsWithStops, signedPlaces, stopRows, verdict, type ScoreRow, type StopsDoc } from "../lib/predictor";
+import { byMargin, byRegime, heldOut, heldOutCost, overall, pct, places, sessionsWithStops, signedPlaces, stopRows, verdict, type HeldOutRow, type ScoreRow, type StopsDoc } from "../lib/predictor";
 
 const row = (o: Partial<ScoreRow>): ScoreRow => ({
   scope: "all", regime: "all", margin: "all", stops: 100, hit: 0.5, within_one: 0.8, mae: 0.8, bias: 0.1, in_range: 0.7,
@@ -46,5 +46,17 @@ describe("stops", () => {
   });
   it("counts stops per session", () => {
     expect(sessionsWithStops(doc)).toEqual([{ index: 0, count: 2 }, { index: 1, count: 1 }]);
+  });
+});
+
+describe("held-out rows", () => {
+  const h = (o: Partial<HeldOutRow>): HeldOutRow => ({ scope: "all", stops: 100, in_sample_hit: 0.8, held_out_hit: 0.75, in_sample_mae: 0.3, held_out_mae: 0.4, loss_shift_s: 0.1, circuit_share: 0.9, ...o });
+  it("finds a scope's row and says how many points of hit rate were lost", () => {
+    const rows = [h({}), h({ scope: "undisturbed", held_out_hit: 0.8 })];
+    expect(heldOut(rows, "undisturbed")?.held_out_hit).toBe(0.8);
+    expect(heldOut(undefined, "all")).toBeUndefined();
+    expect(heldOutCost(rows[0])).toBeCloseTo(5, 6);
+    expect(heldOutCost(rows[1])).toBeCloseTo(0, 6);
+    expect(heldOutCost(h({ held_out_hit: null }))).toBeNull();
   });
 });

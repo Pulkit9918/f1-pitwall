@@ -1,0 +1,100 @@
+version: 2
+
+models:
+  - name: fct_pit_prediction_heldout
+    description: >
+      The pit-now prediction for each green-flag checked stop redone with the pit loss estimated from the other races
+      only (leave one session out), beside the in-sample prediction and the real outcome. Also recomputes the in-sample
+      loss and prediction from raw lap times, so tests can show the recomputation matches what fct_pit_now stored.
+    config:
+      contract:
+        enforced: true
+    columns:
+      - name: pit_stop_key
+        description: "Key of the stop in fct_pit_stop."
+        data_type: varchar
+        data_tests: [not_null, unique]
+      - name: session_key
+        description: "Session the stop belongs to."
+        data_type: varchar
+        data_tests: [not_null]
+      - name: year
+        description: "Season."
+        data_type: integer
+      - name: driver_code
+        description: "Three-letter driver code."
+        data_type: varchar
+      - name: in_lap
+        description: "Lap on which the driver entered the pit lane."
+        data_type: integer
+      - name: circuit_id
+        description: "Circuit of the session."
+        data_type: varchar
+      - name: loss_in_sample_s
+        description: "Pit loss fct_pit_now used, in seconds: estimated from all races including this one."
+        data_type: double
+      - name: loss_recomputed_s
+        description: "The same loss recomputed here from fct_pit_loss over all races; equals loss_in_sample_s."
+        data_type: double
+      - name: loss_held_out_s
+        description: "Pit loss estimated from the other races only, in seconds."
+        data_type: double
+      - name: loss_source_held_out
+        description: "circuit when the circuit's other races gave enough stops and sessions, otherwise global."
+        data_type: varchar
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [circuit, global]
+      - name: predicted_in_sample
+        description: "Position predicted by fct_pit_now with the in-sample loss."
+        data_type: integer
+      - name: predicted_recomputed
+        description: "The in-sample prediction recomputed here from lap-end times; equals predicted_in_sample."
+        data_type: integer
+      - name: predicted_held_out
+        description: "Position predicted with the held-out loss."
+        data_type: integer
+      - name: actual_position
+        description: "Driver's position at the end of the out-lap."
+        data_type: integer
+      - name: other_stops_nearby
+        description: "Other drivers' stops from the lap before the stop to the out-lap."
+        data_type: integer
+
+  - name: fct_pit_prediction_heldout_score
+    description: >
+      In-sample against held-out accuracy of the pit-now prediction on the same green-flag stops, for all stops and for
+      stops no other driver pitted near.
+    config:
+      contract:
+        enforced: true
+    columns:
+      - name: scope
+        description: "all (every green-flag checked stop) or undisturbed (no other driver stopping nearby)."
+        data_type: varchar
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [all, undisturbed]
+      - name: stops
+        description: "Number of stops scored."
+        data_type: integer
+      - name: in_sample_hit_rate
+        description: "Share predicted to the exact place with the in-sample loss."
+        data_type: double
+      - name: held_out_hit_rate
+        description: "Share predicted to the exact place with the held-out loss."
+        data_type: double
+      - name: in_sample_mae
+        description: "Mean absolute error in places with the in-sample loss."
+        data_type: double
+      - name: held_out_mae
+        description: "Mean absolute error in places with the held-out loss."
+        data_type: double
+      - name: loss_shift_s
+        description: "Mean of the held-out loss minus the in-sample loss, in seconds."
+        data_type: double
+      - name: held_out_circuit_share
+        description: "Share of stops whose held-out loss came from the circuit's other races."
+        data_type: double

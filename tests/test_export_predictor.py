@@ -22,6 +22,9 @@ def db(tmp_path):
                  margin_s double, other_stops_nearby int)""")
     c.execute("""create table gold.fct_pit_prediction_score(scope varchar, regime varchar, margin_bucket varchar, stops int, hit_rate double, within_one_rate double,
                  mae double, bias double, in_range_rate double, no_loss_hit_rate double, no_loss_mae double, global_hit_rate double, global_mae double, is_reliable boolean)""")
+    c.execute("""create table gold.fct_pit_prediction_heldout_score(scope varchar, stops int, in_sample_hit_rate double, held_out_hit_rate double, in_sample_mae double,
+                 held_out_mae double, loss_shift_s double, held_out_circuit_share double)""")
+    c.execute("insert into gold.fct_pit_prediction_heldout_score values ('all',100,0.8,0.7,0.3,0.45,0.25,0.9),('undisturbed',40,0.85,0.8,0.2,0.3,0.2,0.9)")
     c.execute("create table gold.dim_session_circuit(session_key varchar, event varchar)")
     c.execute("insert into gold.dim_session_circuit values ('2025-R01-R','Synth GP'),('2019-R01-R','Old GP')")
     c.execute("insert into gold.fct_pit_prediction_check values ('a','2025-R01-R',2025,1,'AAA',20,'green',3,5,4,6,6,0.7,0),('b','2025-R01-R',2025,1,'BBB',10,'sc',2,3,3,4,3,NULL,1),('z','2019-R01-R',2019,1,'ZZZ',5,'green',1,2,2,2,2,1.0,0)")
@@ -39,6 +42,8 @@ def test_stops_are_columns_in_lap_order_and_score_rows_are_named(db, tmp_path):
     assert stops["p"] == [3, 5] and stops["f"] == [3, 4] and stops["w"] == [4, 6] and stops["a"] == [3, 6] and stops["m"] == [None, 0.7] and stops["o"] == [1, 0]
     score = json.loads((out / "score.json").read_text())["rows"][0]
     assert score["scope"] == "all" and score["hit"] == 0.5 and score["no_loss_mae"] == 2.0 and score["reliable"] is False
+    held = json.loads((out / "score.json").read_text())["heldout"]
+    assert [h["scope"] for h in held] == ["all", "undisturbed"] and held[0]["held_out_hit"] == 0.7 and held[0]["in_sample_mae"] == 0.3 and held[1]["circuit_share"] == 0.9
     assert json.loads((out / "index.json").read_text())["generator"] == "export_predictor"
 
 

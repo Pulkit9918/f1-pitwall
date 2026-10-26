@@ -17,9 +17,30 @@ export interface ScoreRow {
   reliable: boolean;
 }
 
+export interface HeldOutRow {
+  scope: "all" | "undisturbed";
+  stops: number;
+  in_sample_hit: number | null;
+  held_out_hit: number | null;
+  in_sample_mae: number | null;
+  held_out_mae: number | null;
+  loss_shift_s: number | null;
+  circuit_share: number | null;
+}
+
 export interface ScoreDoc {
   schema: number;
   rows: ScoreRow[];
+  heldout: HeldOutRow[];
+}
+
+export function heldOut(rows: HeldOutRow[] | undefined, scope: HeldOutRow["scope"]): HeldOutRow | undefined {
+  return rows?.find((r) => r.scope === scope);
+}
+
+// How much accuracy is lost when the pit loss is estimated without the race being scored, in percentage points of hit rate.
+export function heldOutCost(r: HeldOutRow): number | null {
+  return r.in_sample_hit == null || r.held_out_hit == null ? null : (r.in_sample_hit - r.held_out_hit) * 100;
 }
 
 export interface StopsDoc {

@@ -187,3 +187,4 @@ table.narrow { max-width: 860px; }
 .field input[type="range"] { width: 100%; accent-color: var(--ink-2); }
 .pitnow { margin: 12px 0 8px; }
 .notice-inline { border-left: 3px solid var(--medium); padding: 6px 12px; margin: 8px 0; color: var(--ink-2); font-size: 0.9rem; }
+.chip-on:hover { color: var(--ground); border-color: var(--ink); }
