@@ -6,6 +6,7 @@ import { Suspense, useMemo, useState } from "react";
 import { CompoundChip } from "@/components/CompoundChip";
 import { LapDeltaChart } from "@/components/LapDeltaChart";
 import { SectorTime } from "@/components/SectorTime";
+import { SessionPicker } from "@/components/SessionPicker";
 import { Loading, LoadError, Ready } from "@/components/State";
 import { DRIVER_COLORS } from "@/lib/colors";
 import { fmtLap, sessionLabel } from "@/lib/format";
@@ -201,24 +202,7 @@ function SessionList() {
         <p className="lede">Choose a session, then compare any two drivers: best lap, sector times with purple, green and yellow, typical pace, and every lap side by side.</p>
       </section>
       <Ready load={load} label="Loading sessions">
-        {(idx) => {
-          const years = [...new Set(idx.sessions.map((s) => s.year))].sort((x, y) => y - x);
-          return (
-            <>
-              {years.map((y) => (
-                <section key={y} aria-labelledby={`y${y}`}>
-                  <h2 id={`y${y}`}>{y}</h2>
-                  <ul className="session-links">
-                    {idx.sessions.filter((s) => s.year === y).sort((p, q) => p.round - q.round || p.session_code.localeCompare(q.session_code)).map((s) => (
-                      <li key={s.key}><Link href={`/compare?key=${encodeURIComponent(s.key)}`}>{s.event}, {sessionLabel(s.session_code)}</Link></li>
-                    ))}
-                  </ul>
-                </section>
-              ))}
-              {idx.sessions.length === 0 && <p className="muted">No laps exported yet. Run <code>python scripts/export_laps.py</code>.</p>}
-            </>
-          );
-        }}
+        {(idx) => <SessionPicker sessions={idx.sessions} base="/compare" empty="No laps exported yet. Run python scripts/export_laps.py." />}
       </Ready>
     </>
   );

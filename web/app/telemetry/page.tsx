@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo, useState } from "react";
 import { LapPicker } from "@/components/LapPicker";
+import { SessionPicker } from "@/components/SessionPicker";
 import { Loading, LoadError, Ready } from "@/components/State";
 import { TraceChart, type Hover, type PanelSpec, type Series } from "@/components/TraceChart";
 import { TRACE_COLORS, TRACE_DASH } from "@/lib/colors";
@@ -67,7 +68,10 @@ function Compare({ session }: { session: TraceSession }) {
           Laps are lined up by distance round the track, so two laps can be compared corner by corner.
         </p>
         <p className="muted small">
-          <Link href={`/race?key=${encodeURIComponent(session.session_key)}`}>Race analysis</Link>
+          {["R", "S"].includes(session.session_code) && (
+            <><Link href={`/race?key=${encodeURIComponent(session.session_key)}`}>Race analysis</Link> · </>
+          )}
+          <Link href={`/compare?key=${encodeURIComponent(session.session_key)}`}>Sector times and laps</Link>
         </p>
       </section>
 
@@ -121,32 +125,11 @@ function SessionList() {
       <section className="hero hero-small">
         <h1>Telemetry</h1>
         <p className="lede">
-          Pick a race or sprint, then compare laps from any drivers against distance: speed, throttle, brake, gear, DRS and the time gained or lost at every point of the track.
+          Pick a session, then compare laps from any drivers against distance: speed, throttle, brake, gear, DRS and the time gained or lost at every point of the track.
         </p>
       </section>
       <Ready load={load} label="Loading sessions">
-        {(idx) => {
-          const years = [...new Set(idx.sessions.map((s) => s.year))].sort((a, b) => b - a);
-          return (
-            <>
-              {years.map((y) => (
-                <section key={y} aria-labelledby={`y${y}`}>
-                  <h2 id={`y${y}`}>{y}</h2>
-                  <ul className="session-links">
-                    {idx.sessions.filter((s) => s.year === y).sort((a, b) => a.round - b.round || a.session_code.localeCompare(b.session_code)).map((s) => (
-                      <li key={s.key}>
-                        <Link href={`/telemetry?key=${encodeURIComponent(s.key)}`}>
-                          {s.event}{s.session_code === "S" ? ", sprint" : ""} <span className="muted">{s.laps} laps</span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              ))}
-              {idx.sessions.length === 0 && <p className="muted">No session has telemetry traces yet. Run <code>python scripts/export_traces.py</code>.</p>}
-            </>
-          );
-        }}
+        {(idx) => <SessionPicker sessions={idx.sessions} base="/telemetry" empty="No session has telemetry traces yet. Run python scripts/export_traces.py." />}
       </Ready>
     </>
   );
@@ -160,7 +143,7 @@ function TelemetryInner() {
     return (
       <section className="hero hero-small">
         <h1>No telemetry for this session</h1>
-        <p className="lede">Traces cover races and sprints from 2024 on. <Link href="/telemetry">Choose another session</Link>.</p>
+        <p className="lede">Traces start in 2024, and not every session has them. <Link href="/telemetry">Choose another session</Link>.</p>
       </section>
     );
   }

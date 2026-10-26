@@ -1,0 +1,12 @@
+.year-tabs { display: flex; flex-wrap: wrap; gap: 0 26px; margin: 4px 0 0; border-bottom: 1px solid var(--line); }
+.year-tab { background: none; border: 0; border-bottom: 3px solid transparent; margin-bottom: -1px; padding: 6px 0 8px; font: inherit; font-stretch: 72%; font-weight: 800; font-size: 1.6rem; line-height: 1.1; color: var(--ink-3); cursor: pointer; }
+.year-tab:hover { color: var(--ink-2); }
+.year-tab[aria-pressed="true"] { color: var(--ink); border-bottom-color: var(--ink); }
+.weekend-count { margin: 12px 0 2px; }
+.weekends { list-style: none; margin: 0; padding: 0; }
+.weekend { display: grid; grid-template-columns: minmax(190px, 270px) 1fr; gap: 8px 24px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line-soft); }
+.weekend-name { color: var(--ink); font-weight: 500; }
+.weekend-sessions { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.weekend-sessions a { display: inline-block; padding: 4px 11px; border: 1px solid var(--line); border-radius: var(--radius); background: transparent; color: var(--ink-2); text-decoration: none; font-size: 0.85rem; }
+.weekend-sessions a:hover { color: var(--ink); border-color: var(--ink-3); background: var(--surface); }
+@media (max-width: 640px) { .weekend { grid-template-columns: 1fr; } .year-tabs { gap: 0 20px; } }

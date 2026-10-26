@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useMemo } from "react";
 import { CompoundChip } from "@/components/CompoundChip";
+import { SessionPicker } from "@/components/SessionPicker";
 import { Loading, LoadError, Ready } from "@/components/State";
 import { StrategyChart } from "@/components/StrategyChart";
 import { COMPOUND_COLOR } from "@/lib/colors";
@@ -99,25 +100,13 @@ function PracticeList() {
         <p className="lede">Fastest laps and long-run pace for every practice session, with who ran what and for how long.</p>
       </section>
       <Ready load={load} label="Loading sessions">
-        {({ sessions }) => {
-          const list = sessions.filter((x) => isPractice(x.session_code) && x.has_laps);
-          const years = [...new Set(list.map((x) => x.year))].sort((a, b) => b - a);
-          return (
-            <>
-              {years.map((y) => (
-                <section key={y} aria-labelledby={`y${y}`}>
-                  <h2 id={`y${y}`}>{y}</h2>
-                  <ul className="session-links">
-                    {list.filter((x) => x.year === y).sort((a, b) => a.round - b.round || a.session_code.localeCompare(b.session_code)).map((x) => (
-                      <li key={x.session_key}><Link href={`/practice?key=${encodeURIComponent(x.session_key)}`}>{x.event}, {sessionLabel(x.session_code, x.session_name)}</Link></li>
-                    ))}
-                  </ul>
-                </section>
-              ))}
-              {list.length === 0 && <p className="muted">No practice sessions with laps.</p>}
-            </>
-          );
-        }}
+        {({ sessions }) => (
+          <SessionPicker
+            sessions={sessions.filter((x) => isPractice(x.session_code) && x.has_laps).map((x) => ({ key: x.session_key, year: x.year, round: x.round, session_code: x.session_code, event: x.event, name: x.session_name }))}
+            base="/practice"
+            empty="No practice sessions with laps."
+          />
+        )}
       </Ready>
     </>
   );
