@@ -69,3 +69,5 @@ export const MAX_COMPARED = DRIVER_COLORS.length;
 
 export const TRACE_COLORS = ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#008300", "#9085e9", "#e66767"];
 export const TRACE_DASH: (string | undefined)[] = [undefined, undefined, undefined, undefined, "7 4", "7 4", "7 4", "7 4"];
+
+export const SECTOR_COLOR = { purple: "#b57bee", green: "#3ec27f", yellow: "#f2c230", none: "transparent" } as const;

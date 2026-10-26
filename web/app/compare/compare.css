@@ -1,0 +1,15 @@
+:root { --sector-purple: #b57bee; --sector-green: #3ec27f; --sector-yellow: #f2c230; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.compare-summary th[scope="row"] { font-weight: 500; color: var(--ink); font-size: 0.9rem; white-space: normal; }
+.compare-summary td.num { min-width: 7ch; }
+.sector-legend { margin: 12px 0; }
+.lap-table { font-size: 0.85rem; }
+.lap-table th, .lap-table td { padding: 6px 10px 6px 0; }
+.lap-table thead th[colspan] { border-bottom: 1px solid var(--line); }
+.sector-time { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.sector-bar { width: 3px; height: 14px; border-radius: 2px; flex: none; }
+.lap-total { font-weight: 600; }
+.lap-tyre { white-space: nowrap; }
+.lap-tyre .chip-compound { width: 18px; height: 18px; font-size: 0.65rem; vertical-align: middle; }
+.lap-missing { text-align: center; }
+.table-wrap { position: relative; }

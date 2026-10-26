@@ -7,6 +7,7 @@ const LINKS = [
   { href: "/seasons", label: "Seasons" },
   { href: "/sessions", label: "Sessions" },
   { href: "/circuits", label: "Circuits" },
+  { href: "/compare", label: "Drivers" },
   { href: "/telemetry", label: "Telemetry" },
 ];
 
@@ -16,7 +17,7 @@ export function Nav() {
     <header className="nav">
       <div className="wrap nav-inner">
         <Link href="/" className="wordmark" aria-label="f1-pitwall home">pitwall</Link>
-        <nav aria-label="Main">
+        <nav aria-label="Main" style={{ overflowX: "auto", minWidth: 0 }}>
           <ul>
             {LINKS.map((l) => (
               <li key={l.href}>

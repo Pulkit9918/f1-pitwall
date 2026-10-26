@@ -1,0 +1,68 @@
+version: 2
+
+models:
+  - name: fct_lap_sector
+    description: >
+      One row per timed sector of a lap with the colour the timing screens would have shown when it was completed
+      (purple: best in the session so far by any driver; green: the driver's own best so far; yellow: neither). Sectors
+      of deleted laps, and sectors whose place in the session clock is unknown (the lap start or an earlier sector of the
+      lap has no time), are left out. A time equal to the best so far is not an improvement.
+    config:
+      contract:
+        enforced: true
+    columns:
+      - name: lap_key
+        description: "Lap the sector belongs to. Key of fct_lap."
+        data_type: varchar
+        data_tests: [not_null]
+      - name: session_key
+        description: "Session the lap belongs to."
+        data_type: varchar
+        data_tests: [not_null]
+      - name: year
+        description: "Season."
+        data_type: integer
+      - name: round
+        description: "Round of the season."
+        data_type: integer
+      - name: session_code
+        description: "Session type code: R, S, Q, SQ, SS, FP1, FP2 or FP3."
+        data_type: varchar
+      - name: driver_code
+        description: "Three-letter driver code."
+        data_type: varchar
+        data_tests: [not_null]
+      - name: lap_number
+        description: "Lap number within the session."
+        data_type: integer
+      - name: sector
+        description: "Sector number, 1 to 3."
+        data_type: smallint
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3]
+                quote: false
+      - name: time_s
+        description: "Sector time in seconds."
+        data_type: double
+        data_tests: [not_null]
+      - name: completed_at_s
+        description: "Session clock, in seconds, when the sector finished: lap start plus the sectors so far."
+        data_type: double
+        data_tests: [not_null]
+      - name: status
+        description: "purple, green or yellow, as described on the model."
+        data_type: varchar
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [purple, green, yellow]
+      - name: best_before_s
+        description: "Best time by any driver in this sector before this one finished, in seconds; null for the first."
+        data_type: double
+      - name: own_best_before_s
+        description: "The driver's own best time in this sector before this one finished, in seconds; null for the first."
+        data_type: double
