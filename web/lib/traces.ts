@@ -102,7 +102,7 @@ export function driversByPace(drivers: TraceSession["drivers"]): string[] {
 }
 
 export const REASONS: Record<string, string> = {
-  standing_start: "standing start",
+  standing_start: "starts from standstill (grid or garage)",
   pit_lap: "pit lap",
   no_telemetry: "no telemetry",
   late_start: "telemetry starts late",
