@@ -7,6 +7,7 @@ const LINKS = [
   { href: "/seasons", label: "Seasons" },
   { href: "/sessions", label: "Sessions" },
   { href: "/circuits", label: "Circuits" },
+  { href: "/practice", label: "Practice" },
   { href: "/compare", label: "Drivers" },
   { href: "/telemetry", label: "Telemetry" },
   { href: "/predictor", label: "Predictor" },

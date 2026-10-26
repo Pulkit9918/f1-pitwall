@@ -1,0 +1,6 @@
+.table-wrap { position: relative; }
+.run-group { margin: 18px 0 8px; }
+.run-group h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: 1rem; }
+.gapbar { display: inline-grid; grid-template-columns: 120px auto; align-items: center; gap: 8px; }
+.gapbar-fill { display: block; height: 8px; border-radius: 2px; min-width: 2px; }
+.gapbar-text { font-size: 0.8rem; color: var(--ink); white-space: nowrap; }
