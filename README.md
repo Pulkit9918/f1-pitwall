@@ -3,11 +3,13 @@
 ![CI](https://github.com/Pulkit9918/f1-pitwall/actions/workflows/ci.yml/badge.svg)
 ![dbt](https://github.com/Pulkit9918/f1-pitwall/actions/workflows/dbt.yml/badge.svg)
 
-Race-strategy analytics for Formula 1 on a local Parquet lakehouse: a resumable ingestion pipeline with an audit log, a tested dbt transformation layer (typed silver tables, gold dimensions and facts with enforced contracts, reconciliation against official results), a validated race-state engine, strategy models with measured accuracy, and a Streamlit app with a race scrubber.
+Race-strategy analytics for Formula 1 on a local Parquet lakehouse: a resumable ingestion pipeline with an audit log, a tested dbt transformation layer (typed silver tables, gold dimensions and facts with enforced contracts, reconciliation against official results), a validated race-state engine, strategy models with measured accuracy (including a pit-stop rejoin predictor scored on races it was not fitted on), a Streamlit app with a race scrubber, and a static web app with telemetry, sector, predictor, practice and replay pages.
 
-> **Unofficial.** This project is not associated with the Formula 1 companies. F1, FORMULA ONE, FORMULA 1, GRAND PRIX and related marks are trade marks of Formula One Licensing B.V. Data comes from the public timing feed via [FastF1](https://github.com/theOehrly/Fast-F1) and from the [Jolpica](https://github.com/jolpica/jolpica-f1) Ergast-compatible API. The data is not redistributed in this repository. Personal, non-commercial use.
+<!-- readme-v2 -->
 
-<!-- TODO: add 3 screenshots to docs/screenshots/ (race scrubber, session timing, pit window) and reference them here -->
+> **Unofficial.** This project is not associated with the Formula 1 companies. F1, FORMULA ONE, FORMULA 1, GRAND PRIX and related marks are trade marks of Formula One Licensing B.V. Data comes from the public timing feed via [FastF1](https://github.com/theOehrly/Fast-F1) and from the [Jolpica](https://github.com/jolpica/jolpica-f1) Ergast-compatible API. The raw feed data is not redistributed in this repository. The repository does contain tables derived from it that the web app reads (lap and sector times, season results, pit-stop scores); see Limitations. Personal, non-commercial use.
+
+<!-- TODO: add docs/screenshots/{predictor,drivers,telemetry,replay}.png and reference them here -->
 
 ## What it does
 
@@ -16,7 +18,8 @@ Race-strategy analytics for Formula 1 on a local Parquet lakehouse: a resumable 
 - **Checks** every table it writes against data contracts (structure as hard failures, value ranges as logged findings) and records per-session quality metrics (value ranges, sampling gaps, circuit metadata) in the log.
 - **Reconstructs the race** from GPS: a running order and time gaps for every car at any moment, validated against the official sector timing.
 - **Models pit stops**: the time lost in the pit lane, and where a driver rejoins, backtested on real stops.
-- **Serves it** in a Streamlit app: race explorer, track map, driver and multi-driver telemetry, race gaps, pit window, a race scrubber with auto-play, a session timing screen, and a 1950-to-now history browser.
+- **Serves it** in a Streamlit app (race explorer, track map, driver and multi-driver telemetry, race gaps, pit window, a race scrubber with auto-play, a session timing screen, a 1950-to-now history browser) and through a read-only API.
+- **Publishes it** as a static web app: telemetry against distance, sector colours, a pit-stop predictor scored on held-out races, practice long runs and a race replay. No server is needed; the pages read JSON that exporters write from the gold tables.
 
 ## Why it exists
 
@@ -97,16 +100,16 @@ Run from the repository root: `dbt build --project-dir dbt --profiles-dir dbt`. 
 |---|---|---|
 | Sources | `lake.*`, `history.*`, `manifest.runs` | Parquet files and the JSON ingest log, with not-null checks on key columns |
 | Silver (11) | laps, results, race control, weather, track status, sessions, session clock, three history tables, ingest runs | Typed columns, duplicates removed, explicit keys such as `session_key = 2025-R07-R` |
-| Gold (23) | `dim_session`, `dim_session_circuit`, `dim_driver`, `dim_circuit`, `dim_constructor`, `dim_historical_driver`, `fct_lap`, `fct_stint`, `fct_stint_degradation`, `fct_circuit_degradation`, `fct_pit_stop`, `fct_pit_loss`, `fct_circuit_pit_loss`, `fct_result`, `fct_race_control_event`, `fct_race_control_period`, `fct_track_status_period`, `fct_session_weather`, `fct_season_result`, `fct_driver_standing`, `fct_constructor_standing`, `fct_ingest_session`, `fct_ingest_summary` | Facts and dimensions the app and any later API read |
+| Gold (42) | `dim_circuit`, `dim_constructor`, `dim_driver`, `dim_historical_driver`, `dim_layout_length`, `dim_session`, `dim_session_circuit`, `fct_circuit_degradation`, `fct_circuit_pit_loss`, `fct_constructor_points_progression`, `fct_constructor_standing`, `fct_driver_standing`, `fct_ingest_session`, `fct_ingest_summary`, `fct_lap`, `fct_lap_gap`, `fct_lap_position`, `fct_lap_sample`, `fct_lap_sample_total`, `fct_lap_sector`, `fct_lap_trace`, `fct_lap_trace_lap`, `fct_pit_loss`, `fct_pit_loss_neutralised`, `fct_pit_loss_ratio`, `fct_pit_now`, `fct_pit_now_check`, `fct_pit_prediction_check`, `fct_pit_prediction_heldout`, `fct_pit_prediction_heldout_score`, `fct_pit_prediction_score`, `fct_pit_stop`, `fct_points_progression`, `fct_race_control_event`, `fct_race_control_period`, `fct_result`, `fct_season_result`, `fct_session_weather`, `fct_stint`, `fct_stint_degradation`, `fct_stop_battle`, `fct_track_status_period` | Facts and dimensions that the exporters, the API and the app read |
 | Reconciliation (4) | `rec_finish_order`, `rec_lake_vs_manifest`, `rec_weekend_coverage`, `rec_telemetry_coverage` | The pipeline checked against official results and against its own log; telemetry checked against the laps table |
 
-The last build had 136 steps: 38 models, 1 seed and 97 tests. Result: 131 passed, 5 warnings, 0 errors. Every warning is listed under known data gaps below: `session_missing_laps` (one session), `finish_order_reconciles` (ten races), `pit_lane_time_plausible` (two stops), `pit_loss_plausible` (one stop) and `telemetry_coverage_flags` (two sessions). Five gold models have enforced contracts (declared column names and types that the build checks).
+The last build had 258 steps: 57 models, 1 seed and 200 tests. Result: 251 passed, 7 warnings, 0 errors. The warnings are `finish_order_reconciles`, `lap_sector_sum_matches_lap`, `lap_trace_coverage`, `pit_lane_time_plausible`, `pit_loss_plausible`, `session_missing_laps`, `telemetry_coverage_flags`. 26 gold models have enforced contracts (declared column names and types that the build checks).
 
 **Race control periods.** `fct_race_control_period` holds safety car, VSC and red flag periods read from the wording of the race control messages. It is a SQL version of `build_periods` in `app/racecontrol.py`, which stays as the reference. Over the 269 sessions that have a session clock it gives 264 periods, identical to the Python (`experiments/rc_periods_reconcile.py`). The 438 older sessions get periods in UTC only and are not compared against the Python on real data. The session clock (`silver_session_clock`) comes from lap start dates and equals the position-sample clock the app uses in all 269 sessions (`experiments/rc_offset.py`). Messages in the same second are common (478 of 707 sessions), but ordering them differently changed no period (`experiments/rc_ties.py`). Against the separate track status feed, 262 of 264 periods start within 5 s of a matching change (median 0.3 s). The two exceptions: a VSC message about ten minutes after the last lap of the 2022 French GP, and a second "safety car deployed" message 8 s after "in this lap" in the 2026 British GP, which starts a new period 540 s after the nearest status change, inside what the status feed shows as one continuous safety car. The cause of either is not known.
 
 **Telemetry coverage.** The two telemetry tables (139.5 million car rows and 142.2 million position rows over 269 sessions) are declared as sources, and `rec_telemetry_coverage` checks them against the laps table in 1.4 s. Telemetry is expected for every session except practice: all 269 qualifying, race and sprint sessions from 2022 on have both tables, and none of the 276 practice sessions has either. The median sample rate is 3.74 Hz for car data and 3.82 Hz for position. In 23 sessions telemetry has more drivers than the laps table; the results table accounts for 19 of the 30 extra drivers (16 did not start, one retired, one withdrew, one had an accident), 9 are in qualifying sessions where the status is blank, and 2 are in races with a blank status. The test `telemetry_coverage_flags` warns on two sessions (listed under known data gaps). Its tolerances (60 s, 3 Hz) were set just outside the range seen in this lake, so they say what is unusual here, not what is wrong in general.
 
-**Documentation.** Every model and every column (506 of 506) has a description, written from the model SQL; where a meaning could not be verified, the description says so. `dbt docs generate` builds the catalog and the lineage graph (`dbt docs serve --project-dir dbt --profiles-dir dbt` to browse it). `scripts/doc_coverage.py --check` reads dbt's own artifacts and fails if any model, or any column of a gold model, lacks a description. CI runs it after the synthetic-lake build, so the coverage cannot slip silently.
+**Documentation.** Every model and every column has a description, written from the model SQL; where a meaning could not be verified, the description says so. `dbt docs generate` builds the catalog and the lineage graph (`dbt docs serve --project-dir dbt --profiles-dir dbt` to browse it). `scripts/doc_coverage.py --check` reads dbt's own artifacts and fails if any model, or any column of a gold model, lacks a description. CI runs it after the synthetic-lake build, so the coverage cannot slip silently.
 
 **What the reconciliation found**
 
@@ -206,7 +209,7 @@ Using the engine's live gaps was **no more accurate** than lap-end times (closer
 
 **Undercuts.** An attempt is a car (B) directly behind another (A), within 3 s at the end of the lap before B pits, with A staying out and stopping within the next 10 laps (517 attempts in 131 races, 507 with the pace measure below; `experiments/undercut_v2.py`, `experiments/undercut_v3.py`). The gap is the one reliable signal: once both have stopped, B is ahead of A in 78% of attempts at a gap under 1 s, 56% at 1 to 2 s and 31% at 2 to 3 s (out-of-sample AUC about 0.69). A tyre-advantage feature built from the degradation figures, and the pace difference between the two cars before the stop, each improved the prediction by an amount whose 95% interval across races includes zero, and the time B actually gains is dominated by noise (about 3.4 s) that none of them explained. So no undercut model is built, and the degradation figures could not be tested against these events. The outcome depends on when A chooses to stop, so these are chances given that A reacts within 10 laps, not the chance that an undercut works: 775 close pairs where A did not stop within 10 laps are excluded, and B was still behind 11 laps later in 661 of the 677 that could be resolved.
 
-## The app
+## The Streamlit app
 
 | Page | What it does |
 |---|---|
@@ -221,28 +224,108 @@ Using the engine's live gaps was **no more accurate** than lap-end times (closer
 | Race scrubber | All cars on the track at any moment; timing tower with sector colours; flags, weather and race control feed; follow drivers; auto-play 0.5x-60x |
 | Session timing | Best laps, sectors and ideal lap for qualifying and practice |
 
-## Web app and race replay
+## Web app
 
-A static Next.js site (`web/`) shows the analytics tables and a race replay for every race and qualifying
-session from 2022: track map with playback, leaderboard with gaps, driver telemetry cards, weather,
-race control messages and timing, with drivers coloured by team. It is built as plain static files, so it
-needs no server.
+A static Next.js site in `web/`. It runs no analysis in the browser and needs no server: every number comes from
+a dbt gold table, an exporter in `scripts/` writes it to JSON, and the page draws it. The calculations are tested
+in Python (`tests/`) and the page logic with vitest (`web/tests`).
 
-```bash
-python scripts/export_static.py      # analytics JSON  -> web/public/data
-python scripts/export_replay.py      # one file per session -> web/public/replay-data (about 9 minutes, 440 MB)
-cd web && npm install && npm run dev
+```
+Parquet lake -> dbt gold tables -> scripts/export_*.py -> JSON in web/public/ -> static pages
 ```
 
-`export_replay.py` reads the Parquet lake and the gold lap table. Car positions are matched to the circuit
-outline, and progress is checked against the lap table at the end of every lap; where a car is a whole
-number of laps out, it is put right using the lap table. Sessions it cannot do honestly are skipped with a
-reason (2026 round 6: position data covers 5% of the race; 2026 round 11: the position feed stops matching
-the cars' clock from lap 7). Use `--only 2026-R17-R --force` to rebuild one session.
+| Page | What it shows | Built from |
+|---|---|---|
+| Race, Sessions, Circuits, Seasons | Results, stints, pit stops, per-circuit pit loss and tyre degradation, standings | `export_static.py`, `export_analysis.py`, `export_seasons.py` |
+| Telemetry (`/telemetry`) | Up to eight laps of one session: speed, throttle, brake, gear and DRS against distance, with the time gap to a reference lap | `export_traces.py` |
+| Drivers (`/compare`) | Lap-time gap between two drivers lap by lap, with purple, green and yellow sector colours | `fct_lap_sector`, `export_laps.py` |
+| Predictor (`/predictor`) | The pit-stop rejoin prediction scored against what happened, including a held-out test | `fct_pit_prediction_*`, `export_predictor.py` |
+| Practice (`/practice`) | Fastest laps and long runs in practice sessions | `export_laps.py` |
+| Replay (`/replay`) | All cars on the track map with playback, leaderboard and gaps, driver telemetry cards, weather, flags and race control messages, for race and qualifying sessions from 2022 (sprints with `--sessions`) | `export_replay.py` |
 
-Known limits: a few cars have position data that stops moving before the race ends (for example Russell in
-2025 round 4), so their marker stands still while the leaderboard follows the lap table. The replay data is
-generated, not committed (`web/public/replay-data/` is git-ignored).
+```bash
+python scripts/export_static.py
+python scripts/export_analysis.py
+python scripts/export_seasons.py
+python scripts/export_laps.py
+python scripts/export_traces.py
+python scripts/export_predictor.py
+python scripts/export_replay.py  --sessions R,Q,S,SQ,SS
+cd web && npm install && npm run dev      # npm run build writes the static site to web/out
+```
+
+`web/public/trace-data` (83 sessions, about 37 MB gzipped) and `web/public/replay-data` (about 440 MB) are
+git-ignored and rebuilt with the exporters. The other JSON is committed. `export_replay.py --only 2026-R17-R
+--force` rebuilds one session.
+
+### Telemetry against distance
+
+Every traced lap is resampled onto the same 160 distances from the line to the line, so two laps can be compared
+point by point. Distance is built from the position (x, y) path, not read from the feed, so it is a measurement
+and not an official figure. A lap gets a trace only if its telemetry covers the whole lap and its length matches
+the track; the others are listed with the reason (standing start, pit lap, no telemetry, telemetry starting late
+or ending early, a gap in the position feed, a track length that could not be established, a distance that does
+not match the track). A lap whose speed channel disagrees with the positions is kept as time only (`speed_ok`
+false): its time gap is drawn and its speed is not. Eight laps can be shown at once; that is a limit of the chart,
+not of the data.
+
+### Sector colours
+
+`fct_lap_sector` colours every sector time of every lap, by the usual timing-screen rule applied to this lake:
+purple if it beat every earlier time in that sector in the session (strictly), green if it beat the driver's own
+earlier times, yellow otherwise. "Earlier" is by the moment the sector was completed (lap start plus the sectors
+before it), not by lap number. Deleted laps and laps with a missing lap start or earlier sector get no colour.
+Two tests guard the table: the status column is consistent with the times, and sector times add up to the lap
+time. 97.7% of race laps keep all three sectors. 84 laps have sectors that do not add up to the lap time (most of
+them in 2025 round 22 FP1 and the 2024 round 22 race); the test reports them and they are not hidden. The colours are
+computed here from the lake. I have not compared them with the broadcast timing colours.
+
+### Pit-stop predictor
+
+At the end of the lap before a stop, the model predicts where the driver will be at the end of the out-lap: it
+adds the circuit's typical pit loss to the driver's race time at the end of that lap and counts the cars that would
+then be ahead. It is scored against the real position, with two baselines on the page: keep the same position,
+and the same model with one global pit loss for every circuit.
+
+Because the circuit's pit loss is estimated from the same races that are then scored, `fct_pit_prediction_heldout`
+re-does the prediction for green-flag stops with each race left out of its own estimate (the circuit's median
+loss from its other races when there are at least 10 stops from at least two other sessions, otherwise the global
+median from other races). Two tests check that the held-out table recomputes the in-sample one when the race is
+left in, and that the left-out race is never in its own estimate.
+
+| Green-flag stops | Exact place, in-sample | Exact place, held out | Mean miss in places, in-sample | Mean miss, held out |
+|---|---|---|---|---|
+| All (5,489) | 41.2% | 41.1% | 1.553 | 1.554 |
+| Undisturbed (649) | 79.7% | 79.4% | 0.308 | 0.307 |
+
+The in-sample estimate was not flattering the score: leaving the race out cost about 0.1 point of exact hits, and
+94% of stops had enough other races at the circuit to use the circuit's own figure. "Undisturbed" means green
+flag and no other car pitting from one lap before to one lap after the stop. Only 649 of the 5,489 stops (12%)
+are undisturbed. That is the real limit: in most stops other cars are also pitting, the model does not account for
+them, and it gets the exact place right about four times in ten. On undisturbed stops 94% are within one place
+(in-sample figure). Under a safety car the prediction is worse than guessing that the driver loses nothing. The
+page splits the score by the margin to the nearest car (under 1 s, 1 to 3 s, over 3 s), so a close call can be
+told from a safe one.
+
+The earlier backtest in Strategy models (2,399 stops, 45.3% exact) selects its stops differently and its figure
+is not directly comparable with the table above; I have not reconciled the two selections. Safety car and VSC
+stops are not held out, and their pit loss is estimated across all races.
+
+### Practice
+
+Practice sessions are laps only (no telemetry). The page lists each driver's fastest laps and their long runs,
+meaning runs with at least five clean laps, using the lap table's clean-lap flag, whose definition I have not
+checked independently. Practice lap times are not comparable between cars: fuel load, engine mode and run plans are
+unknown.
+
+### Replay
+
+Car positions are matched to the circuit outline, and progress is checked against the lap table at the end of
+every lap; where a car is a whole number of laps out, it is put right using the lap table. Sessions it cannot do
+honestly are skipped with a reason: 2026 round 6 (Monaco), where position data covers 5% of the race. 2026 round
+11 (Hungary) is limited: its position feed stops matching the cars' clock from lap 7, and only 109 laps there have
+traces. A few cars have position data that stops moving before the race ends (for example Russell in 2025 round
+4), so their marker stands still while the leaderboard follows the lap table; the replay does not label that yet.
 
 ## The API
 
@@ -346,9 +429,10 @@ contracts.py     pandera data contracts checked at ingest (hard rules fail a tab
 constraints/     exact dependency versions per environment (ingest, app, dbt)
 dbt/             models (silver, gold, reconciliation), tests, macros, CI lake generator
 airflow/         Docker Compose stack (Airflow 3, Postgres), image with the ingest and dbt virtualenvs, the f1_weekly DAG
-scripts/         start_batch.sh (refuses a second run), status.sh, backfill_track_status.py, check_contracts.py, doc_coverage.py, freeze_constraints.sh, airflow_ingest.py (plan and run entry points for the DAG)
+scripts/         start_batch.sh (refuses a second run), status.sh, backfill_track_status.py, check_contracts.py, doc_coverage.py, freeze_constraints.sh, airflow_ingest.py (plan and run entry points for the DAG), export_*.py (gold tables to the JSON the web app reads)
 app/             Streamlit app: pitwall.py (data access), engine.py (race state), racelib.py, pages/
 api/             read-only FastAPI service over the gold tables (main.py); requirements-api.txt
+web/             static Next.js site (analytics pages, telemetry, predictor, practice, replay), vitest tests
 tests/           unit tests for the race engine, race-control logic, history fetching, app helpers and the API
 experiments/     measurement scripts behind the numbers above (run from the repository root)
 .github/         CI: ci.yml (tests, lint) and dbt.yml (dbt build on a synthetic lake, documentation gate)
@@ -364,7 +448,8 @@ experiments/     measurement scripts behind the numbers above (run from the repo
 - **A live-gap rejoin model was no better** than lap-end times.
 - **One tyre trend constant was biased by lap length.** Short circuits looked worse and long ones better than they are. A lap-length line fixed most of it out of sample; three circuits still carry a bias as large as the effect.
 - **Degradation did not help predict undercuts.** Tyre advantage and car pace added nothing measurable to the gap alone (95% intervals across races include zero), and the time gained is mostly noise. No undercut model was built.
-- **Streamlit, not a Next.js front end,** for now: all the logic is Python, and a web front end would need a server. A smooth replay would be a static page built from precomputed files; parked.
+- **Streamlit first, then a static web app.** All the logic is in Python and dbt, so the site only draws precomputed JSON and needs no server. It came after the gold tables were stable, so a page never has its own version of a number.
+- **The pit-stop predictor is scored on races it was not fitted on.** Its circuit pit-loss figure came from the same races it was scored on, which could have flattered it. Leaving each race out of its own estimate changed the exact-place rate by about 0.1 point, so the in-sample scores stand.
 - **Live timing was dropped:** live car positions need an F1 TV subscription.
 
 ## Limitations
@@ -375,18 +460,23 @@ experiments/     measurement scripts behind the numbers above (run from the repo
 - Red-flag periods end at the next pit-exit-open, safety car, track-clear or race-start message; no message states the end.
 - Wind speed is assumed to be in m/s, and the DRS open codes are an interpretation of the FastF1 documentation. The track status code meanings are confirmed by the feed's own labels (1 AllClear, 2 Yellow, 4 SCDeployed, 5 Red, 6 VSCDeployed, 7 VSCEnding).
 - Gaps are lap-timing based at the lines and GPS based in between; the running order is validated against official sector timing on 135 sessions (four of them in detail), the time gaps on those four only.
-- The dbt layer covers the telemetry tables only through a session-level coverage check (`rec_telemetry_coverage`); there are no per-lap or per-sample telemetry models. Safety car, VSC and red-flag periods are a model (`fct_race_control_period`, reconciled to the Python), but the Race scrubber still uses `app/racecontrol.py`, which stays as the reference.
+- Safety car, VSC and red-flag periods are a model (`fct_race_control_period`, reconciled to the Python), but the Race scrubber in the Streamlit app still uses `app/racecontrol.py`, which stays as the reference.
 - The reconciliation is against my own ingest of the public feed, so it shows internal consistency and agreement with the official classification, not that the feed itself is right.
 - Tyre degradation is measured from the timing data alone and has not been validated against any outside source (an attempt to test it against undercut outcomes was inconclusive); three circuits are known to be biased (see Strategy models).
+
+- The web app's JSON is a snapshot of the gold tables at export time. Nothing refreshes it automatically: the Airflow DAG does not run the exporters.
+- The repository holds tables derived from the timing feed (lap and sector times, season results, pit-stop scores) because the web app reads them. I have not checked what the data terms allow for publishing them; until I do, the repository stays private or the files come out.
+- The pit-stop predictor does not model other cars pitting around the stop, traffic after it, or safety cars; held-out scoring covers green-flag stops only (see Web app).
+- Trace distances are derived from positions, and sector colours are computed here, not taken from the feed (see Web app).
 
 ## Roadmap
 
 - Fix the second-sector-line failures at Baku and Suzuka in the race-state engine (a heading constraint fixes them but worsens about two dozen other sessions, and a hybrid did not help; next idea: apply the constraint only where the samples around a point are reliable)
 - Run the Airflow DAG through a live race weekend (telemetry ingest, memory use). Blocked for now: see the first Limitations bullet. Failure alerts are done.
 - Make the API the single access path for the app and anything built on top; for now the Streamlit app does not use it
-- Per-lap or per-sample telemetry models, only if something needs them, and switching the Race scrubber to the SQL race-control periods
-- Public deployment (hosting undecided)
-- A web front end (Next.js) with a smooth replay page, fed by precomputed replay files and the API, replacing the Streamlit app
+- Switch the Race scrubber to the SQL race-control periods
+- Deploy the static site on a free host (Cloudflare Pages is the candidate). The replay data is large and git-ignored, so how it is built and hosted needs deciding first, and so does the data-terms question above
+- Mark stale or frozen car positions on the replay (2026 round 11), and a formation-lap marker
 - A question-answering agent over the gold tables, evaluated against a fixed set of questions with known answers, including questions the data cannot answer
 - An S3-compatible object store (MinIO) for the lake, set up with Terraform and run locally
 
