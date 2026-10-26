@@ -1,0 +1,16 @@
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.table-wrap { position: relative; }
+.pbar { display: inline-grid; grid-template-columns: 140px 4ch; align-items: center; gap: 8px; }
+.pbar { position: relative; }
+.pbar-fill { display: block; height: 10px; border-radius: 2px; background: var(--ink-2); grid-column: 1; grid-row: 1; }
+.pbar-text { grid-column: 2; grid-row: 1; font-size: 0.8rem; color: var(--ink); }
+.faint { opacity: 0.55; }
+.browse-pick { max-width: 460px; margin: 6px 0; }
+.browse-pick select { width: 100%; }
+.stop-table { font-size: 0.88rem; }
+.verdict { display: inline-block; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); font-size: 0.78rem; font-weight: 600; color: var(--ink-2); }
+.verdict-exact { color: var(--ink); border-color: var(--ink-3); background: var(--raised); }
+.verdict-outside { color: var(--ink-3); border-style: dashed; }
+.notes { max-width: 80ch; color: var(--ink-2); padding-left: 1.2em; }
+.notes li { margin: 6px 0; }
+.chips { margin: 8px 0 6px; }

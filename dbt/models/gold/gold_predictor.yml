@@ -1,0 +1,139 @@
+version: 2
+
+models:
+  - name: fct_pit_prediction_check
+    description: >
+      One row per real race or sprint pit stop, with the pit-now prediction made on the lap before it and the driver's
+      position at the end of the out-lap. Stops with no prediction (red flag, no gap data) or no position after the
+      out-lap (retirement) are left out. error is predicted minus actual.
+    config:
+      contract:
+        enforced: true
+    columns:
+      - name: pit_stop_key
+        description: "Key of the stop in fct_pit_stop."
+        data_type: varchar
+        data_tests: [not_null, unique]
+      - name: session_key
+        description: "Session the stop belongs to."
+        data_type: varchar
+        data_tests: [not_null]
+      - name: year
+        description: "Season."
+        data_type: integer
+      - name: round
+        description: "Round of the season."
+        data_type: integer
+      - name: session_code
+        description: "Session type code: R or S."
+        data_type: varchar
+      - name: driver_code
+        description: "Three-letter driver code."
+        data_type: varchar
+        data_tests: [not_null]
+      - name: in_lap
+        description: "Lap on which the driver entered the pit lane."
+        data_type: integer
+      - name: regime
+        description: "Track regime of the lap before the stop, which sets the pit loss used: green, sc or vsc."
+        data_type: varchar
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [green, sc, vsc]
+      - name: loss_source
+        description: "Whether the pit loss came from the circuit's own figure or the all-circuit one."
+        data_type: varchar
+      - name: pit_loss_s
+        description: "Pit loss the prediction assumed, in seconds."
+        data_type: double
+      - name: position_now
+        description: "Driver's position at the end of the lap before the stop."
+        data_type: integer
+      - name: predicted_position
+        description: "Position the model predicted after the stop, using the median pit loss."
+        data_type: integer
+      - name: predicted_position_fast
+        description: "Position predicted with a quick stop (the circuit's 25th percentile loss)."
+        data_type: integer
+      - name: predicted_position_slow
+        description: "Position predicted with a slow stop (the circuit's 75th percentile loss)."
+        data_type: integer
+      - name: predicted_position_global
+        description: "Position predicted with the all-circuit median loss, a plainer version of the same method."
+        data_type: integer
+      - name: margin_s
+        description: "Seconds of pit loss that separated the prediction from the next place changing."
+        data_type: double
+      - name: actual_position
+        description: "Driver's position at the end of the out-lap."
+        data_type: integer
+      - name: other_stops_nearby
+        description: "Other drivers' stops from the lap before the stop to the out-lap; 0 means nothing else disturbed the field."
+        data_type: integer
+      - name: error
+        description: "Predicted position minus actual position; positive means the model expected a worse place than the driver got."
+        data_type: integer
+      - name: in_range
+        description: "Whether the actual position lay between predicted_position_fast and predicted_position_slow."
+        data_type: boolean
+      - name: margin_bucket
+        description: "The margin grouped as under 1 s, 1 to 3 s or over 3 s; null when there is no margin."
+        data_type: varchar
+
+  - name: fct_pit_prediction_score
+    description: >
+      Accuracy of the pit-now prediction against real stops, overall and by regime and margin bucket, for all stops and
+      for stops no other driver pitted near it, with two naive guesses (keep the position held before the stop, and one
+      loss figure for every circuit) as baselines.
+    config:
+      contract:
+        enforced: true
+    columns:
+      - name: scope
+        description: "all (every stop) or undisturbed (stops with no other driver stopping from the lap before the stop to the out-lap)."
+        data_type: varchar
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [all, undisturbed]
+      - name: regime
+        description: "green, sc or vsc, or all for every regime together."
+        data_type: varchar
+      - name: margin_bucket
+        description: "under 1 s, 1 to 3 s, over 3 s or no margin, or all for every bucket together."
+        data_type: varchar
+      - name: stops
+        description: "Number of stops scored."
+        data_type: integer
+        data_tests: [not_null]
+      - name: hit_rate
+        description: "Share of stops predicted to the exact place."
+        data_type: double
+      - name: within_one_rate
+        description: "Share of stops predicted within one place."
+        data_type: double
+      - name: mae
+        description: "Mean absolute error in places."
+        data_type: double
+      - name: bias
+        description: "Mean of predicted minus actual position; positive means the model is too pessimistic."
+        data_type: double
+      - name: in_range_rate
+        description: "Share of stops whose actual position fell inside the model's fast-to-slow range."
+        data_type: double
+      - name: no_loss_hit_rate
+        description: "Hit rate of the guess that the driver keeps the position held before the stop."
+        data_type: double
+      - name: no_loss_mae
+        description: "Mean absolute error of that guess, in places."
+        data_type: double
+      - name: global_hit_rate
+        description: "Hit rate of the same method with the all-circuit loss figure."
+        data_type: double
+      - name: global_mae
+        description: "Mean absolute error of that method, in places."
+        data_type: double
+      - name: is_reliable
+        description: "True when at least 30 stops were scored."
+        data_type: boolean

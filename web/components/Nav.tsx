@@ -9,6 +9,7 @@ const LINKS = [
   { href: "/circuits", label: "Circuits" },
   { href: "/compare", label: "Drivers" },
   { href: "/telemetry", label: "Telemetry" },
+  { href: "/predictor", label: "Predictor" },
 ];
 
 export function Nav() {
