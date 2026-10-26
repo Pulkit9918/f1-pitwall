@@ -185,14 +185,26 @@ with open(MAN / "sessions.jsonl", "w", encoding="utf-8") as f, open(MAN / "backf
                                 "at": "2099-01-03T00:00:00+00:00", "status": "ok", "seconds": 1.0,
                                 "tables": {"track_status": {"rows": tabs["track_status"], "bytes": 1000}}}) + "\n")
 
-# ---- telemetry, for rec_telemetry_coverage: 4 Hz samples for the 3 drivers, covering each session ----
-# Written after the ingest log on purpose, so the log above stays as it was. Only the columns the models read.
+# ---- telemetry: 4 Hz samples for the 3 drivers, covering each session ----
+# Written after the ingest log on purpose, so the log above stays as it was. rec_telemetry_coverage reads only the
+# driver number and the clock; the lap trace models also read the car channels (speed, throttle, gear, DRS, brake)
+# and the position (x, y, in tenths of a metre). The cars here all drive the same 90 s circle, which is enough for the
+# models to bind and run; with 18 laps the layout is too short to be reliable, so no traces are made from it.
+CHANNELS = {
+    "telemetry_car": (
+        "cast(round(200 + 50 * sin(i / 4.0 / 15.0)) as smallint) as speed, cast(9000 as smallint) as rpm, "
+        "cast(6 as smallint) as ngear, cast(80 as smallint) as throttle, cast(0 as smallint) as drs, false as brake"),
+    "telemetry_pos": (
+        "cast(round(8000 * cos(2 * pi() * (i / 4.0) / 90.0)) as integer) as x, "
+        "cast(round(8000 * sin(2 * pi() * (i / 4.0) / 90.0)) as integer) as y"),
+}
 for sess, end_s in (("R", 600.0), ("Q", 300.0)):
     for table in ("telemetry_car", "telemetry_pos"):
         d = OUT / table / "year=2099" / "round=01" / f"session={sess}"
         d.mkdir(parents=True, exist_ok=True)
         con.execute(
-            "COPY (select cast(n as varchar) as driver_number, i / 4.0 as session_time_s "
+            "COPY (select cast(n as varchar) as driver_number, i / 4.0 as session_time_s, "
+            f"{CHANNELS[table]} "
             f"from (values (1), (2), (3)) dr(n), range({int(end_s * 4) + 1}) r(i)) "
             f"TO '{d / 'part.parquet'}' (FORMAT parquet)")
 

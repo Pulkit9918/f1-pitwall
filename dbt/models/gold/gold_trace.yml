@@ -1,0 +1,296 @@
+version: 2
+
+models:
+  - name: fct_lap_sample
+    description: >
+      One row per car-telemetry sample (speed, throttle, gear, DRS, brake) inside a race or sprint lap (a view, not a stored table), from the
+      year in the variable trace_from_year (default 2024). Samples are matched to laps by driver code and session
+      clock. dist_m is speed integrated over the lap and is not used as the distance axis, because the speed
+      channel is unreliable lap to lap (stuck or drifting values); it is kept so fct_lap_trace_lap can check each
+      lap's speed channel against the position distance.
+    config:
+      contract:
+        enforced: true
+    columns:
+      - name: lap_key
+        description: "Lap the sample belongs to. Key of fct_lap."
+        data_type: varchar
+        data_tests: [not_null]
+      - name: elapsed_s
+        description: "Seconds from the start of the lap to the sample."
+        data_type: double
+        data_tests: [not_null]
+      - name: gap_s
+        description: "Seconds since the previous sample in the lap, or since the lap started for the first sample."
+        data_type: double
+        data_tests: [not_null]
+      - name: dist_m
+        description: "Speed integrated since the lap started, in metres. A consistency check only; unreliable on laps with a bad speed channel."
+        data_type: double
+        data_tests: [not_null]
+      - name: speed
+        description: "Car speed in km/h as the feed reports it."
+        data_type: smallint
+      - name: throttle
+        description: "Throttle position, percent."
+        data_type: smallint
+      - name: gear
+        description: "Gear engaged; 0 is neutral."
+        data_type: smallint
+      - name: drs
+        description: "Raw DRS code from the feed; the codes are not documented by the source."
+        data_type: smallint
+      - name: brake
+        description: "Whether the brake is applied."
+        data_type: boolean
+  - name: fct_lap_position
+    description: >
+      One row per position update (x, y) inside a race or sprint lap, from the year in trace_from_year. A sample whose position repeats the one before is dropped, because some sessions repeat each position for several samples and then jump; gaps are measured between real updates. A view, not a stored table. dist_m is
+      the distance covered since the lap started, in metres: the length of the x/y path up to the sample
+      (positions are in tenths of a metre) plus the stretch before the first sample at the rate of the first step.
+      This is the distance axis for fct_lap_trace. A sample at (0, 0) is a missing position and is dropped.
+    config:
+      contract:
+        enforced: true
+    columns:
+      - name: lap_key
+        description: "Lap the sample belongs to. Key of fct_lap."
+        data_type: varchar
+        data_tests: [not_null]
+      - name: elapsed_s
+        description: "Seconds from the start of the lap to the sample."
+        data_type: double
+        data_tests: [not_null]
+      - name: gap_s
+        description: "Seconds since the previous sample in the lap, or since the lap started for the first sample."
+        data_type: double
+        data_tests: [not_null]
+      - name: dist_m
+        description: "Distance from the lap start in metres along the x/y path."
+        data_type: double
+        data_tests: [not_null]
+      - name: rate_mps
+        description: "Speed over the last step in metres per second from the positions; null for the first sample of a lap."
+        data_type: double
+  - name: fct_lap_sample_total
+    description: >
+      One row per lap that has position data: the distance its x/y path adds up to and how well the samples cover
+      the lap. integrated_m is the path length over the whole lap, with the stretch after the last sample covered
+      at the rate of the last step. The gap columns say how well the samples cover the lap. car_integrated_m is
+      the same lap's speed integral from the car telemetry (null when it has none), kept to check the speed
+      channel against the positions.
+    config:
+      contract:
+        enforced: true
+    columns:
+      - name: lap_key
+        description: "The lap. Key of fct_lap."
+        data_type: varchar
+        data_tests: [unique, not_null]
+      - name: session_key
+        description: "The session the lap belongs to. Key of dim_session."
+        data_type: varchar
+        data_tests: [not_null]
+      - name: n_samples
+        description: "Number of position samples in the lap."
+        data_type: bigint
+        data_tests: [not_null]
+      - name: lap_elapsed_s
+        description: "Lap duration in seconds, end of lap minus start of lap on the session clock."
+        data_type: double
+        data_tests: [not_null]
+      - name: first_gap_s
+        description: "Seconds from the lap start to the first position sample."
+        data_type: double
+        data_tests: [not_null]
+      - name: last_gap_s
+        description: "Seconds from the last position sample to the lap end."
+        data_type: double
+        data_tests: [not_null]
+      - name: max_gap_s
+        description: "Longest silence between two position samples in the lap, counting the gap before the first."
+        data_type: double
+        data_tests: [not_null]
+      - name: integrated_m
+        description: "Length of the x/y path over the whole lap, in metres."
+        data_type: double
+        data_tests: [not_null]
+      - name: car_integrated_m
+        description: "Speed integrated over the whole lap, in metres, from the car telemetry; null without car telemetry."
+        data_type: double
+  - name: dim_layout_length
+    description: >
+      The length of each circuit layout as the position data measures it: the median, over clean laps whose
+      positions cover the whole lap, of the x/y path length, taken twice (laps more than 3% from the first median
+      are dropped and it is recomputed, so a few bad sessions cannot move it). Laps are scaled to this length so any
+      two laps can be compared at the same distance. It is a measurement from positions, not a surveyed length. A
+      layout is reliable when at least 20 laps survive the trim, at least 80% of the measured laps survive, and the
+      5th-to-95th percentile spread is 3% or less. A layout where no laps survive the trim still has a row, with laps_used 0 and null lengths.
+    config:
+      contract:
+        enforced: true
+    columns:
+      - name: circuit_layout_key
+        description: "Circuit layout. Key of dim_session_circuit.circuit_layout_key."
+        data_type: varchar
+        data_tests: [unique, not_null]
+      - name: laps_measured
+        description: "Clean, fully covered laps measured before the 3% trim."
+        data_type: integer
+        data_tests: [not_null]
+      - name: laps_used
+        description: "Number of clean, fully covered laps the length is taken from, after the 3% trim."
+        data_type: integer
+        data_tests: [not_null]
+      - name: ref_length_m
+        description: "Median x/y path length in metres after the trim; null when no laps survive it."
+        data_type: double
+      - name: p05_m
+        description: "5th percentile of path length, metres; null when no laps survive the trim."
+        data_type: double
+      - name: p95_m
+        description: "95th percentile of path length, metres; null when no laps survive the trim."
+        data_type: double
+      - name: spread
+        description: "(p95 minus p05) divided by the median. How consistent the path length is across laps; null when no laps survive the trim."
+        data_type: double
+      - name: is_reliable
+        description: "True when laps_used is at least 20, at least 80% of laps_measured survived the trim, and spread is 3% or less. Layouts that are not reliable get no resampled laps."
+        data_type: boolean
+        data_tests: [not_null]
+  - name: fct_lap_trace_lap
+    description: >
+      One row per race or sprint lap from the year in trace_from_year, saying whether the lap has a usable
+      distance trace and, if not, why. The first rule that applies sets trace_reason: standing_start (lap 1 starts
+      from the grid slot, not the line), pit_lap (pit entry or exit), no_telemetry, late_start, early_end or
+      data_gap (position samples miss the lap boundaries or go silent), layout_unreliable (no reliable reference
+      length), length_off (path more than 4% from the layout's length). speed_ok says whether the lap's speed
+      channel agrees with the positions to within 5%.
+    config:
+      contract:
+        enforced: true
+    columns:
+      - name: lap_key
+        description: "The lap. Key of fct_lap."
+        data_type: varchar
+        data_tests: [unique, not_null]
+      - name: session_key
+        description: "The session. Key of dim_session."
+        data_type: varchar
+        data_tests: [not_null]
+      - name: year
+        description: "Season year."
+        data_type: integer
+      - name: round
+        description: "Round number within the season."
+        data_type: integer
+      - name: session_code
+        description: "R for a race or S for a sprint."
+        data_type: varchar
+      - name: driver_code
+        description: "Three-letter driver code."
+        data_type: varchar
+      - name: lap_number
+        description: "Lap number within the session, from 1."
+        data_type: integer
+      - name: circuit_layout_key
+        description: "Circuit layout the lap was driven on."
+        data_type: varchar
+      - name: lap_time_s
+        description: "Lap time in seconds from the timing feed; null for laps without one."
+        data_type: double
+      - name: n_samples
+        description: "Number of position samples in the lap; null when the lap has none."
+        data_type: integer
+      - name: lap_elapsed_s
+        description: "Lap duration on the session clock, seconds; null without position data."
+        data_type: double
+      - name: first_gap_s
+        description: "Seconds from the lap start to the first position sample; null without position data."
+        data_type: double
+      - name: last_gap_s
+        description: "Seconds from the last position sample to the lap end; null without position data."
+        data_type: double
+      - name: max_gap_s
+        description: "Longest silence between position samples in the lap, seconds; null without position data."
+        data_type: double
+      - name: integrated_m
+        description: "Length of the x/y path over the lap, metres; null without position data."
+        data_type: double
+      - name: ref_length_m
+        description: "The layout's reference length in metres from dim_layout_length; null when the layout has none."
+        data_type: double
+      - name: length_ratio
+        description: "integrated_m divided by ref_length_m. Close to 1 for a lap on the racing line."
+        data_type: double
+      - name: speed_ratio
+        description: "Speed integral divided by the x/y path length. Close to 1 when the speed channel can be trusted; null without car telemetry."
+        data_type: double
+      - name: has_trace
+        description: "Whether the lap is in fct_lap_trace."
+        data_type: boolean
+        data_tests: [not_null]
+      - name: speed_ok
+        description: "Whether the lap has a trace and its speed channel agrees with the positions to within 5%. Speed, throttle, gear, DRS and brake are empty in fct_lap_trace when this is false."
+        data_type: boolean
+        data_tests: [not_null]
+      - name: trace_reason
+        description: "ok, or why the lap has no trace: standing_start, pit_lap, no_telemetry, late_start, early_end, data_gap, layout_unreliable or length_off."
+        data_type: varchar
+        data_tests: [not_null]
+  - name: fct_lap_trace
+    description: >
+      Every usable lap resampled onto the same grid of trace_points distances (default 160) from the line to the
+      line, so two laps can be compared point by point. Distance is the x/y path length scaled so each lap ends at
+      its layout's reference length. Time is the time since the lap started at that distance, interpolated between
+      the two position samples either side, so time_s is 0 at the first point and the lap time at the last. Time
+      against distance never uses the speed channel. Speed, throttle, gear, DRS and brake are looked up from the
+      car telemetry at that time, only for laps whose speed channel agrees with the positions (speed_ok); they are
+      null otherwise. Distances are accurate to the path-length measurement, not a surveyed track map.
+    config:
+      contract:
+        enforced: true
+    columns:
+      - name: lap_key
+        description: "The lap. Key of fct_lap."
+        data_type: varchar
+        data_tests: [not_null]
+      - name: session_key
+        description: "The session. Key of dim_session."
+        data_type: varchar
+        data_tests: [not_null]
+      - name: driver_code
+        description: "Three-letter driver code."
+        data_type: varchar
+        data_tests: [not_null]
+      - name: lap_number
+        description: "Lap number within the session."
+        data_type: integer
+        data_tests: [not_null]
+      - name: point_idx
+        description: "Grid point, 0 at the start line to trace_points minus 1 at the finish."
+        data_type: smallint
+        data_tests: [not_null]
+      - name: dist_m
+        description: "Distance from the start line in metres, scaled to the layout's reference length."
+        data_type: float
+        data_tests: [not_null]
+      - name: time_s
+        description: "Seconds from the lap start to this distance."
+        data_type: float
+        data_tests: [not_null]
+      - name: speed_kph
+        description: "Speed in km/h, interpolated; null when the lap's speed channel is not trusted."
+        data_type: smallint
+      - name: throttle_pct
+        description: "Throttle percent at the sample just before the point; null when the speed channel is not trusted."
+        data_type: smallint
+      - name: gear
+        description: "Gear at the sample just before the point; null when the speed channel is not trusted."
+        data_type: smallint
+      - name: drs
+        description: "Raw DRS code at the sample just before the point; null when the speed channel is not trusted."
+        data_type: smallint
+      - name: brake
+        description: "Whether the brake was applied at the sample just before the point; null when the speed channel is not trusted."
+        data_type: boolean
