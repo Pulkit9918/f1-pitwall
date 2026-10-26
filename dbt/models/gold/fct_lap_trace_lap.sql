@@ -1,4 +1,4 @@
--- One row per race or sprint lap from the year in trace_from_year, saying whether the lap has a usable distance trace
+-- One row per race, sprint or qualifying lap from the year in trace_from_year, saying whether the lap has a usable distance trace
 -- and, if not, why (trace_reason, first match wins):
 --   standing_start    lap 1: it starts from the grid slot, not the line, so its distances do not line up with other laps
 --   pit_lap           the lap has a pit entry or exit: the pit lane is not the racing line
@@ -18,7 +18,7 @@ with laps as (
         d.circuit_layout_key
     from {{ ref('fct_lap') }} as l
     join {{ ref('dim_session_circuit') }} as d on d.session_key = l.session_key
-    where l.session_code in ('R', 'S')
+    where l.session_code in ('R', 'S', 'Q', 'SQ', 'SS')
       and l.year >= {{ var('trace_from_year', 2024) }}
       and l.lap_start_time_s is not null
       and l.time_s is not null

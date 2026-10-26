@@ -1,5 +1,5 @@
 {{ config(materialized='view') }}
--- One row per position update (x, y) inside a race or sprint lap, from the year in var trace_from_year. A sample whose
+-- One row per position update (x, y) inside a race, sprint or qualifying lap, from the year in var trace_from_year. A sample whose
 -- position is the same as the one before it is dropped: some sessions repeat each position for several samples and
 -- then jump, which would otherwise look like a well-sampled lap and cut every corner. Gaps are therefore measured
 -- between real updates, and a session like that fails the gap test in fct_lap_trace_lap.
@@ -28,7 +28,7 @@ laps as (
         lap_start_time_s as start_s,
         time_s           as end_s
     from {{ ref('fct_lap') }}
-    where session_code in ('R', 'S')
+    where session_code in ('R', 'S', 'Q', 'SQ', 'SS')
       and year >= {{ var('trace_from_year', 2024) }}
       and lap_start_time_s is not null
       and time_s is not null
@@ -47,7 +47,7 @@ pos as (
         cast(x as double)                 as x,
         cast(y as double)                 as y
     from {{ source('lake', 'telemetry_pos') }}
-    where session in ('R', 'S')
+    where session in ('R', 'S', 'Q', 'SQ', 'SS')
       and year >= {{ var('trace_from_year', 2024) }}
       and session_time_s is not null
       and x is not null

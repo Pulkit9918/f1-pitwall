@@ -1,5 +1,5 @@
 {{ config(materialized='view') }}
--- One row per car-telemetry sample (speed, throttle, gear, DRS, brake) that falls inside a race or sprint lap, from the
+-- One row per car-telemetry sample (speed, throttle, gear, DRS, brake) that falls inside a race, sprint or qualifying lap, from the
 -- year in var trace_from_year (default 2024; widen it to cover more seasons, at the cost of build time and database size).
 -- Samples are matched to laps by driver code and session clock: telemetry session_time_s is on the same clock as
 -- fct_lap.lap_start_time_s, and a sample belongs to the lap that started most recently at or before it.
@@ -27,7 +27,7 @@ laps as (
         lap_start_time_s as start_s,
         time_s           as end_s
     from {{ ref('fct_lap') }}
-    where session_code in ('R', 'S')
+    where session_code in ('R', 'S', 'Q', 'SQ', 'SS')
       and year >= {{ var('trace_from_year', 2024) }}
       and lap_start_time_s is not null
       and time_s is not null
@@ -49,7 +49,7 @@ car as (
         cast(drs as smallint)             as drs,
         coalesce(brake, false)            as brake
     from {{ source('lake', 'telemetry_car') }}
-    where session in ('R', 'S')
+    where session in ('R', 'S', 'Q', 'SQ', 'SS')
       and year >= {{ var('trace_from_year', 2024) }}
       and session_time_s is not null
       and speed is not null

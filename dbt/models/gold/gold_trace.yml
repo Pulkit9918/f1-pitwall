@@ -3,7 +3,7 @@ version: 2
 models:
   - name: fct_lap_sample
     description: >
-      One row per car-telemetry sample (speed, throttle, gear, DRS, brake) inside a race or sprint lap (a view, not a stored table), from the
+      One row per car-telemetry sample (speed, throttle, gear, DRS, brake) inside a race, sprint or qualifying lap (a view, not a stored table), from the
       year in the variable trace_from_year (default 2024). Samples are matched to laps by driver code and session
       clock. dist_m is speed integrated over the lap and is not used as the distance axis, because the speed
       channel is unreliable lap to lap (stuck or drifting values); it is kept so fct_lap_trace_lap can check each
@@ -45,7 +45,7 @@ models:
         data_type: boolean
   - name: fct_lap_position
     description: >
-      One row per position update (x, y) inside a race or sprint lap, from the year in trace_from_year. A sample whose position repeats the one before is dropped, because some sessions repeat each position for several samples and then jump; gaps are measured between real updates. A view, not a stored table. dist_m is
+      One row per position update (x, y) inside a race, sprint or qualifying lap, from the year in trace_from_year. A sample whose position repeats the one before is dropped, because some sessions repeat each position for several samples and then jump; gaps are measured between real updates. A view, not a stored table. dist_m is
       the distance covered since the lap started, in metres: the length of the x/y path up to the sample
       (positions are in tenths of a metre) plus the stretch before the first sample at the rate of the first step.
       This is the distance axis for fct_lap_trace. A sample at (0, 0) is a missing position and is dropped.
@@ -160,7 +160,7 @@ models:
         data_tests: [not_null]
   - name: fct_lap_trace_lap
     description: >
-      One row per race or sprint lap from the year in trace_from_year, saying whether the lap has a usable
+      One row per race, sprint or qualifying lap from the year in trace_from_year, saying whether the lap has a usable
       distance trace and, if not, why. The first rule that applies sets trace_reason: standing_start (lap 1 starts
       from the grid slot, not the line), pit_lap (pit entry or exit), no_telemetry, late_start, early_end or
       data_gap (position samples miss the lap boundaries or go silent), layout_unreliable (no reliable reference
@@ -185,7 +185,7 @@ models:
         description: "Round number within the season."
         data_type: integer
       - name: session_code
-        description: "R for a race or S for a sprint."
+        description: "R for a race, S for a sprint, Q for qualifying, SQ for sprint qualifying or SS for a sprint shootout."
         data_type: varchar
       - name: driver_code
         description: "Three-letter driver code."
