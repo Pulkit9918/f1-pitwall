@@ -10,6 +10,7 @@ from pathlib import Path
 
 from . import db
 from .questions import QUESTIONS
+from .questions_fresh import FRESH
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -17,10 +18,11 @@ ROOT = Path(__file__).resolve().parents[1]
 def main(argv=None):
     p = argparse.ArgumentParser()
     p.add_argument("--db", default=str(ROOT / "data" / "f1_dbt.duckdb"))
+    p.add_argument("--set", choices=["main", "fresh"], default="main")
     a = p.parse_args(argv)
     con = db.connect(a.db)
     bad = 0
-    for q in QUESTIONS:
+    for q in (FRESH if a.set == "fresh" else QUESTIONS):
         if not q.answerable:
             continue
         try:

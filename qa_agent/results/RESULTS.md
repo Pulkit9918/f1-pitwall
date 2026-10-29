@@ -86,3 +86,61 @@
   - got [['senna'], ['prost'], ['berger']], expected [['senna']]
 - **turn1_speed_2025_bahrain** (unanswerable): Which driver was fastest through Turn 1 in the 2025 Bahrain Grand Prix?
   - answered anyway with `SELECT driver_code FROM fct_lap_sector WHERE session_key IN (SELECT session_key FROM dim_session WHERE event ILIKE '%Bahrain%' AND year = 2025 AND session_code = 'R') AND sector = 1 ORDER BY time_s ASC LIMIT 1` returning [['HAM']]
+
+## Fresh question set
+
+36 questions written after the prompts were frozen (28 answerable, 8 not), run once per model with no prompt changes afterwards.
+
+| Model | Run | Prompts | Correct (answerable) | Declined correctly | Declined the answerable | Right tables | Valid first try | Seconds per question |
+|---|---|---|---|---|---|---|---|---|
+| qwen2.5-coder:14b | 2026-10-29 | v2 | 25 of 28 (89%) | 8 of 8 | 1 of 28 | 75% | 75% | 10.628 |
+| qwen2.5-coder:7b | 2026-10-29 | v2 | 14 of 28 (50%) | 8 of 8 | 2 of 28 | 86% | 79% | 6.658 |
+
+| Category | qwen2.5-coder:14b | qwen2.5-coder:7b |
+|---|---|---|
+| aggregate | 5 of 5 | 3 of 5 |
+| history | 2 of 3 | 1 of 3 |
+| join | 5 of 6 | 4 of 6 |
+| lookup | 6 of 6 | 2 of 6 |
+| project | 7 of 8 | 4 of 8 |
+| unanswerable | 8 of 8 | 8 of 8 |
+
+### Fresh set failures: qwen2.5-coder:14b (3)
+
+- **f_senna_wins** (history): How many Grands Prix did Ayrton Senna win in his career?
+  - declined: The provided tables do not contain information about Ayrton Senna's career results or wins.
+- **f_race_laps_2024_bahrain** (join): How many laps long was the 2024 Bahrain Grand Prix race?
+  - got [['2.6153696790138987']], expected [['57']]
+- **f_safety_car_races_2025** (project): In how many 2025 Grand Prix races was there at least one safety car period (not counting virtual safety cars)?
+  - got [['17']], expected [['12']]
+
+### Fresh set failures: qwen2.5-coder:7b (14)
+
+- **f_pole_2024_japan** (lookup): Who took pole position for the 2024 Japanese Grand Prix? Give the three-letter driver code.
+  - got [], expected [['VER']]
+- **f_grid_2025_austria_piastri** (lookup): Where did Oscar Piastri start the 2025 Austrian Grand Prix? Give the grid position.
+  - got [['None'], ['None'], ['None']], expected [['3']]
+- **f_circuit_2025_japan** (lookup): On which circuit was the 2025 Japanese Grand Prix run? Give the circuit name.
+  - declined: The query requires the 'dim_circuit' table, which is not available in the provided schema.
+- **f_laps_2024_spain_alonso** (lookup): How many laps did Fernando Alonso complete in the 2024 Spanish Grand Prix race?
+  - got [['76']], expected [['65']]
+- **f_races_2019** (aggregate): How many races were run in the 2019 season?
+  - no working query. Errors: Binder Error: Referenced column "session_code" not found in FROM clause!; Binder Error: Referenced column "session_code" not found in FROM clause!
+- **f_hamilton_podiums_2021** (aggregate): How many podium finishes did Lewis Hamilton have in 2021?
+  - got [['36']], expected [['17']]
+- **f_senna_wins** (history): How many Grands Prix did Ayrton Senna win in his career?
+  - got [['0']], expected [['41']]
+- **f_champion_1994** (history): Who won the 1994 drivers' championship? Give the driver id.
+  - got [['michael_schumacher'], ['damon_hill'], ['berger']], expected [['michael_schumacher']]
+- **f_fastest_lap_2024_italy** (join): Who set the fastest race lap of the 2024 Italian Grand Prix, and what was the time in seconds? Ignore deleted laps.
+  - got [['ALO', '67.694']], expected [['NOR', '81.432']]
+- **f_race_laps_2024_bahrain** (join): How many laps long was the 2024 Bahrain Grand Prix race?
+  - got [['110450.63000000003']], expected [['57']]
+- **f_monaco_pit_loss** (project): What is the median green-flag pit loss at Monaco, in seconds?
+  - got [], expected [['21.251500000000007']]
+- **f_coldest_race_2024** (project): Which 2024 Grand Prix race had the lowest average track temperature? Give the event name.
+  - declined: The query cannot be executed because the column 'avg_track_temp' is not found in the FROM clause. The correct column name is 'avg_track_temp' in the table 'fct_session_weather'.
+- **f_rain_races_2025** (project): In how many 2025 Grand Prix races did it rain at some point?
+  - got [['16']], expected [['6']]
+- **f_safety_car_races_2025** (project): In how many 2025 Grand Prix races was there at least one safety car period (not counting virtual safety cars)?
+  - got [['17']], expected [['12']]

@@ -225,3 +225,42 @@ def test_whole_run_and_report(dbfile, tmp_path, monkeypatch):
     report.main()
     md = (tmp_path / "RESULTS.md").read_text()
     assert "fake:1" in md and "1 of 1" in md
+
+
+# ---------------------------------------------------------------- the fresh question set
+def test_fresh_set_is_sound_and_separate():
+    from qa_agent.questions_fresh import FRESH
+    assert len(FRESH) >= 30 and sum(not q.answerable for q in FRESH) >= 6
+    assert not {q.id for q in FRESH} & set(BY_ID)
+    assert not {q.question for q in FRESH} & {q.question for q in QUESTIONS}
+    for q in FRESH:
+        if q.answerable:
+            sqlguard.check(q.sql)
+            used = set(re.findall(r"\b(?:from|join)\s+(\w+)", q.sql, flags=re.I))
+            assert used <= set(q.tables), f"{q.id}: SQL uses {used - set(q.tables)}"
+        else:
+            assert not q.tables, q.id
+
+
+def test_fresh_run_goes_to_its_own_folder_and_report(dbfile, tmp_path, monkeypatch):
+    from qa_agent.questions import Q
+
+    class Fake(ag.Backend):
+        def __init__(self, *a, **k):
+            pass
+
+        def chat(self, messages):
+            if "route" in messages[0]["content"]:
+                return '{"tables": ["dim_session"]}'
+            return '{"sql": "select count(*) from dim_session"}'
+
+    monkeypatch.setattr(ag, "Ollama", Fake)
+    monkeypatch.setattr(run_eval, "FRESH", [Q("t_count", "lookup", "How many sessions are there?", "select count(*) from dim_session", ["dim_session"])])
+    out = tmp_path / "fresh" / "fake_1.json"
+    run_eval.main(["--set", "fresh", "--model", "fake:1", "--db", str(dbfile), "--manifest", str(tmp_path / "none.json"), "--out", str(out)])
+    assert json.loads(out.read_text())["set"] == "fresh"
+    monkeypatch.setattr(report, "RES", tmp_path)
+    (tmp_path / "main.json").write_text(out.read_text())
+    report.main()
+    md = (tmp_path / "RESULTS.md").read_text()
+    assert "## Fresh question set" in md and "fake:1" in md

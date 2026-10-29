@@ -1,0 +1,1125 @@
+{
+ "model": "qwen2.5-coder:7b",
+ "date": "2026-10-29",
+ "num_ctx": 12288,
+ "prompt_version": "v2",
+ "set": "fresh",
+ "summary": {
+  "questions": 36,
+  "answerable": 28,
+  "unanswerable": 8,
+  "correct_answerable": 14,
+  "accuracy": 0.5,
+  "correct_refusals": 8,
+  "refusal_accuracy": 1.0,
+  "over_refusals": 2,
+  "over_refusal_rate": 0.071,
+  "route_recall": 0.857,
+  "route_precision": 0.545,
+  "first_try_valid": 0.786,
+  "mean_attempts": 1.25,
+  "mean_seconds": 6.658,
+  "by_category": {
+   "aggregate": {
+    "n": 5,
+    "correct": 3
+   },
+   "history": {
+    "n": 3,
+    "correct": 1
+   },
+   "join": {
+    "n": 6,
+    "correct": 4
+   },
+   "lookup": {
+    "n": 6,
+    "correct": 2
+   },
+   "project": {
+    "n": 8,
+    "correct": 4
+   },
+   "unanswerable": {
+    "n": 8,
+    "correct": 8
+   }
+  }
+ },
+ "records": [
+  {
+   "id": "f_winner_2023_monaco",
+   "category": "lookup",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 14.54,
+   "tables": [
+    "fct_season_result"
+   ],
+   "route_recall": false,
+   "route_precision": 0.0,
+   "first_try": true,
+   "correct": true,
+   "question": "Which driver won the 2023 Monaco Grand Prix? Give the three-letter driver code.",
+   "sql": "SELECT driver_code FROM fct_season_result WHERE race_name ILIKE '%Monaco%' AND season = 2023 AND is_win = TRUE",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "VER"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "VER"
+    ]
+   ]
+  },
+  {
+   "id": "f_pole_2024_japan",
+   "category": "lookup",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 5.84,
+   "tables": [
+    "dim_driver",
+    "fct_result"
+   ],
+   "route_recall": true,
+   "route_precision": 0.5,
+   "first_try": true,
+   "correct": false,
+   "question": "Who took pole position for the 2024 Japanese Grand Prix? Give the three-letter driver code.",
+   "sql": "SELECT driver_code FROM fct_result WHERE session_key LIKE '2024-Q01-%' AND position = 1",
+   "reason": "",
+   "errors": [],
+   "rows": [],
+   "ref_rows": [
+    [
+     "VER"
+    ]
+   ]
+  },
+  {
+   "id": "f_team_2025_canada_hamilton",
+   "category": "lookup",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 6.37,
+   "tables": [
+    "dim_driver",
+    "dim_constructor",
+    "fct_result"
+   ],
+   "route_recall": true,
+   "route_precision": 0.3333333333333333,
+   "first_try": true,
+   "correct": true,
+   "question": "Which team did Lewis Hamilton drive for in the 2025 Canadian Grand Prix? Give the team name.",
+   "sql": "SELECT team_name FROM fct_result JOIN dim_driver ON fct_result.driver_code = dim_driver.driver_code WHERE dim_driver.full_name = 'Lewis Hamilton' AND session_key LIKE '2025-R01-%'",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "Ferrari"
+    ],
+    [
+     "Ferrari"
+    ],
+    [
+     "Ferrari"
+    ],
+    [
+     "Ferrari"
+    ],
+    [
+     "Ferrari"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "Ferrari"
+    ]
+   ]
+  },
+  {
+   "id": "f_grid_2025_austria_piastri",
+   "category": "lookup",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 6.37,
+   "tables": [
+    "dim_driver",
+    "fct_result"
+   ],
+   "route_recall": true,
+   "route_precision": 0.5,
+   "first_try": true,
+   "correct": false,
+   "question": "Where did Oscar Piastri start the 2025 Austrian Grand Prix? Give the grid position.",
+   "sql": "SELECT grid_position FROM fct_result JOIN dim_session ON fct_result.session_key = dim_session.session_key WHERE dim_session.year = 2025 AND dim_session.event ILIKE '%Austrian%' AND fct_result.driver_code = 'PIA'",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "None"
+    ],
+    [
+     "None"
+    ],
+    [
+     "None"
+    ],
+    [
+     "None"
+    ],
+    [
+     "3"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "3"
+    ]
+   ]
+  },
+  {
+   "id": "f_circuit_2025_japan",
+   "category": "lookup",
+   "answerable": true,
+   "refused": true,
+   "executed": false,
+   "attempts": 2,
+   "seconds": 8.15,
+   "tables": [
+    "dim_session",
+    "dim_session_circuit",
+    "dim_circuit"
+   ],
+   "route_recall": true,
+   "route_precision": 0.3333333333333333,
+   "first_try": false,
+   "correct": false,
+   "question": "On which circuit was the 2025 Japanese Grand Prix run? Give the circuit name.",
+   "sql": "SELECT dim_circuit.circuit_name FROM dim_session JOIN dim_session_circuit ON dim_session.session_key = dim_session_circuit.session_key WHERE dim_session.year = 2025 AND dim_session.event ILIKE '%Japanese%' AND dim_session.session_code = 'R'",
+   "reason": "The query requires the 'dim_circuit' table, which is not available in the provided schema.",
+   "errors": [
+    "Binder Error: Referenced table \"dim_circuit\" not found!"
+   ],
+   "rows": [],
+   "ref_rows": [
+    [
+     "Suzuka Circuit"
+    ]
+   ]
+  },
+  {
+   "id": "f_laps_2024_spain_alonso",
+   "category": "lookup",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 7.67,
+   "tables": [
+    "dim_driver",
+    "fct_lap"
+   ],
+   "route_recall": false,
+   "route_precision": 0.0,
+   "first_try": true,
+   "correct": false,
+   "question": "How many laps did Fernando Alonso complete in the 2024 Spanish Grand Prix race?",
+   "sql": "SELECT COUNT(*) FROM fct_lap WHERE driver_code = 'ALO' AND session_key LIKE '2024-R08-R'",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "76"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "65"
+    ]
+   ]
+  },
+  {
+   "id": "f_verstappen_wins_2023",
+   "category": "aggregate",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 7.05,
+   "tables": [
+    "fct_season_result",
+    "dim_driver"
+   ],
+   "route_recall": true,
+   "route_precision": 0.5,
+   "first_try": true,
+   "correct": true,
+   "question": "How many Grands Prix did Max Verstappen win in 2023?",
+   "sql": "SELECT COUNT(*) FROM fct_season_result WHERE driver_id = 'max_verstappen' AND season = 2023 AND is_win = TRUE",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "19"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "19"
+    ]
+   ]
+  },
+  {
+   "id": "f_races_2019",
+   "category": "aggregate",
+   "answerable": true,
+   "refused": false,
+   "executed": false,
+   "attempts": 3,
+   "seconds": 7.01,
+   "tables": [
+    "fct_season_result"
+   ],
+   "route_recall": true,
+   "route_precision": 1.0,
+   "first_try": false,
+   "correct": false,
+   "question": "How many races were run in the 2019 season?",
+   "sql": "SELECT COUNT(*) FROM fct_season_result WHERE season = 2019 AND session_code = 'R'",
+   "reason": "",
+   "errors": [
+    "Binder Error: Referenced column \"session_code\" not found in FROM clause!",
+    "Binder Error: Referenced column \"session_code\" not found in FROM clause!",
+    "Binder Error: Referenced column \"session_code\" not found in FROM clause!"
+   ],
+   "rows": [],
+   "ref_rows": [
+    [
+     "21"
+    ]
+   ]
+  },
+  {
+   "id": "f_hamilton_podiums_2021",
+   "category": "aggregate",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 6.33,
+   "tables": [
+    "fct_result",
+    "dim_driver"
+   ],
+   "route_recall": false,
+   "route_precision": 0.0,
+   "first_try": true,
+   "correct": false,
+   "question": "How many podium finishes did Lewis Hamilton have in 2021?",
+   "sql": "SELECT COUNT(*) FROM fct_result WHERE driver_id = 'hamilton' AND position <= 3 AND session_key LIKE '2021-R%';",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "36"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "17"
+    ]
+   ]
+  },
+  {
+   "id": "f_most_wins_2022",
+   "category": "aggregate",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 7.51,
+   "tables": [
+    "fct_season_result"
+   ],
+   "route_recall": true,
+   "route_precision": 1.0,
+   "first_try": true,
+   "correct": true,
+   "question": "Which driver won the most Grands Prix in 2022? Give the driver id.",
+   "sql": "SELECT driver_id FROM fct_season_result WHERE season = 2022 AND is_win = TRUE GROUP BY driver_id ORDER BY COUNT(*) DESC LIMIT 1",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "max_verstappen"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "max_verstappen"
+    ]
+   ]
+  },
+  {
+   "id": "f_most_british_wins",
+   "category": "aggregate",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 7.55,
+   "tables": [
+    "dim_driver",
+    "fct_season_result"
+   ],
+   "route_recall": true,
+   "route_precision": 0.5,
+   "first_try": true,
+   "correct": true,
+   "question": "Which driver has won the most British Grands Prix? Give the driver id.",
+   "sql": "SELECT driver_id FROM fct_season_result WHERE race_name ILIKE '%British%' AND is_win = TRUE GROUP BY driver_id ORDER BY COUNT(*) DESC LIMIT 1",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "hamilton"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "hamilton"
+    ]
+   ]
+  },
+  {
+   "id": "f_senna_wins",
+   "category": "history",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 3.81,
+   "tables": [
+    "dim_driver",
+    "fct_season_result"
+   ],
+   "route_recall": true,
+   "route_precision": 0.5,
+   "first_try": true,
+   "correct": false,
+   "question": "How many Grands Prix did Ayrton Senna win in his career?",
+   "sql": "SELECT COUNT(*) FROM fct_season_result WHERE driver_code = 'SNN' AND is_win = TRUE",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "0"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "41"
+    ]
+   ]
+  },
+  {
+   "id": "f_champion_1994",
+   "category": "history",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 7.44,
+   "tables": [
+    "fct_driver_standing"
+   ],
+   "route_recall": true,
+   "route_precision": 1.0,
+   "first_try": true,
+   "correct": false,
+   "question": "Who won the 1994 drivers' championship? Give the driver id.",
+   "sql": "SELECT driver_id FROM fct_driver_standing WHERE season = 1994 AND round = (SELECT MAX(round) FROM fct_driver_standing WHERE season = 1994)",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "michael_schumacher"
+    ],
+    [
+     "damon_hill"
+    ],
+    [
+     "berger"
+    ],
+    [
+     "hakkinen"
+    ],
+    [
+     "alesi"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "michael_schumacher"
+    ]
+   ]
+  },
+  {
+   "id": "f_constructor_champion_2010",
+   "category": "history",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 5.04,
+   "tables": [
+    "fct_constructor_standing"
+   ],
+   "route_recall": true,
+   "route_precision": 1.0,
+   "first_try": true,
+   "correct": true,
+   "question": "Which constructor won the 2010 constructors' championship? Give the constructor id.",
+   "sql": "SELECT constructor_id FROM fct_constructor_standing WHERE season = 2010 ORDER BY points DESC LIMIT 1",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "red_bull"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "red_bull"
+    ]
+   ]
+  },
+  {
+   "id": "f_fastest_lap_2024_italy",
+   "category": "join",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 8.77,
+   "tables": [
+    "fct_lap",
+    "dim_driver"
+   ],
+   "route_recall": true,
+   "route_precision": 0.5,
+   "first_try": true,
+   "correct": false,
+   "question": "Who set the fastest race lap of the 2024 Italian Grand Prix, and what was the time in seconds? Ignore deleted laps.",
+   "sql": "SELECT driver_code, MIN(lap_time_s) AS fastest_lap_time FROM fct_lap WHERE session_key LIKE '2024-R%-%' AND session_code = 'R' AND lap_time_s IS NOT NULL AND deleted = FALSE GROUP BY driver_code ORDER BY fastest_lap_time ASC LIMIT 1",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "ALO",
+     "67.694"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "NOR",
+     "81.432"
+    ]
+   ]
+  },
+  {
+   "id": "f_race_laps_2024_bahrain",
+   "category": "join",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 10.28,
+   "tables": [
+    "dim_session",
+    "dim_session_circuit",
+    "dim_circuit",
+    "fct_lap"
+   ],
+   "route_recall": true,
+   "route_precision": 0.25,
+   "first_try": true,
+   "correct": false,
+   "question": "How many laps long was the 2024 Bahrain Grand Prix race?",
+   "sql": "SELECT SUM(lap_time_s) AS total_race_time FROM fct_lap WHERE session_key IN (SELECT session_key FROM dim_session WHERE year = 2024 AND event ILIKE '%Bahrain%' AND session_code = 'R')",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "110450.63000000003"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "57"
+    ]
+   ]
+  },
+  {
+   "id": "f_leader_lap30_2025_spain",
+   "category": "join",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 7.58,
+   "tables": [
+    "fct_lap_gap",
+    "dim_driver"
+   ],
+   "route_recall": true,
+   "route_precision": 0.5,
+   "first_try": true,
+   "correct": true,
+   "question": "Who led the 2025 Spanish Grand Prix race at the end of lap 30? Give the three-letter driver code.",
+   "sql": "SELECT driver_code FROM fct_lap_gap WHERE session_key = (SELECT session_key FROM dim_session WHERE event ILIKE '%Spanish%' AND session_code = 'R' AND year = 2025) AND lap_number = 30 ORDER BY position ASC LIMIT 1",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "PIA"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "PIA"
+    ]
+   ]
+  },
+  {
+   "id": "f_stops_2025_monaco_leclerc",
+   "category": "join",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 8.64,
+   "tables": [
+    "dim_driver",
+    "fct_pit_stop"
+   ],
+   "route_recall": true,
+   "route_precision": 0.5,
+   "first_try": true,
+   "correct": true,
+   "question": "How many pit stops did Charles Leclerc make in the 2025 Monaco Grand Prix race?",
+   "sql": "SELECT COUNT(*) FROM fct_pit_stop AS T1 JOIN dim_driver AS T2 ON T1.driver_code = T2.driver_code JOIN dim_session AS T3 ON T1.session_key = T3.session_key WHERE T2.full_name = 'Charles Leclerc' AND T3.event ILIKE '%Monaco%' AND T3.year = 2025 AND T3.session_code = 'R'",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "2"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "2"
+    ]
+   ]
+  },
+  {
+   "id": "f_purple_nor_2024_belgium_q",
+   "category": "join",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 2,
+   "seconds": 9.22,
+   "tables": [
+    "dim_driver",
+    "fct_lap_sector"
+   ],
+   "route_recall": true,
+   "route_precision": 0.5,
+   "first_try": false,
+   "correct": true,
+   "question": "How many purple sectors did Lando Norris set in 2024 Belgian Grand Prix qualifying?",
+   "sql": "SELECT COUNT(*) FROM fct_lap_sector AS T1 JOIN dim_session AS T2 ON T1.session_key = T2.session_key WHERE T1.driver_code = 'NOR' AND T1.session_code = 'Q' AND T2.year = 2024 AND T2.event ILIKE '%Belgian%' AND T1.status = 'purple'",
+   "reason": "",
+   "errors": [
+    "Binder Error: Referenced column \"event\" not found in FROM clause!"
+   ],
+   "rows": [
+    [
+     "4"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "4"
+    ]
+   ]
+  },
+  {
+   "id": "f_hard_stints_2024_bahrain",
+   "category": "join",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 2,
+   "seconds": 8.77,
+   "tables": [
+    "dim_session",
+    "dim_session_circuit",
+    "fct_stint"
+   ],
+   "route_recall": true,
+   "route_precision": 0.3333333333333333,
+   "first_try": false,
+   "correct": true,
+   "question": "How many stints were run on the HARD compound in the 2024 Bahrain Grand Prix race?",
+   "sql": "SELECT COUNT(*) FROM fct_stint AS T1 JOIN dim_session AS T2 ON T1.session_key = T2.session_key WHERE T2.year = 2024 AND T2.session_code = 'R' AND T2.event ILIKE '%Bahrain%' AND T1.compound = 'HARD'",
+   "reason": "",
+   "errors": [
+    "Binder Error: Referenced column \"event\" not found in FROM clause!"
+   ],
+   "rows": [
+    [
+     "37"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "37"
+    ]
+   ]
+  },
+  {
+   "id": "f_lowest_pit_loss_circuit",
+   "category": "project",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 7.17,
+   "tables": [
+    "dim_circuit",
+    "fct_circuit_pit_loss"
+   ],
+   "route_recall": true,
+   "route_precision": 0.5,
+   "first_try": true,
+   "correct": true,
+   "question": "Which circuit has the lowest median green-flag pit loss, counting only circuits marked reliable? Give the circuit name.",
+   "sql": "SELECT circuit_name FROM fct_circuit_pit_loss WHERE is_reliable = TRUE ORDER BY median_pit_loss_s ASC LIMIT 1",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "Circuit de Spa-Francorchamps"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "Circuit de Spa-Francorchamps"
+    ]
+   ]
+  },
+  {
+   "id": "f_monaco_pit_loss",
+   "category": "project",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 3.61,
+   "tables": [
+    "dim_circuit",
+    "fct_circuit_pit_loss"
+   ],
+   "route_recall": true,
+   "route_precision": 0.5,
+   "first_try": true,
+   "correct": false,
+   "question": "What is the median green-flag pit loss at Monaco, in seconds?",
+   "sql": "SELECT median_pit_loss_s FROM fct_circuit_pit_loss WHERE circuit_name = 'Monaco Grand Prix'",
+   "reason": "",
+   "errors": [],
+   "rows": [],
+   "ref_rows": [
+    [
+     "21.251500000000007"
+    ]
+   ]
+  },
+  {
+   "id": "f_coldest_race_2024",
+   "category": "project",
+   "answerable": true,
+   "refused": true,
+   "executed": false,
+   "attempts": 2,
+   "seconds": 5.68,
+   "tables": [
+    "dim_session",
+    "fct_session_weather"
+   ],
+   "route_recall": true,
+   "route_precision": 0.5,
+   "first_try": false,
+   "correct": false,
+   "question": "Which 2024 Grand Prix race had the lowest average track temperature? Give the event name.",
+   "sql": "SELECT event FROM dim_session WHERE year = 2024 AND session_code = 'R' ORDER BY avg_track_temp ASC LIMIT 1",
+   "reason": "The query cannot be executed because the column 'avg_track_temp' is not found in the FROM clause. The correct column name is 'avg_track_temp' in the table 'fct_session_weather'.",
+   "errors": [
+    "Binder Error: Referenced column \"avg_track_temp\" not found in FROM clause!"
+   ],
+   "rows": [],
+   "ref_rows": [
+    [
+     "Las Vegas Grand Prix"
+    ]
+   ]
+  },
+  {
+   "id": "f_rain_races_2025",
+   "category": "project",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 2,
+   "seconds": 8.34,
+   "tables": [
+    "fct_session_weather"
+   ],
+   "route_recall": true,
+   "route_precision": 1.0,
+   "first_try": false,
+   "correct": false,
+   "question": "In how many 2025 Grand Prix races did it rain at some point?",
+   "sql": "SELECT COUNT(*) FROM fct_session_weather AS ws JOIN dim_session AS ds ON ws.session_key = ds.session_key WHERE ws.year = 2025 AND ds.event ILIKE '%Grand Prix%' AND ws.any_rain = TRUE",
+   "reason": "",
+   "errors": [
+    "Binder Error: Referenced column \"event\" not found in FROM clause!"
+   ],
+   "rows": [
+    [
+     "16"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "6"
+    ]
+   ]
+  },
+  {
+   "id": "f_safety_car_races_2025",
+   "category": "project",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 7.62,
+   "tables": [
+    "fct_race_control_period"
+   ],
+   "route_recall": true,
+   "route_precision": 1.0,
+   "first_try": true,
+   "correct": false,
+   "question": "In how many 2025 Grand Prix races was there at least one safety car period (not counting virtual safety cars)?",
+   "sql": "SELECT COUNT(*) FROM fct_race_control_period AS rcp JOIN dim_session AS ds ON rcp.session_key = ds.session_key WHERE ds.year = 2025 AND ds.session_code = 'R' AND rcp.kind = 'SC' AND rcp.end_time IS NOT NULL",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "17"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "12"
+    ]
+   ]
+  },
+  {
+   "id": "f_red_flags_2023",
+   "category": "project",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 7.18,
+   "tables": [
+    "fct_race_control_event"
+   ],
+   "route_recall": false,
+   "route_precision": 0.0,
+   "first_try": true,
+   "correct": true,
+   "question": "Which 2023 Grand Prix races had a red flag? Give the event names.",
+   "sql": "SELECT event FROM dim_session WHERE year = 2023 AND session_code = 'R' AND session_key IN (SELECT session_key FROM fct_race_control_event WHERE year = 2023 AND category = 'Flag' AND flag = 'RED')",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "Australian Grand Prix"
+    ],
+    [
+     "S\u00e3o Paulo Grand Prix"
+    ],
+    [
+     "Dutch Grand Prix"
+    ],
+    [
+     "Mexico City Grand Prix"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "Mexico City Grand Prix"
+    ],
+    [
+     "Australian Grand Prix"
+    ],
+    [
+     "S\u00e3o Paulo Grand Prix"
+    ],
+    [
+     "Dutch Grand Prix"
+    ]
+   ]
+  },
+  {
+   "id": "f_sessions_loaded_2025",
+   "category": "project",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 4.54,
+   "tables": [
+    "fct_ingest_summary"
+   ],
+   "route_recall": true,
+   "route_precision": 1.0,
+   "first_try": true,
+   "correct": true,
+   "question": "How many sessions were loaded in 2025?",
+   "sql": "SELECT sessions_loaded FROM fct_ingest_summary WHERE year = 2025",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "120"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "120"
+    ]
+   ]
+  },
+  {
+   "id": "f_heldout_mae_undisturbed",
+   "category": "project",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 3.92,
+   "tables": [
+    "fct_pit_prediction_heldout_score"
+   ],
+   "route_recall": true,
+   "route_precision": 1.0,
+   "first_try": true,
+   "correct": true,
+   "question": "What is the held-out mean absolute error, in places, of the pit-stop prediction for undisturbed stops?",
+   "sql": "SELECT held_out_mae FROM fct_pit_prediction_heldout_score WHERE scope = 'undisturbed'",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "0.3066255778120185"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "0.3066255778120185"
+    ]
+   ]
+  },
+  {
+   "id": "f_champion_2028",
+   "category": "unanswerable",
+   "answerable": false,
+   "refused": true,
+   "executed": false,
+   "attempts": 0,
+   "seconds": 1.74,
+   "tables": [],
+   "no_data": false,
+   "correct": true,
+   "question": "Who will win the 2028 drivers' championship?",
+   "sql": "",
+   "reason": "The 2028 drivers' championship has not happened yet and is not recorded in the provided tables.",
+   "errors": [],
+   "rows": [],
+   "ref_rows": []
+  },
+  {
+   "id": "f_tyre_temperature",
+   "category": "unanswerable",
+   "answerable": false,
+   "refused": true,
+   "executed": false,
+   "attempts": 1,
+   "seconds": 8.82,
+   "tables": [
+    "dim_driver",
+    "fct_lap",
+    "fct_lap_sector"
+   ],
+   "no_data": false,
+   "correct": true,
+   "question": "What was the front-left tyre temperature on Max Verstappen's car at the start of the 2024 Dutch Grand Prix?",
+   "sql": "",
+   "reason": "The provided schema does not include tables or columns related to tyre temperatures.",
+   "errors": [],
+   "rows": [],
+   "ref_rows": []
+  },
+  {
+   "id": "f_red_bull_budget",
+   "category": "unanswerable",
+   "answerable": false,
+   "refused": true,
+   "executed": false,
+   "attempts": 0,
+   "seconds": 1.68,
+   "tables": [],
+   "no_data": false,
+   "correct": true,
+   "question": "What was Red Bull's budget for the 2023 season?",
+   "sql": "",
+   "reason": "The budget for Red Bull's 2023 season is not recorded in the provided tables.",
+   "errors": [],
+   "rows": [],
+   "ref_rows": []
+  },
+  {
+   "id": "f_norris_fuel",
+   "category": "unanswerable",
+   "answerable": false,
+   "refused": true,
+   "executed": false,
+   "attempts": 1,
+   "seconds": 5.53,
+   "tables": [
+    "dim_driver",
+    "fct_result"
+   ],
+   "no_data": false,
+   "correct": true,
+   "question": "How much fuel did Lando Norris start the 2025 British Grand Prix with?",
+   "sql": "",
+   "reason": "The provided tables do not contain information about the amount of fuel drivers started with in each session.",
+   "errors": [],
+   "rows": [],
+   "ref_rows": []
+  },
+  {
+   "id": "f_rainfall_mm",
+   "category": "unanswerable",
+   "answerable": false,
+   "refused": true,
+   "executed": false,
+   "attempts": 1,
+   "seconds": 5.23,
+   "tables": [
+    "dim_session",
+    "fct_session_weather"
+   ],
+   "no_data": false,
+   "correct": true,
+   "question": "How many millimetres of rain fell during the 2024 S\u00e3o Paulo Grand Prix?",
+   "sql": "",
+   "reason": "The database does not provide information about the amount of rain in millimetres during specific events.",
+   "errors": [],
+   "rows": [],
+   "ref_rows": []
+  },
+  {
+   "id": "f_reaction_time",
+   "category": "unanswerable",
+   "answerable": false,
+   "refused": true,
+   "executed": false,
+   "attempts": 0,
+   "seconds": 1.94,
+   "tables": [],
+   "no_data": false,
+   "correct": true,
+   "question": "What was Lando Norris's reaction time at the start of the 2025 Australian Grand Prix?",
+   "sql": "",
+   "reason": "The question is about something that has not happened yet, as the 2025 Australian Grand Prix has not occurred.",
+   "errors": [],
+   "rows": [],
+   "ref_rows": []
+  },
+  {
+   "id": "f_radio_count",
+   "category": "unanswerable",
+   "answerable": false,
+   "refused": true,
+   "executed": false,
+   "attempts": 1,
+   "seconds": 6.21,
+   "tables": [
+    "dim_driver",
+    "dim_constructor",
+    "fct_race_control_event"
+   ],
+   "no_data": false,
+   "correct": true,
+   "question": "How many team radio messages did Ferrari send to Charles Leclerc in the 2024 Monaco Grand Prix?",
+   "sql": "",
+   "reason": "The query cannot be answered with the given tables because there is no table that directly links team radio messages to drivers and constructors.",
+   "errors": [],
+   "rows": [],
+   "ref_rows": []
+  },
+  {
+   "id": "f_pit_crew_size",
+   "category": "unanswerable",
+   "answerable": false,
+   "refused": true,
+   "executed": false,
+   "attempts": 1,
+   "seconds": 6.53,
+   "tables": [
+    "dim_constructor",
+    "fct_pit_stop"
+   ],
+   "no_data": false,
+   "correct": true,
+   "question": "How many mechanics were in the Ferrari pit crew at the 2025 Italian Grand Prix?",
+   "sql": "",
+   "reason": "The provided schema does not include tables related to mechanics or pit crews, so it's not possible to determine how many mechanics were in the Ferrari pit crew at the 2025 Italian Grand Prix.",
+   "errors": [],
+   "rows": [],
+   "ref_rows": []
+  }
+ ]
+}
