@@ -1,0 +1,1241 @@
+{
+ "model": "qwen2.5-coder:14b",
+ "date": "2026-10-29",
+ "num_ctx": 8192,
+ "summary": {
+  "questions": 44,
+  "answerable": 34,
+  "unanswerable": 10,
+  "correct_answerable": 13,
+  "accuracy": 0.382,
+  "correct_refusals": 10,
+  "refusal_accuracy": 1.0,
+  "over_refusals": 14,
+  "over_refusal_rate": 0.412,
+  "route_recall": 0.441,
+  "route_precision": 0.545,
+  "first_try_valid": 0.559,
+  "mean_attempts": 1.136,
+  "mean_seconds": 6.473,
+  "by_category": {
+   "aggregate": {
+    "n": 7,
+    "correct": 4
+   },
+   "data-gap": {
+    "n": 1,
+    "correct": 0
+   },
+   "history": {
+    "n": 1,
+    "correct": 1
+   },
+   "join": {
+    "n": 6,
+    "correct": 1
+   },
+   "lookup": {
+    "n": 8,
+    "correct": 0
+   },
+   "project": {
+    "n": 11,
+    "correct": 7
+   },
+   "unanswerable": {
+    "n": 10,
+    "correct": 10
+   }
+  }
+ },
+ "records": [
+  {
+   "id": "winner_2025_italy",
+   "category": "lookup",
+   "answerable": true,
+   "refused": true,
+   "executed": false,
+   "attempts": 0,
+   "seconds": 18.13,
+   "tables": [],
+   "route_recall": false,
+   "route_precision": 0.0,
+   "first_try": false,
+   "correct": false,
+   "question": "Which driver won the 2025 Italian Grand Prix? Give the three-letter driver code.",
+   "sql": "",
+   "reason": "The question is about the future, and these tables do not record future events.",
+   "errors": [],
+   "rows": [],
+   "ref_rows": [
+    [
+     "VER"
+    ]
+   ]
+  },
+  {
+   "id": "pole_2025_monaco",
+   "category": "lookup",
+   "answerable": true,
+   "refused": true,
+   "executed": false,
+   "attempts": 0,
+   "seconds": 2.57,
+   "tables": [],
+   "route_recall": false,
+   "route_precision": 0.0,
+   "first_try": false,
+   "correct": false,
+   "question": "Who took pole position for the 2025 Monaco Grand Prix? Give the three-letter driver code.",
+   "sql": "",
+   "reason": "The question is about the future, and these tables do not record future events.",
+   "errors": [],
+   "rows": [],
+   "ref_rows": [
+    [
+     "NOR"
+    ]
+   ]
+  },
+  {
+   "id": "round_2025_singapore",
+   "category": "lookup",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 9.18,
+   "tables": [
+    "dim_session",
+    "dim_session_circuit"
+   ],
+   "route_recall": true,
+   "route_precision": 0.5,
+   "first_try": true,
+   "correct": false,
+   "question": "In which round of 2025 was the Singapore Grand Prix run? Give the round number.",
+   "sql": "SELECT round FROM dim_session WHERE year = 2025 AND event ILIKE '%Singapore%'",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "18"
+    ],
+    [
+     "18"
+    ],
+    [
+     "18"
+    ],
+    [
+     "18"
+    ],
+    [
+     "18"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "18"
+    ]
+   ]
+  },
+  {
+   "id": "circuit_2024_belgium",
+   "category": "lookup",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 4.99,
+   "tables": [
+    "dim_session",
+    "dim_session_circuit"
+   ],
+   "route_recall": true,
+   "route_precision": 0.5,
+   "first_try": true,
+   "correct": false,
+   "question": "On which circuit was the 2024 Belgian Grand Prix run? Give the circuit name.",
+   "sql": "SELECT circuit_name FROM dim_session_circuit WHERE event ILIKE '%Belgian Grand Prix%' AND year = 2024;",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "Circuit de Spa-Francorchamps"
+    ],
+    [
+     "Circuit de Spa-Francorchamps"
+    ],
+    [
+     "Circuit de Spa-Francorchamps"
+    ],
+    [
+     "Circuit de Spa-Francorchamps"
+    ],
+    [
+     "Circuit de Spa-Francorchamps"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "Circuit de Spa-Francorchamps"
+    ]
+   ]
+  },
+  {
+   "id": "grid_2024_sao_paulo",
+   "category": "lookup",
+   "answerable": true,
+   "refused": true,
+   "executed": false,
+   "attempts": 2,
+   "seconds": 11.97,
+   "tables": [
+    "dim_driver",
+    "fct_result"
+   ],
+   "route_recall": false,
+   "route_precision": 0.0,
+   "first_try": false,
+   "correct": false,
+   "question": "Where did Max Verstappen start the 2024 S\u00e3o Paulo Grand Prix? Give the grid position.",
+   "sql": "SELECT grid_position FROM fct_result WHERE session_key LIKE '2024-R%-%' AND driver_code = 'VER' AND event ILIKE '%S\u00e3o Paulo%'",
+   "reason": "The provided tables do not contain an 'event' column, which is necessary to identify the S\u00e3o Paulo Grand Prix. The query cannot be completed with the given schema.",
+   "errors": [
+    "Binder Error: Referenced column \"event\" not found in FROM clause!"
+   ],
+   "rows": [],
+   "ref_rows": [
+    [
+     "17"
+    ]
+   ]
+  },
+  {
+   "id": "team_2024_sainz",
+   "category": "lookup",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 7.02,
+   "tables": [
+    "dim_driver",
+    "fct_result",
+    "dim_constructor"
+   ],
+   "route_recall": false,
+   "route_precision": 0.3333333333333333,
+   "first_try": true,
+   "correct": false,
+   "question": "Which team did Carlos Sainz drive for in the 2024 Australian Grand Prix? Give the team name.",
+   "sql": "SELECT team_name FROM fct_result WHERE session_key LIKE '2024-R01-A' AND driver_code = (SELECT driver_code FROM dim_driver WHERE full_name = 'Carlos Sainz') LIMIT 1",
+   "reason": "",
+   "errors": [],
+   "rows": [],
+   "ref_rows": [
+    [
+     "Ferrari"
+    ]
+   ]
+  },
+  {
+   "id": "laps_2025_norris_britain",
+   "category": "lookup",
+   "answerable": true,
+   "refused": true,
+   "executed": false,
+   "attempts": 0,
+   "seconds": 3.79,
+   "tables": [],
+   "route_recall": false,
+   "route_precision": 0.0,
+   "first_try": false,
+   "correct": false,
+   "question": "How many laps did Lando Norris complete in the 2025 British Grand Prix race?",
+   "sql": "",
+   "reason": "The question is about the future, specifically the 2025 British Grand Prix, which has not yet occurred and is not recorded in the provided tables.",
+   "errors": [],
+   "rows": [],
+   "ref_rows": [
+    [
+     "52"
+    ]
+   ]
+  },
+  {
+   "id": "front_row_2025_hungary",
+   "category": "lookup",
+   "answerable": true,
+   "refused": true,
+   "executed": false,
+   "attempts": 0,
+   "seconds": 3.97,
+   "tables": [],
+   "route_recall": false,
+   "route_precision": 0.0,
+   "first_try": false,
+   "correct": false,
+   "question": "Which drivers started on the front row (grid positions 1 and 2) of the 2025 Hungarian Grand Prix? Give the three-letter driver codes.",
+   "sql": "",
+   "reason": "The question is about the future, specifically the 2025 Hungarian Grand Prix, which has not yet occurred. The tables provided do not contain data about future events.",
+   "errors": [],
+   "rows": [],
+   "ref_rows": [
+    [
+     "LEC"
+    ],
+    [
+     "PIA"
+    ]
+   ]
+  },
+  {
+   "id": "hamilton_wins_2007_2024",
+   "category": "aggregate",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 9.43,
+   "tables": [
+    "fct_season_result",
+    "dim_driver"
+   ],
+   "route_recall": true,
+   "route_precision": 0.5,
+   "first_try": true,
+   "correct": true,
+   "question": "How many Grands Prix did Lewis Hamilton win from 2007 to 2024 inclusive?",
+   "sql": "SELECT COUNT(*) FROM fct_season_result WHERE driver_id = 'hamilton' AND season BETWEEN 2007 AND 2024 AND is_win = TRUE;",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "105"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "105"
+    ]
+   ]
+  },
+  {
+   "id": "races_2021",
+   "category": "aggregate",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 6.76,
+   "tables": [
+    "fct_session_weather"
+   ],
+   "route_recall": false,
+   "route_precision": 0.0,
+   "first_try": true,
+   "correct": true,
+   "question": "How many races were run in the 2021 season?",
+   "sql": "SELECT COUNT(*) FROM fct_session_weather WHERE year = 2021 AND session_code = 'R';",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "22"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "22"
+    ]
+   ]
+  },
+  {
+   "id": "winners_2021",
+   "category": "aggregate",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 8.63,
+   "tables": [
+    "fct_result",
+    "dim_driver"
+   ],
+   "route_recall": false,
+   "route_precision": 0.0,
+   "first_try": true,
+   "correct": false,
+   "question": "How many different drivers won a Grand Prix in 2021?",
+   "sql": "SELECT COUNT(DISTINCT driver_code) FROM fct_result WHERE session_key LIKE '2021-R%' AND position = 1 AND session_key LIKE '%R%'",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "8"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "6"
+    ]
+   ]
+  },
+  {
+   "id": "leclerc_podiums_2022",
+   "category": "aggregate",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 8.5,
+   "tables": [
+    "dim_driver",
+    "fct_result"
+   ],
+   "route_recall": false,
+   "route_precision": 0.0,
+   "first_try": true,
+   "correct": false,
+   "question": "How many podium finishes did Charles Leclerc have in 2022?",
+   "sql": "SELECT COUNT(*) AS podium_finishes FROM fct_result WHERE driver_code = 'LEC' AND session_key LIKE '2022%' AND position <= 3;",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "31"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "11"
+    ]
+   ]
+  },
+  {
+   "id": "constructor_champion_2022",
+   "category": "aggregate",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 5.42,
+   "tables": [
+    "fct_constructor_standing"
+   ],
+   "route_recall": true,
+   "route_precision": 1.0,
+   "first_try": true,
+   "correct": true,
+   "question": "Which constructor won the 2022 constructors' championship? Give the constructor id.",
+   "sql": "SELECT constructor_id FROM fct_constructor_standing WHERE season = 2022 ORDER BY points DESC LIMIT 1",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "red_bull"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "red_bull"
+    ]
+   ]
+  },
+  {
+   "id": "driver_champion_2023",
+   "category": "aggregate",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 5.63,
+   "tables": [
+    "fct_driver_standing"
+   ],
+   "route_recall": true,
+   "route_precision": 1.0,
+   "first_try": true,
+   "correct": true,
+   "question": "Which driver won the 2023 drivers' championship? Give the driver id.",
+   "sql": "SELECT driver_id FROM fct_driver_standing WHERE season = 2023 ORDER BY points DESC LIMIT 1",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "max_verstappen"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "max_verstappen"
+    ]
+   ]
+  },
+  {
+   "id": "most_monaco_wins",
+   "category": "aggregate",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 2,
+   "seconds": 17.06,
+   "tables": [
+    "dim_driver",
+    "fct_result",
+    "dim_session",
+    "dim_session_circuit"
+   ],
+   "route_recall": false,
+   "route_precision": 0.0,
+   "first_try": false,
+   "correct": false,
+   "question": "Which driver has won the most Monaco Grands Prix? Give the driver id.",
+   "sql": "SELECT driver_id, COUNT(*) AS wins FROM fct_result WHERE session_key IN (SELECT session_key FROM dim_session WHERE event ILIKE '%Monaco%') AND position = 1 GROUP BY driver_id ORDER BY wins DESC LIMIT 1",
+   "reason": "",
+   "errors": [
+    "Binder Error: Referenced column \"event\" not found in FROM clause!"
+   ],
+   "rows": [
+    [
+     "leclerc",
+     "4"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "senna"
+    ]
+   ]
+  },
+  {
+   "id": "fastest_lap_2025_abu_dhabi",
+   "category": "join",
+   "answerable": true,
+   "refused": true,
+   "executed": false,
+   "attempts": 0,
+   "seconds": 4.08,
+   "tables": [],
+   "route_recall": false,
+   "route_precision": 0.0,
+   "first_try": false,
+   "correct": false,
+   "question": "Who set the fastest race lap of the 2025 Abu Dhabi Grand Prix, and what was the time in seconds? Ignore deleted laps.",
+   "sql": "",
+   "reason": "The question is about the future, specifically the 2025 Abu Dhabi Grand Prix, which has not yet occurred. The tables provided do not contain data for future events.",
+   "errors": [],
+   "rows": [],
+   "ref_rows": [
+    [
+     "LEC",
+     "86.725"
+    ]
+   ]
+  },
+  {
+   "id": "race_laps_2025_singapore",
+   "category": "join",
+   "answerable": true,
+   "refused": true,
+   "executed": false,
+   "attempts": 0,
+   "seconds": 3.09,
+   "tables": [],
+   "route_recall": false,
+   "route_precision": 0.0,
+   "first_try": false,
+   "correct": false,
+   "question": "How many laps long was the 2025 Singapore Grand Prix race?",
+   "sql": "",
+   "reason": "The tables provided do not contain information about future events, including the 2025 Singapore Grand Prix race.",
+   "errors": [],
+   "rows": [],
+   "ref_rows": [
+    [
+     "62"
+    ]
+   ]
+  },
+  {
+   "id": "leader_lap20_2025_dutch",
+   "category": "join",
+   "answerable": true,
+   "refused": true,
+   "executed": false,
+   "attempts": 0,
+   "seconds": 3.76,
+   "tables": [],
+   "route_recall": false,
+   "route_precision": 0.0,
+   "first_try": false,
+   "correct": false,
+   "question": "Who led the 2025 Dutch Grand Prix race at the end of lap 20? Give the three-letter driver code.",
+   "sql": "",
+   "reason": "The question is about the future, specifically the 2025 Dutch Grand Prix, which has not yet occurred and is not recorded in the provided tables.",
+   "errors": [],
+   "rows": [],
+   "ref_rows": [
+    [
+     "PIA"
+    ]
+   ]
+  },
+  {
+   "id": "purple_ver_2025_italy_q",
+   "category": "join",
+   "answerable": true,
+   "refused": true,
+   "executed": false,
+   "attempts": 0,
+   "seconds": 3.16,
+   "tables": [],
+   "route_recall": false,
+   "route_precision": 0.0,
+   "first_try": false,
+   "correct": false,
+   "question": "How many purple sectors did Max Verstappen set in 2025 Italian Grand Prix qualifying?",
+   "sql": "",
+   "reason": "The question is about the future (2025 Italian Grand Prix), and these tables do not record future events.",
+   "errors": [],
+   "rows": [],
+   "ref_rows": [
+    [
+     "3"
+    ]
+   ]
+  },
+  {
+   "id": "compound_2025_spain",
+   "category": "join",
+   "answerable": true,
+   "refused": true,
+   "executed": false,
+   "attempts": 0,
+   "seconds": 3.61,
+   "tables": [],
+   "route_recall": false,
+   "route_precision": 0.0,
+   "first_try": false,
+   "correct": false,
+   "question": "Which tyre compound was used in the most stints in the 2025 Spanish Grand Prix race? Give the compound and the number of stints.",
+   "sql": "",
+   "reason": "The question asks about the 2025 Spanish Grand Prix, which is in the future and not recorded in the provided tables.",
+   "errors": [],
+   "rows": [],
+   "ref_rows": [
+    [
+     "SOFT",
+     "51"
+    ]
+   ]
+  },
+  {
+   "id": "russell_stops_2024_hungary",
+   "category": "join",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 13.25,
+   "tables": [
+    "dim_driver",
+    "fct_pit_stop",
+    "dim_session"
+   ],
+   "route_recall": true,
+   "route_precision": 0.6666666666666666,
+   "first_try": true,
+   "correct": true,
+   "question": "How many pit stops did George Russell make in the 2024 Hungarian Grand Prix race?",
+   "sql": "SELECT COUNT(*) AS pit_stops FROM fct_pit_stop ps JOIN dim_session s ON ps.session_key = s.session_key JOIN dim_driver d ON ps.driver_code = d.driver_code WHERE s.year = 2024 AND s.event ILIKE '%Hungarian%' AND s.session_code = 'R' AND d.full_name = 'George Russell';",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "2"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "2"
+    ]
+   ]
+  },
+  {
+   "id": "highest_pit_loss_circuit",
+   "category": "project",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 9.13,
+   "tables": [
+    "fct_circuit_pit_loss",
+    "dim_circuit"
+   ],
+   "route_recall": true,
+   "route_precision": 0.5,
+   "first_try": true,
+   "correct": true,
+   "question": "Which circuit has the highest median green-flag pit loss, counting only circuits marked reliable? Give the circuit name.",
+   "sql": "SELECT circuit_name FROM fct_circuit_pit_loss WHERE is_reliable = TRUE ORDER BY median_pit_loss_s DESC LIMIT 1",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "Autodromo Enzo e Dino Ferrari"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "Autodromo Enzo e Dino Ferrari"
+    ]
+   ]
+  },
+  {
+   "id": "spa_pit_loss",
+   "category": "project",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 6.77,
+   "tables": [
+    "dim_circuit",
+    "fct_circuit_pit_loss"
+   ],
+   "route_recall": true,
+   "route_precision": 0.5,
+   "first_try": true,
+   "correct": true,
+   "question": "What is the median green-flag pit loss at Spa, in seconds?",
+   "sql": "SELECT median_pit_loss_s FROM fct_circuit_pit_loss WHERE circuit_name ILIKE '%Spa%'",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "19.174500000000016"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "19.174500000000016"
+    ]
+   ]
+  },
+  {
+   "id": "long_pit_losses",
+   "category": "project",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 6.48,
+   "tables": [
+    "fct_pit_loss"
+   ],
+   "route_recall": true,
+   "route_precision": 1.0,
+   "first_try": true,
+   "correct": true,
+   "question": "How many measured green-flag pit stops lost more than 30 seconds?",
+   "sql": "SELECT COUNT(*) FROM fct_pit_loss WHERE pit_loss_s > 30;",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "313"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "313"
+    ]
+   ]
+  },
+  {
+   "id": "degradation_bahrain",
+   "category": "project",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 9.07,
+   "tables": [
+    "dim_circuit",
+    "fct_circuit_degradation"
+   ],
+   "route_recall": true,
+   "route_precision": 0.5,
+   "first_try": true,
+   "correct": true,
+   "question": "At Bahrain, which tyre compound has the highest median degradation per lap, counting only reliable rows? Give the compound.",
+   "sql": "SELECT compound FROM fct_circuit_degradation WHERE circuit_name ILIKE '%Bahrain%' AND is_reliable = TRUE ORDER BY median_degradation_s_per_lap DESC LIMIT 1",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "SOFT"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "SOFT"
+    ]
+   ]
+  },
+  {
+   "id": "hottest_race_2025",
+   "category": "project",
+   "answerable": true,
+   "refused": true,
+   "executed": false,
+   "attempts": 0,
+   "seconds": 3.03,
+   "tables": [],
+   "route_recall": false,
+   "route_precision": 0.0,
+   "first_try": false,
+   "correct": false,
+   "question": "Which 2025 Grand Prix race had the highest average track temperature? Give the event name.",
+   "sql": "",
+   "reason": "The tables provided do not contain data about future events or track temperatures for the year 2025.",
+   "errors": [],
+   "rows": [],
+   "ref_rows": [
+    [
+     "Mexico City Grand Prix"
+    ]
+   ]
+  },
+  {
+   "id": "rain_races_2024",
+   "category": "project",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 6.58,
+   "tables": [
+    "fct_session_weather"
+   ],
+   "route_recall": true,
+   "route_precision": 1.0,
+   "first_try": true,
+   "correct": true,
+   "question": "In how many 2024 Grand Prix races did it rain at some point?",
+   "sql": "SELECT COUNT(*) FROM fct_session_weather WHERE year = 2024 AND session_code = 'R' AND any_rain = TRUE;",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "5"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "5"
+    ]
+   ]
+  },
+  {
+   "id": "safety_car_races_2024",
+   "category": "project",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 9.82,
+   "tables": [
+    "fct_race_control_period",
+    "dim_session"
+   ],
+   "route_recall": true,
+   "route_precision": 1.0,
+   "first_try": true,
+   "correct": false,
+   "question": "In how many 2024 Grand Prix races was there at least one safety car period (not counting virtual safety cars)?",
+   "sql": "SELECT COUNT(DISTINCT session_key) AS safety_car_races FROM fct_race_control_period WHERE year = 2024 AND kind = 'SC';",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "10"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "8"
+    ]
+   ]
+  },
+  {
+   "id": "red_flags_2024",
+   "category": "project",
+   "answerable": true,
+   "refused": true,
+   "executed": false,
+   "attempts": 0,
+   "seconds": 3.54,
+   "tables": [],
+   "route_recall": false,
+   "route_precision": 0.0,
+   "first_try": false,
+   "correct": false,
+   "question": "Which 2024 Grand Prix races had a red flag? Give the event names.",
+   "sql": "",
+   "reason": "The tables provided do not contain information about future events, including the 2024 Grand Prix races or any red flags that may occur.",
+   "errors": [],
+   "rows": [],
+   "ref_rows": [
+    [
+     "S\u00e3o Paulo Grand Prix"
+    ],
+    [
+     "Monaco Grand Prix"
+    ],
+    [
+     "Japanese Grand Prix"
+    ]
+   ]
+  },
+  {
+   "id": "heldout_hit_rate_undisturbed",
+   "category": "project",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 6.57,
+   "tables": [
+    "fct_pit_prediction_heldout_score"
+   ],
+   "route_recall": true,
+   "route_precision": 1.0,
+   "first_try": true,
+   "correct": true,
+   "question": "What is the held-out exact-position hit rate of the pit-stop prediction for undisturbed stops? Give it as a fraction between 0 and 1.",
+   "sql": "SELECT held_out_hit_rate FROM fct_pit_prediction_heldout_score WHERE scope = 'undisturbed';",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "0.7935285053929122"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "0.7935285053929122"
+    ]
+   ]
+  },
+  {
+   "id": "prediction_checks_2025",
+   "category": "project",
+   "answerable": true,
+   "refused": true,
+   "executed": false,
+   "attempts": 0,
+   "seconds": 2.81,
+   "tables": [],
+   "route_recall": false,
+   "route_precision": 0.0,
+   "first_try": false,
+   "correct": false,
+   "question": "How many pit stops from 2025 are in the pit-stop prediction check table?",
+   "sql": "",
+   "reason": "The tables provided do not contain data from the future, including 2025.",
+   "errors": [],
+   "rows": [],
+   "ref_rows": [
+    [
+     "848"
+    ]
+   ]
+  },
+  {
+   "id": "sessions_loaded_per_year",
+   "category": "project",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 7.65,
+   "tables": [
+    "fct_ingest_summary",
+    "rec_weekend_coverage"
+   ],
+   "route_recall": true,
+   "route_precision": 0.5,
+   "first_try": true,
+   "correct": true,
+   "question": "For each year from 2022 to 2024, how many sessions were loaded? Give the year and the count, in year order.",
+   "sql": "SELECT year, sessions_loaded FROM fct_ingest_summary WHERE year BETWEEN 2022 AND 2024 ORDER BY year;",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "2022",
+     "110"
+    ],
+    [
+     "2023",
+     "110"
+    ],
+    [
+     "2024",
+     "120"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "2022",
+     "110"
+    ],
+    [
+     "2023",
+     "110"
+    ],
+    [
+     "2024",
+     "120"
+    ]
+   ]
+  },
+  {
+   "id": "champion_1988",
+   "category": "history",
+   "answerable": true,
+   "refused": false,
+   "executed": true,
+   "attempts": 1,
+   "seconds": 5.66,
+   "tables": [
+    "fct_driver_standing"
+   ],
+   "route_recall": true,
+   "route_precision": 1.0,
+   "first_try": true,
+   "correct": true,
+   "question": "Who won the 1988 drivers' championship? Give the driver id.",
+   "sql": "SELECT driver_id FROM fct_driver_standing WHERE season = 1988 ORDER BY points DESC LIMIT 1",
+   "reason": "",
+   "errors": [],
+   "rows": [
+    [
+     "senna"
+    ]
+   ],
+   "ref_rows": [
+    [
+     "senna"
+    ]
+   ]
+  },
+  {
+   "id": "winner_2018_italy",
+   "category": "data-gap",
+   "answerable": true,
+   "refused": true,
+   "executed": false,
+   "attempts": 2,
+   "seconds": 11.58,
+   "tables": [
+    "fct_result",
+    "dim_driver"
+   ],
+   "route_recall": false,
+   "route_precision": 0.5,
+   "first_try": false,
+   "correct": false,
+   "question": "Who won the 2018 Italian Grand Prix? Give the three-letter driver code.",
+   "sql": "SELECT driver_code FROM fct_result WHERE session_key LIKE '2018-R%-%' AND event ILIKE '%Italian%' AND position = 1 LIMIT 1",
+   "reason": "The provided tables do not contain an 'event' column. The question cannot be answered with the given schema.",
+   "errors": [
+    "Binder Error: Referenced column \"event\" not found in FROM clause!"
+   ],
+   "rows": [],
+   "ref_rows": [
+    [
+     "HAM"
+    ]
+   ]
+  },
+  {
+   "id": "next_race_winner",
+   "category": "unanswerable",
+   "answerable": false,
+   "refused": true,
+   "executed": false,
+   "attempts": 0,
+   "seconds": 3.73,
+   "tables": [],
+   "correct": true,
+   "question": "Who will win the next Formula 1 race?",
+   "sql": "",
+   "reason": "The question asks about the future winner of a Formula 1 race, which is speculative and not something that can be determined from the provided tables.",
+   "errors": [],
+   "rows": [],
+   "ref_rows": []
+  },
+  {
+   "id": "champion_2027",
+   "category": "unanswerable",
+   "answerable": false,
+   "refused": true,
+   "executed": false,
+   "attempts": 0,
+   "seconds": 2.27,
+   "tables": [],
+   "correct": true,
+   "question": "Who will win the 2027 drivers' championship?",
+   "sql": "",
+   "reason": "The tables provided do not contain any information about future events or championship predictions.",
+   "errors": [],
+   "rows": [],
+   "ref_rows": []
+  },
+  {
+   "id": "tyre_pressures",
+   "category": "unanswerable",
+   "answerable": false,
+   "refused": true,
+   "executed": false,
+   "attempts": 0,
+   "seconds": 3.71,
+   "tables": [],
+   "correct": true,
+   "question": "What tyre pressures did McLaren run in the 2025 Dutch Grand Prix?",
+   "sql": "",
+   "reason": "The tables provided do not contain information about tyre pressures used by teams in specific races, especially for future events like the 2025 Dutch Grand Prix.",
+   "errors": [],
+   "rows": [],
+   "ref_rows": []
+  },
+  {
+   "id": "verstappen_salary",
+   "category": "unanswerable",
+   "answerable": false,
+   "refused": true,
+   "executed": false,
+   "attempts": 0,
+   "seconds": 2.41,
+   "tables": [],
+   "correct": true,
+   "question": "How much money did Max Verstappen earn in 2024?",
+   "sql": "",
+   "reason": "The tables provided do not contain information about driver earnings or financial data.",
+   "errors": [],
+   "rows": [],
+   "ref_rows": []
+  },
+  {
+   "id": "engine_mode",
+   "category": "unanswerable",
+   "answerable": false,
+   "refused": true,
+   "executed": false,
+   "attempts": 0,
+   "seconds": 2.85,
+   "tables": [],
+   "correct": true,
+   "question": "Which engine mode did Lewis Hamilton use on lap 10 of the 2024 British Grand Prix?",
+   "sql": "",
+   "reason": "The tables provided do not contain information about engine modes used by drivers on specific laps of a race.",
+   "errors": [],
+   "rows": [],
+   "ref_rows": []
+  },
+  {
+   "id": "stationary_time",
+   "category": "unanswerable",
+   "answerable": false,
+   "refused": true,
+   "executed": false,
+   "attempts": 0,
+   "seconds": 4.04,
+   "tables": [],
+   "correct": true,
+   "question": "What was Lando Norris's stationary pit stop time in the 2025 Spanish Grand Prix?",
+   "sql": "",
+   "reason": "The question is about the future, specifically the 2025 Spanish Grand Prix, which has not yet occurred. The tables provided do not contain data about future events.",
+   "errors": [],
+   "rows": [],
+   "ref_rows": []
+  },
+  {
+   "id": "wind_direction",
+   "category": "unanswerable",
+   "answerable": false,
+   "refused": true,
+   "executed": false,
+   "attempts": 0,
+   "seconds": 3.76,
+   "tables": [],
+   "correct": true,
+   "question": "What was the wind direction during the 2025 Singapore Grand Prix?",
+   "sql": "",
+   "reason": "The tables provided do not contain information about future events or weather conditions for specific future races, such as the 2025 Singapore Grand Prix.",
+   "errors": [],
+   "rows": [],
+   "ref_rows": []
+  },
+  {
+   "id": "attendance",
+   "category": "unanswerable",
+   "answerable": false,
+   "refused": true,
+   "executed": false,
+   "attempts": 0,
+   "seconds": 3.23,
+   "tables": [],
+   "correct": true,
+   "question": "How many fans attended the 2025 British Grand Prix?",
+   "sql": "",
+   "reason": "The tables provided do not contain information about fan attendance for future events, including the 2025 British Grand Prix.",
+   "errors": [],
+   "rows": [],
+   "ref_rows": []
+  },
+  {
+   "id": "fastest_lap_1998_monaco",
+   "category": "unanswerable",
+   "answerable": false,
+   "refused": true,
+   "executed": false,
+   "attempts": 1,
+   "seconds": 12.16,
+   "tables": [
+    "fct_lap",
+    "dim_session"
+   ],
+   "correct": true,
+   "question": "What was the fastest lap time at the 1998 Monaco Grand Prix?",
+   "sql": "",
+   "reason": "The provided tables do not contain data for the 1998 Monaco Grand Prix. The tables cover data from 2018 to 2026.",
+   "errors": [],
+   "rows": [],
+   "ref_rows": []
+  },
+  {
+   "id": "turn1_speed_2025_bahrain",
+   "category": "unanswerable",
+   "answerable": false,
+   "refused": true,
+   "executed": false,
+   "attempts": 0,
+   "seconds": 3.95,
+   "tables": [],
+   "correct": true,
+   "question": "Which driver was fastest through Turn 1 in the 2025 Bahrain Grand Prix?",
+   "sql": "",
+   "reason": "The question is about the future, specifically the 2025 Bahrain Grand Prix, which has not yet occurred. The tables provided do not contain data about future events.",
+   "errors": [],
+   "rows": [],
+   "ref_rows": []
+  }
+ ]
+}

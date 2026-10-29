@@ -433,10 +433,28 @@ scripts/         start_batch.sh (refuses a second run), status.sh, backfill_trac
 app/             Streamlit app: pitwall.py (data access), engine.py (race state), racelib.py, pages/
 api/             read-only FastAPI service over the gold tables (main.py); requirements-api.txt
 web/             static Next.js site (analytics pages, telemetry, predictor, practice, replay), vitest tests
+qa_agent/        question-answering agent over the gold tables and its 44-question evaluation (see Question-answering agent)
 tests/           unit tests for the race engine, race-control logic, history fetching, app helpers and the API
 experiments/     measurement scripts behind the numbers above (run from the repository root)
 .github/         CI: ci.yml (tests, lint) and dbt.yml (dbt build on a synthetic lake, documentation gate)
 ```
+
+## Question-answering agent
+
+`qa_agent/` answers questions about the data by writing SQL against the gold tables. It uses a local model through Ollama, so it costs nothing and nothing leaves the machine. The agent is small: it picks the tables a question needs, writes one read-only SELECT with the dbt column descriptions as context, and retries twice if the query fails. The evaluation is the part to read. It has 44 questions with reference answers the model never sees: 34 the data can answer, and 10 it cannot (future events, things the data never records, and near misses such as asking for the time a car stood still when only the time in the pit lane is recorded). An answer counts as correct if running the agent's SQL gives the same result table as a hand-written reference query. An unanswerable question counts as handled if the agent declines or its query finds nothing.
+
+| Model | Correct on answerable questions | Declined the unanswerable correctly | Declined an answerable question | Seconds per question |
+|---|---|---|---|---|
+| qwen2.5-coder 14B | 26 of 34 (76%) | 8 of 10 | 1 | 10 |
+| qwen2.5-coder 7B | 15 of 34 (44%) | 9 of 10 | 1 | 6 |
+
+Every question and failure is in [`qa_agent/results/RESULTS.md`](qa_agent/results/RESULTS.md).
+
+**What the first run taught me.** On the first run, the 14B model got 13 of 34 and the 7B 9 of 34. Most failures were my harness, not the models: the prompt never said what day it was or what years the data covers, so the models declined questions about 2025 as being "in the future". I fixed three prompt problems (the date and coverage, a placeholder word the models copied as their reason to decline, and always showing the table that names each session) and changed the scoring so repeated identical rows count once. The questions and reference answers did not change, and both runs are kept in the results.
+
+**What still goes wrong** (14B). It counted Hamilton's wins from 2007 to 2024 as 43 (the reference gives 105). It returned no grid position for the São Paulo race (a NULL, not 17). It counted safety car periods where the question asked for races (10, not 8). It answered "how many laps was the Singapore race" with 1.28. The two unanswerable questions it answered were near misses: it treated the time in the pit lane as stationary time, and the first sector time as the time through Turn 1. It declined the clear cases (future events, salaries, tyre pressures).
+
+**How far to trust this.** 44 questions is a small set: one question is 2.3 points, and 26 of 34 is consistent with roughly 60% to 88% on other questions. I wrote the questions and the reference queries, and I fixed the prompts after seeing the first run on these same questions, so the second run is not a clean held-out test. A fresh question set would be needed for that.
 
 ## Decisions and dead ends
 
@@ -477,7 +495,6 @@ experiments/     measurement scripts behind the numbers above (run from the repo
 - Switch the Race scrubber to the SQL race-control periods
 - Deploy the static site on a free host (Cloudflare Pages is the candidate) once the data-terms question is settled. The trace and replay data are large and git-ignored, so how they are built and hosted needs deciding first
 - Mark stale or frozen car positions on the replay (2026 round 11), and a formation-lap marker
-- A question-answering agent over the gold tables, evaluated against a fixed set of questions with known answers, including questions the data cannot answer
 - An S3-compatible object store (MinIO) for the lake, set up with Terraform and run locally
 
 ## Data terms
