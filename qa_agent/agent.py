@@ -1,13 +1,4 @@
-"""A small question-answering agent over the gold tables.
-
-Two model calls, then a repair loop:
-  1. route   the model sees one line per table and names the tables the question needs, or none when the data cannot
-             answer it. Routing is scored on its own, and it keeps the second prompt small enough for a local model.
-  2. write   the model sees the full column descriptions of those tables only (from the dbt manifest) and writes one
-             SELECT, or says it cannot answer.
-  3. repair  when the query is rejected or fails, the error goes back to the model, up to twice.
-The agent can only run read-only SELECTs (see sqlguard and db). It never sees the reference answers.
-"""
+"""A small question-answering agent over the gold tables."""
 import datetime as dt
 import json
 import re
@@ -19,7 +10,7 @@ from pathlib import Path
 from . import db, sqlguard
 
 PROMPT_VERSION = "v2"
-ALWAYS = ("dim_session",)  # the entity table that names every session; always shown to the model that writes the SQL
+ALWAYS = ("dim_session",)
 
 NOTES = """Notes about this database:
 - The tables are in DuckDB. Use plain table names; do not add a schema prefix.
@@ -69,7 +60,7 @@ def parse_json(text: str) -> dict:
 class Card:
     name: str
     summary: str
-    columns: list[tuple[str, str, str]] = field(default_factory=list)  # name, type, description
+    columns: list[tuple[str, str, str]] = field(default_factory=list)
 
 
 def load_cards(con, manifest_path: str | Path | None) -> dict[str, Card]:
@@ -136,7 +127,7 @@ class Agent:
             text += f" Timing data (laps, stints, pit stops, weather, race control) covers {a} to {b}, which is in the past."
             c, d = self.con.execute("select min(season), max(season) from fct_season_result").fetchone()
             text += f" Season results and standings cover {c} to {d}."
-        except Exception:  # a database without these tables simply gets the date
+        except Exception:
             pass
         return text
 

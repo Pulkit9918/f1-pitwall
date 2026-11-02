@@ -31,17 +31,17 @@ def db(tmp_path):
 def test_exports_season_and_respects_from_year(db, tmp_path):
     out = tmp_path / "out"
     idx = mod.export(db, out, from_year=2018, log=lambda *_: None)
-    assert [s["season"] for s in idx] == [2024]          # 2017 is before from_year
+    assert [s["season"] for s in idx] == [2024]
     doc = json.loads((out / "2024.json").read_text())
     assert doc["drivers"][0]["name"] == "Max Verstappen" and doc["drivers"][0]["points"] == 60
     race = doc["races"][0]
     assert race["podium"] == ["ver", "nor"]
     by = {r["code"]: r for r in race["results"]}
-    assert by["NOR"]["gained"] == 3                       # grid 5 -> finished 2
-    assert by["LEC"]["gained"] is None and by["LEC"]["position"] is None   # pit-lane start, did not finish
+    assert by["NOR"]["gained"] == 3
+    assert by["LEC"]["gained"] is None and by["LEC"]["position"] is None
     assert by["VER"]["fastest"] is True
     assert doc["progression"]["drivers"][0]["cum"] == [25]
-    assert doc["progression"]["drivers"][0]["code"] == "VER"      # the picker labels drivers by code
+    assert doc["progression"]["drivers"][0]["code"] == "VER"
 
 
 def test_refuses_foreign_folder_and_missing_db(db, tmp_path):

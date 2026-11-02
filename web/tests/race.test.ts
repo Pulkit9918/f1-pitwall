@@ -14,7 +14,6 @@ import {
 import { fmtLap, fmtLapTick } from "../lib/format";
 import type { SessionDoc } from "../lib/types";
 
-// Two drivers, three laps each. AAA finishes first; BBB retires after lap 2.
 function doc(overrides: Partial<SessionDoc> = {}): SessionDoc {
   const n = null;
   return {
@@ -86,7 +85,7 @@ describe("race-control bands on the lap axis", () => {
     const b = lapBounds(doc());
     expect(b.map((x) => x.lap)).toEqual([1, 2, 3]);
     expect(timeToLap(0, b)).toBe(0);
-    expect(timeToLap(45, b)).toBeCloseTo(45 / 91, 3); // lap 1 ends at the median of 90 and 92
+    expect(timeToLap(45, b)).toBeCloseTo(45 / 91, 3);
     expect(timeToLap(1e6, b)).toBe(3);
     expect(timeToLap(5, [])).toBeNull();
   });
@@ -106,7 +105,7 @@ describe("series and axes", () => {
   });
   it("sets the lap-time domain from the fastest lap to the 98th percentile", () => {
     const laps = Array.from({ length: 100 }, (_, i) => ({ lap: i + 1, value: 90 + i * 0.01 }));
-    laps.push({ lap: 101, value: 200 });   // one slow lap must not flatten the rest
+    laps.push({ lap: 101, value: 200 });
     const [lo, hi] = lapDomain([laps])!;
     expect(lo).toBeLessThan(90);
     expect(hi).toBeGreaterThan(91);

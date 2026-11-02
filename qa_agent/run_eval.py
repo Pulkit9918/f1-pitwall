@@ -1,9 +1,4 @@
-"""Run the evaluation set against a model served by Ollama.
-
-    python -m qa_agent.run_eval --model qwen2.5-coder:7b
-    python -m qa_agent.run_eval --model qwen2.5-coder:14b --only winner_2025_italy,next_race_winner
-Writes qa_agent/results/<model>.json. Then:  python -m qa_agent.report
-"""
+"""Run the evaluation set against a model served by Ollama."""
 import argparse
 import datetime as dt
 import json
@@ -48,7 +43,7 @@ def main(argv=None):
     for i, q in enumerate(qs, 1):
         try:
             out = agent.answer(q.question)
-        except Exception as e:  # a model or network error must not stop the run
+        except Exception as e:
             print(f"[{i}/{len(qs)}] {q.id}: model call failed: {e}")
             raise SystemExit("Is Ollama running and the model pulled? (ollama list)")
         ref = reference(con, q) if q.answerable else None

@@ -6,8 +6,6 @@ import { useMemo, useState } from "react";
 import { groupWeekends, pickYear, type WeekendSession } from "@/lib/weekends";
 import "./sessionPicker.css";
 
-// A year at a time, one row per race weekend, one link for each session that has data. The year stays in the address
-// (?year=2024), so going back from a session returns to the same list.
 export function SessionPicker({ sessions, base, codes, empty }: { sessions: WeekendSession[]; base: string; codes?: string[]; empty?: string }) {
   const groups = useMemo(() => groupWeekends(sessions, codes), [sessions, codes]);
   const wanted = useSearchParams().get("year");

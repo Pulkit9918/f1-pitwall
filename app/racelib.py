@@ -28,9 +28,7 @@ def _runs(laps: list[int]) -> list[tuple[int, int]]:
 
 
 def status_ranges(laps: pd.DataFrame) -> list[tuple[int, int, str]]:
-    """Lap ranges where at least half the field ran under SC / VSC / red flag.
-
-    Based on each lap's TrackStatus codes: 4 = safety car, 5 = red flag, 6 or 7 = VSC."""
+    """Lap ranges where at least half the field ran under SC / VSC / red flag."""
     if laps.empty or "TrackStatus" not in laps.columns:
         return []
     d = laps.dropna(subset=["TrackStatus", "LapNumber"]).copy()
@@ -124,9 +122,7 @@ def actual_stops(g: pd.DataFrame) -> list[int]:
 
 
 def predict_rejoin(frames: dict, driver: str, n: int, loss: float) -> dict | None:
-    """Predict the position at the end of the out-lap if `driver` pits on in-lap `n`.
-
-    Uses only information known at the end of lap n-1. Assumes nobody else pits."""
+    """Predict the position at the end of the out-lap if `driver` pits on in-lap `n`."""
     g = frames[driver]
     m = n - 1
     if m not in g.index:
@@ -146,17 +142,12 @@ def predict_rejoin(frames: dict, driver: str, n: int, loss: float) -> dict | Non
             "others": others, "now": g.at[m, "Position"]}
 
 
-# ---- timing tower --------------------------------------------------------------------
-
 FINISHED = ("Finished", "+", "Lapped")
 
 
 def tower(laps: pd.DataFrame, drv: pd.DataFrame, results: pd.DataFrame, lap: int,
           ref: str | None = None) -> pd.DataFrame:
-    """Timing tower at the end of `lap`: order across the line, gaps, tyres, best lap, pits.
-
-    status: OUT = retired before this lap, PIT = pitted this lap, dash = classified finisher
-    who has not completed this lap. Gaps are lap-resolution, not live."""
+    """Timing tower at the end of `lap`: order across the line, gaps, tyres, best lap, pits."""
     d = laps.dropna(subset=["LapNumber"]).copy()
     d["LapNumber"] = d["LapNumber"].astype(int)
     upto = d[d["LapNumber"] <= lap]
@@ -202,13 +193,8 @@ def tower(laps: pd.DataFrame, drv: pd.DataFrame, results: pd.DataFrame, lap: int
     return out
 
 
-# ---- flag timeline ---------------------------------------------------------------------
-
 def flag_laps(laps: pd.DataFrame) -> dict[int, str]:
-    """Lap number -> YEL / VSC / SC / RED when at least half the field ran under that status.
-
-    Codes from each lap's TrackStatus: 2 yellow, 4 safety car, 5 red, 6 or 7 VSC. Red beats
-    safety car beats VSC beats yellow when several apply to one lap."""
+    """Lap number -> YEL / VSC / SC / RED when at least half the field ran under that status."""
     d = laps.dropna(subset=["TrackStatus", "LapNumber"]).copy()
     d["lap"] = d["LapNumber"].astype(int)
     d["ts"] = d["TrackStatus"].astype(str)
@@ -221,14 +207,8 @@ def flag_laps(laps: pd.DataFrame) -> dict[int, str]:
     return out
 
 
-# ---- live rejoin prediction ------------------------------------------------------------
-
 def rejoin_live(drivers, frames, name, T, loss, pace_cache=None):
-    """Predicted position if `name` pitted at session time T, from the race-state engine.
-
-    A car ends up ahead after the stop if it is within `loss` seconds of the driver, ahead or
-    behind. Cars behind are extrapolated at their recent pace. Not modelled: other cars pitting,
-    traffic after the stop, safety cars. Returns None for a car that has finished or retired."""
+    """Predicted position if `name` pitted at session time T, from the race-state engine."""
     di = drivers[name]
     if T > di["last_end"] + 1:
         return None

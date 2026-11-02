@@ -9,11 +9,10 @@ export interface FastLap {
   lap: number;
   compound: string | null;
   tyreAge: number | null;
-  gap: number; // seconds behind the fastest lap of the session
-  laps: number; // timed laps the driver drove
+  gap: number;
+  laps: number;
 }
 
-// Each driver's quickest timed lap that was not deleted, quickest first.
 export function fastestLaps(doc: SessionDoc): FastLap[] {
   const l = doc.laps;
   const best = new Map<string, { time: number; i: number }>();
@@ -41,15 +40,13 @@ export interface LongRun {
   endLap: number;
   laps: number;
   cleanLaps: number;
-  pace: number; // median clean lap, seconds
-  degradation: Maybe<number>; // seconds per lap
-  gap: number; // seconds behind the quickest long run on the same compound
+  pace: number;
+  degradation: Maybe<number>;
+  gap: number;
 }
 
 export const LONG_RUN_MIN_CLEAN = 5;
 
-// Runs with enough clean laps to say something about race pace, grouped by compound and quickest first. Pace is only
-// compared within a compound: fuel load and engine mode are not in the data, so a gap between compounds means little.
 export function longRuns(doc: SessionDoc, minClean = LONG_RUN_MIN_CLEAN): { compound: string; runs: LongRun[] }[] {
   const byCompound = new Map<string, Omit<LongRun, "gap">[]>();
   for (const s of stintRows(doc)) {
@@ -67,7 +64,6 @@ export function longRuns(doc: SessionDoc, minClean = LONG_RUN_MIN_CLEAN): { comp
     });
 }
 
-// How a driver spent the session: runs, and how many were long.
 export function runSummary(doc: SessionDoc, driver: string, minClean = LONG_RUN_MIN_CLEAN): { runs: number; longRuns: number; laps: number } {
   const mine = stintRows(doc).filter((s) => s.driver === driver);
   return { runs: mine.length, longRuns: mine.filter((s) => s.cleanLaps >= minClean).length, laps: mine.reduce((n, s) => n + s.laps, 0) };

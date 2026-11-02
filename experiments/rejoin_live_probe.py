@@ -1,12 +1,4 @@
-"""Backtest of a live-gap rejoin prediction against the lap-resolution model.
-
-usage:  ~/.venvs/f1-app/bin/python rejoin_live_probe.py      (run from the project folder)
-
-For every clean green-flag pit stop in the 2025-2026 races and sprints, predict the driver's position
-at the end of the out-lap using only what was known when the car entered the pit lane.
-A car ends up ahead after the stop if it is within the pit loss (seconds) of the driver, ahead or behind.
-Not modelled: other cars pitting in the same window, and traffic after the stop.
-"""
+"""Backtest of a live-gap rejoin prediction against the lap-resolution model."""
 
 import logging
 import sys
@@ -23,7 +15,7 @@ import engine as eg  # noqa: E402
 import pitwall as pw  # noqa: E402
 import racelib as rl  # noqa: E402
 
-LOSS = 22.4   # global green-flag pit loss from the earlier measurement (a single number)
+LOSS = 22.4
 
 sel = pw.sessions()
 sel = sel[sel["session"].isin(["R", "S"]) & sel["telemetry"] & (sel["year"] >= 2025)]
@@ -63,20 +55,18 @@ for srow in sel.itertuples():
                 pv, tv = d_j["pv_inc"], d_j["tv"]
                 if p_j > p_i:
                     stay += 1
-                # oracle: when j actually was (or will be) at the driver's spot on track
                 if p_i <= pv[-1]:
                     g_or = t_in - float(np.interp(p_i, pv, tv))
                 else:
                     g_or = -1e9
                 oracle += int(g_or + LOSS > 0)
-                # live: only what was known at the moment of entering the pit lane
                 if p_j > p_i:
-                    g_live = g_or                       # already ahead: the gap is in the past
+                    g_live = g_or
                 else:
                     pace_j = rl.pace(frames[j], int(np.floor(p_j)) + 1) if j in frames else np.nan
                     if np.isnan(pace_j):
                         pace_j = fallback if not np.isnan(fallback) else 95.0
-                    g_live = -(p_i - p_j) * pace_j      # behind: extrapolate at its recent pace
+                    g_live = -(p_i - p_j) * pace_j
                 live += int(g_live + LOSS > 0)
             old = rl.predict_rejoin(frames, name, n, LOSS)
             rows.append({"session": f"{y} R{r:02d} {c}", "driver": name, "lap": n,

@@ -1,6 +1,3 @@
-/* A timing screen: tarmac-dark ground, one family (Archivo) used at two widths, and tyre-compound colours that carry
-   data only. Nothing else on the site is coloured. */
-
 :root {
   color-scheme: dark;
   --ground: #0f1218;

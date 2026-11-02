@@ -22,7 +22,7 @@ describe("units", () => {
     expect([windUnit("metric"), windUnit("imperial")]).toEqual([" m/s", " mph"]);
   });
   it("falls back to metric when storage is not there or throws", () => {
-    expect(loadUnits()).toBe("metric");   // no window in this environment
+    expect(loadUnits()).toBe("metric");
     expect(() => saveUnits("imperial")).not.toThrow();
   });
 });

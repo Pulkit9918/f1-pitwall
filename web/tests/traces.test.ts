@@ -12,7 +12,7 @@ describe("decoding a lap", () => {
     expect(lap.time).toEqual([0, 10, 22.5, 32.49]);
     expect(lap.gear).toEqual([5, 6, 7, 8]);
     expect(lap.brake).toEqual([0, 0, 1, 1]);
-    expect(lap.drs).toEqual([0, 0, 1, 1]); // codes 10 (a) and 12 (c) are open, 0 is closed
+    expect(lap.drs).toEqual([0, 0, 1, 1]);
     expect(lap.speed).toEqual([200, 210, 220, 230]);
   });
   it("leaves the channels null for a lap that has time only", () => {

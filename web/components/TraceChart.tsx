@@ -21,13 +21,13 @@ export interface PanelSpec {
   unit: string;
   height: number;
   step?: boolean;
-  domain?: [number, number]; // fixed y range; otherwise fitted to the data
+  domain?: [number, number];
   symmetric?: boolean;
   fmt: (v: number) => string;
   tickFmt?: (v: number) => string;
   ticks?: number;
   caption?: string;
-  labels?: boolean; // name each line at its right-hand end
+  labels?: boolean;
 }
 
 export interface Hover {

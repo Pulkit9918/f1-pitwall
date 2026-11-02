@@ -1,5 +1,4 @@
-"""Telemetry probe, part 2. Read-only. Names the sessions behind the oddities in telemetry_probe.py:
-which sessions have no telemetry, which have extra drivers, which are short or thin."""
+"""Telemetry probe, part 2. Read-only."""
 import sys
 
 import duckdb

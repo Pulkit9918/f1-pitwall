@@ -47,7 +47,7 @@ def db(tmp_path):
     base = [0.0, 10.004, 21.996, 33.5, 45.0, 56.25, 67.5, 90.0]
     add_lap(c, S, "AAA", 1, True, None, reason="standing_start")
     add_lap(c, S, "AAA", 2, True, base)
-    add_lap(c, S, "AAA", 3, False, [x * 1.01 for x in base])          # traced, but the speed channel is not trusted
+    add_lap(c, S, "AAA", 3, False, [x * 1.01 for x in base])
     add_lap(c, S, "BBB", 2, True, [x * 0.99 for x in base])
     add_lap(c, S, "BBB", 3, True, None, reason="pit_lap")
     add_lap(c, "2019-R01-R", "ZZZ", 2, True, base, year=2019)
@@ -60,7 +60,7 @@ def test_session_index_lists_every_lap_with_its_status(db, tmp_path):
     r = mod.export(db, out, from_year=2024, log=lambda *_: None)
     assert r["written"] == 1 and not r["skipped"]
     top = json.loads((out / "index.json").read_text())
-    assert top["generator"] == "export_traces" and [s["key"] for s in top["sessions"]] == [S]   # 2019 is before from_year
+    assert top["generator"] == "export_traces" and [s["key"] for s in top["sessions"]] == [S]
     assert top["sessions"][0]["drivers"] == 2 and top["sessions"][0]["laps"] == 3
     idx = json.loads((out / S / "index.json").read_text())
     assert idx["points"] == P and idx["dist"][0] == 0.0 and idx["dist"][-1] == 5000.0 and idx["ref_length_m"] == 5000.0
@@ -75,13 +75,13 @@ def test_driver_file_decodes_to_the_traces(db, tmp_path):
     out = tmp_path / "out"
     mod.export(db, out, log=lambda *_: None)
     doc = json.loads((out / S / "AAA.json").read_text())
-    assert doc["driver"] == "AAA" and doc["points"] == P and sorted(doc["laps"]) == ["2", "3"]    # lap 1 has no trace
+    assert doc["driver"] == "AAA" and doc["points"] == P and sorted(doc["laps"]) == ["2", "3"]
     lap = doc["laps"]["2"]
     cum = np.concatenate([[0], np.cumsum(lap["dt"])]) / 100
-    assert np.allclose(cum, [0.0, 10.0, 22.0, 33.5, 45.0, 56.25, 67.5, 90.0], atol=0.0051)        # to the hundredth
+    assert np.allclose(cum, [0.0, 10.0, 22.0, 33.5, 45.0, 56.25, 67.5, 90.0], atol=0.0051)
     assert lap["v"] == [200 + i for i in range(P)] and lap["th"] == [80 + i for i in range(P)]
     assert lap["g"] == "12345678" and lap["d"] == "0000cccc" and lap["b"] == "10101010"
-    assert set(doc["laps"]["3"]) == {"dt"}                                   # no speed channel: only the time trace
+    assert set(doc["laps"]["3"]) == {"dt"}
 
 
 def test_refuses_foreign_folder_missing_db_and_reruns(db, tmp_path):
@@ -95,10 +95,10 @@ def test_refuses_foreign_folder_missing_db_and_reruns(db, tmp_path):
         mod.export(tmp_path / "missing.duckdb", tmp_path / "out2", log=lambda *_: None)
     ok = tmp_path / "ok"
     mod.export(db, ok, log=lambda *_: None)
-    mod.export(db, ok, log=lambda *_: None)                                    # a folder it wrote itself is fine
+    mod.export(db, ok, log=lambda *_: None)
     assert (ok / S / "BBB.json").exists()
 
 
 def test_digits():
-    assert mod.digits([0, 5, 9, 12, 99, -3], 10) == "059990"        # clipped to 0..9
+    assert mod.digits([0, 5, 9, 12, 99, -3], 10) == "059990"
     assert mod.digits([0, 9, 10, 14, 15, 30], 16) == "09aeff"

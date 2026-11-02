@@ -1,10 +1,4 @@
-"""Race-state engine: GPS positions -> per-driver race progress, running order and gaps.
-
-Progress P(t) = laps completed + fraction of the current lap. Each lap is anchored to the official
-timing at the start/finish line; inside the lap, the fraction comes from where the car is on a
-reference line (the fastest clean lap of the session). Tested against the official order at the
-sector timing lines on four races: exact 89-99.8%, within one place 98-100%.
-"""
+"""Race-state engine: GPS positions -> per-driver race progress, running order and gaps."""
 
 import duckdb
 import numpy as np
@@ -65,7 +59,6 @@ def build(year: int, rnd: int, code: str):
     laps["LapNumber"] = laps["LapNumber"].astype(int)
     laps["num"] = laps["DriverNumber"].astype(int)
 
-    # reference line: the fastest clean lap of the session, from line to line
     clean = laps[laps["LapTime_s"].notna() & laps["PitInTime_s"].isna()
                  & laps["PitOutTime_s"].isna() & laps["LapStartTime_s"].notna()
                  & laps["Time_s"].notna()]
@@ -199,7 +192,6 @@ def snapshot(state, T):
         ta = t_at(ahead, P)
         return "" if np.isnan(ta) else f"+{T - ta:.1f}"
 
-    # sector times finished by T: freshest value, personal best, session best
     sec, sbest = {}, {1: np.inf, 2: np.inf, 3: np.inf}
     for name, d in D.items():
         li = d["lapinfo"]

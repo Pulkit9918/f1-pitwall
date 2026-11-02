@@ -1,5 +1,4 @@
-"""Telemetry probe, part 3. Read-only. For telemetry drivers with no laps in a session (telemetry_probe2.py, B),
-what does the results table say about them?"""
+"""Telemetry probe, part 3. Read-only."""
 import sys
 
 import duckdb

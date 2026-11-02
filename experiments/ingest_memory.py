@@ -1,7 +1,4 @@
-"""Peak memory of one real ingest. Run INSIDE the Airflow container, one session per call:
-    docker compose exec -T airflow-scheduler python /opt/f1/experiments/ingest_memory.py 2025 8 R
-It runs scripts/airflow_ingest.py run YEAR ROUND CODE from a throwaway folder with an empty lake and a
-link to the repo's FastF1 cache, so the real lake is never touched. Prints one MEMTEST line."""
+"""Peak memory of one real ingest."""
 import os
 import resource
 import subprocess
@@ -28,7 +25,7 @@ def main(year: str, rnd: str, code: str) -> int:
             wall = time.time() - start
         finally:
             link.unlink()
-        peak_mb = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss / 1024  # KB on Linux
+        peak_mb = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss / 1024
         lake = data / "lake"
         written = sum(f.stat().st_size for f in lake.rglob("*") if f.is_file()) if lake.exists() else 0
     print(

@@ -1,8 +1,4 @@
-"""Documentation coverage of the dbt project, from dbt's own artifacts. Run from the repo root after
-   ~/.venvs/f1-dbt/bin/dbt docs generate --project-dir dbt --profiles-dir dbt
-Usage:  python scripts/doc_coverage.py            # report: every model and its undocumented columns
-        python scripts/doc_coverage.py --check    # exit 1 if any model, or any column of a gold model, has no description
-Uses only the standard library."""
+"""Documentation coverage of the dbt project, from dbt's own artifacts."""
 import json
 import sys
 from pathlib import Path

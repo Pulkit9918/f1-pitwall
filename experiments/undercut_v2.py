@@ -1,14 +1,4 @@
-"""Undercut probe v2. Run from the repo root. Reads data/f1_dbt.duckdb read-only; changes nothing.
-
-Attempt: B is directly behind A (gap 0-GAP_MAX s at the end of lap L-1, green running) and pits on lap L;
-A does not pit that lap but stops k laps later (k <= K_MAX), and no lap from L-1 to A's out-lap M is
-not green. Pairs where A never stops, or stops later than K_MAX laps, are not undercuts and are only counted.
-
-margin   = seconds B is ahead of A at the end of lap M (positive = B ahead).
-delta    = time A spends on laps L..M minus time B spends = margin + gap.
-pace     = delta minus (A's pit-lane time - B's pit-lane time): what the tyres and pace gave B,
-           without the luck of how long each stop took.
-"""
+"""Undercut probe v2. Run from the repo root."""
 from collections import Counter
 import duckdb, numpy as np, pandas as pd
 
@@ -101,7 +91,7 @@ def prepare(con):
             age_A, dA = (row.age_a + (n - (L - 1)), d[row.comp_a]) if n <= L + k else (1, d[comp_a_new])
             age_B, dB = (row.age_b + 1, d[row.comp_b]) if n == L else (n - L, d[row.comp_b_new])
             pdeg += dA * age_A - dB * age_B
-        adv = d[row.comp_a] * (row.age_a + 1) - d[row.comp_b_new] * 1.0   # known when B pits
+        adv = d[row.comp_a] * (row.age_a + 1) - d[row.comp_b_new] * 1.0
         margin = float(la.time_s[M] - lb.time_s[M])
         delta = margin + row.gap
         keep.append(dict(session_key=s, year=row.year, a=a, b=bb, L=int(L), gap=row.gap, k=k, age_a=row.age_a, age_b=row.age_b,

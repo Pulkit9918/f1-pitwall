@@ -1,5 +1,4 @@
-"""Tests for the question-answering agent: the SQL gate, the scoring, the question set and the agent loop, with a
-scripted model and a tiny database. No model, network or real data is needed."""
+"""Tests for the question-answering agent: the SQL gate, the scoring, the question set and the agent loop, with a scripted model and a tiny database."""
 import json
 import re
 import sys
@@ -15,7 +14,6 @@ from qa_agent import compare, db, evaluate, report, run_eval, sqlguard  # noqa: 
 from qa_agent.questions import BY_ID, QUESTIONS  # noqa: E402
 
 
-# ---------------------------------------------------------------- the SQL gate
 @pytest.mark.parametrize("sql", [
     "select 1", "SELECT * FROM fct_lap LIMIT 5;", "with a as (select 1) select * from a", "select 'drop table x'",
     "select event from dim_session where event ilike '%set%'", "select sessions_loaded from fct_ingest_summary",
@@ -36,15 +34,14 @@ def test_gate_rejects(sql):
         sqlguard.check(sql)
 
 
-# ---------------------------------------------------------------- scoring
 def test_compare_basics():
     assert compare.matches([("VER",)], [("ver ",)])
-    assert compare.matches([("VER",)], [("VER", "Max Verstappen")])  # extra columns are fine
+    assert compare.matches([("VER",)], [("VER", "Max Verstappen")])
     assert not compare.matches([("VER",)], [("HAM",)])
     assert not compare.matches([("VER",)], [("VER",), ("HAM",)])
-    assert compare.matches([(18,)], [(18,), (18,), (18,)])  # the same row repeated is still the answer
+    assert compare.matches([(18,)], [(18,), (18,), (18,)])
     assert not compare.matches([(18,)], [(18,), (19,)])
-    assert not compare.matches([("VER", 1)], [("VER",)])  # a missing column is not
+    assert not compare.matches([("VER", 1)], [("VER",)])
     assert compare.matches([(5,)], [(5.0,)])
     assert not compare.matches([(5,)], [(6,)])
     assert compare.matches([(19.234,)], [(19.2349,)], tol=0.01)
@@ -56,7 +53,6 @@ def test_compare_order_and_columns():
     assert not compare.matches([("a",), ("b",)], [("b",), ("a",)], ordered=True)
     assert compare.matches([("HAM", 72.5)], [("Lewis", 72.5, "HAM")])
     assert compare.matches([(2022, 10), (2023, 20)], [(2023, 20), (2022, 10)])
-    # the same values paired differently are a different answer
     assert not compare.matches([(2022, 10), (2023, 20)], [(2022, 20), (2023, 10)])
     assert compare.matches([(None,)], [(None,)])
     assert compare.matches([], [])
@@ -71,7 +67,6 @@ def test_parse_json():
     assert ag.parse_json("{broken") == {}
 
 
-# ---------------------------------------------------------------- the question set
 def test_question_set_is_sound():
     assert len(QUESTIONS) >= 40
     assert sum(not q.answerable for q in QUESTIONS) >= 8
@@ -89,7 +84,6 @@ def test_question_set_is_sound():
     assert len(BY_ID) == len(QUESTIONS)
 
 
-# ---------------------------------------------------------------- the agent loop
 @pytest.fixture()
 def dbfile(tmp_path):
     p = tmp_path / "t.duckdb"
@@ -99,7 +93,7 @@ def dbfile(tmp_path):
     c.execute("insert into gold.dim_session values ('2025-R14-R', 2025, 'Italian Grand Prix', 'R'), ('2024-R14-R', 2024, 'Italian Grand Prix', 'R')")
     c.execute("create table gold.fct_result (session_key varchar, driver_code varchar, position integer)")
     c.execute("insert into gold.fct_result values ('2025-R14-R', 'VER', 1), ('2025-R14-R', 'NOR', 2), ('2024-R14-R', 'LEC', 1)")
-    c.execute("create table gold.fct_lap_sample (lap_key varchar)")  # excluded from the agent's tables
+    c.execute("create table gold.fct_lap_sample (lap_key varchar)")
     c.close()
     return p
 
@@ -129,7 +123,7 @@ def test_writer_always_sees_dim_session_and_the_date(dbfile):
     a.answer("q")
     writer_prompt = a.backend.calls[1][0]["content"]
     assert "Table dim_session" in writer_prompt and "Today is 2026-10-29" in writer_prompt
-    assert "Timing data" in a.backend.calls[0][0]["content"]  # the router is told what years exist
+    assert "Timing data" in a.backend.calls[0][0]["content"]
 
 
 def test_agent_answers(dbfile):
@@ -181,7 +175,6 @@ def test_read_only_connection_cannot_write(dbfile):
         db.connect(dbfile).execute("create table gold.x (a int)")
 
 
-# ---------------------------------------------------------------- scoring and the whole run
 def test_score_and_summary():
     q = BY_ID["winner_2025_italy"]
     good = ag.Outcome(q.question, tables=list(q.tables), sql="select 1", columns=["c"], rows=[("VER",)], attempts=1)
@@ -192,7 +185,7 @@ def test_score_and_summary():
     u = BY_ID["next_race_winner"]
     assert evaluate.score(u, ag.Outcome(u.question, refused=True), None)["correct"]
     empty = evaluate.score(u, ag.Outcome(u.question, sql="select max(x) from t", columns=["c"], rows=[(None,)], attempts=1), None)
-    assert empty["correct"] and empty["no_data"]  # a query that finds nothing is not a made-up answer
+    assert empty["correct"] and empty["no_data"]
     assert not evaluate.score(u, ag.Outcome(u.question, sql="select 1", columns=["c"], rows=[("VER",)], attempts=1), None)["correct"]
     sm = evaluate.summarise([s1, s2, evaluate.score(u, ag.Outcome(u.question, refused=True), None)])
     assert sm["answerable"] == 2 and sm["correct_answerable"] == 1 and sm["correct_refusals"] == 1 and sm["accuracy"] == 0.5
@@ -210,9 +203,7 @@ def test_whole_run_and_report(dbfile, tmp_path, monkeypatch):
             return '{"sql": "select driver_code from fct_result r join dim_session s using (session_key) where s.year = 2025 and position = 1"}'
 
     monkeypatch.setattr(ag, "Ollama", Fake)
-    # the reference queries need the full schema, so point the run at two questions that fit the tiny database
     monkeypatch.setattr(run_eval, "QUESTIONS", [BY_ID["winner_2025_italy"], BY_ID["next_race_winner"]])
-    # the reference SQL uses the same two tables; give the tiny database the columns it needs
     c = duckdb.connect(str(dbfile))
     c.execute("alter table gold.dim_session add column round integer")
     c.execute("alter table gold.fct_result add column grid_position integer")
@@ -227,7 +218,6 @@ def test_whole_run_and_report(dbfile, tmp_path, monkeypatch):
     assert "fake:1" in md and "1 of 1" in md
 
 
-# ---------------------------------------------------------------- the fresh question set
 def test_fresh_set_is_sound_and_separate():
     from qa_agent.questions_fresh import FRESH
     assert len(FRESH) >= 30 and sum(not q.answerable for q in FRESH) >= 6

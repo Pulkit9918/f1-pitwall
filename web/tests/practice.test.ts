@@ -29,17 +29,17 @@ function doc(): SessionDoc {
 describe("practice helpers", () => {
   it("takes each driver's quickest lap that was not deleted and gaps them to the fastest", () => {
     const f = fastestLaps(doc());
-    expect(f.map((r) => r.driver)).toEqual(["AAA", "BBB"]); // CCC has no time
+    expect(f.map((r) => r.driver)).toEqual(["AAA", "BBB"]);
     expect(f[0]).toMatchObject({ time: 90.2, lap: 2, compound: "SOFT", tyreAge: 2, gap: 0, laps: 3 });
-    expect(f[1]).toMatchObject({ time: 91.0, lap: 1, gap: expect.closeTo(0.8, 6), laps: 1 }); // BBB's 89.0 is deleted
+    expect(f[1]).toMatchObject({ time: 91.0, lap: 1, gap: expect.closeTo(0.8, 6), laps: 1 });
   });
   it("lists long runs by compound, quickest first, with the gap to the quickest on that compound", () => {
     const r = longRuns(doc());
-    expect(r.map((g) => g.compound)).toEqual(["MEDIUM"]); // the soft runs are too short, BBB's 3 clean laps are too few
+    expect(r.map((g) => g.compound)).toEqual(["MEDIUM"]);
     expect(r[0].runs.map((x) => x.driver)).toEqual(["BBB", "AAA"]);
     expect(r[0].runs[0]).toMatchObject({ pace: 93.9, gap: 0, startLap: 1, endLap: 7 });
     expect(r[0].runs[1].gap).toBeCloseTo(0.3, 6);
-    expect(longRuns(doc(), 3).flatMap((g) => g.runs).length).toBe(3); // a lower bar lets BBB's 3-clean-lap run in
+    expect(longRuns(doc(), 3).flatMap((g) => g.runs).length).toBe(3);
   });
   it("counts a driver's runs and how many were long", () => {
     expect(runSummary(doc(), "BBB")).toEqual({ runs: 3, longRuns: 1, laps: 17 });

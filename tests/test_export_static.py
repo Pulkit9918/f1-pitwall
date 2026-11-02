@@ -67,7 +67,7 @@ def read(p):
 def test_export_layout_and_filters(db, tmp_path):
     out = tmp_path / "data"
     r = ex.export(db, out, from_year=2022)
-    assert r["session_files"] == 2                      # the no-laps 2025 race and the 2020 race are not written
+    assert r["session_files"] == 2
     assert sorted(p.name for p in (out / "sessions").iterdir()) == ["2025-R01-FP1.json", "2025-R01-R.json"]
     sessions = read(out / "sessions.json")["sessions"]
     assert [s["session_key"] for s in sessions] == ["2025-R01-FP1", "2025-R01-R", "2025-R02-R"]
@@ -83,8 +83,8 @@ def test_session_file_content(db, tmp_path):
     assert d["drivers"] == [{"code": "LEC", "team": "Ferrari"}, {"code": "VER", "team": "Red Bull"}]
     assert d["laps"]["driver_code"] == ["LEC", "VER", "VER"]
     assert d["laps"]["lap_number"] == [1, 1, 2]
-    assert d["laps"]["lap_time_s"] == [91.0, 90.512, None]           # rounded to 3 decimals; NaN becomes null
-    assert d["stints"]["degradation_s_per_lap"] == [None, 0.051]       # left join: LEC's stint has none
+    assert d["laps"]["lap_time_s"] == [91.0, 90.512, None]
+    assert d["stints"]["degradation_s_per_lap"] == [None, 0.051]
     assert d["pit_stops"]["pit_lane_time_s"] == [22.5]
     assert [p["kind"] for p in d["race_control_periods"]] == ["SC", "VSC"]
     assert read(out / "sessions" / "2025-R01-FP1.json")["pit_stops"]["in_lap"] == []
@@ -94,7 +94,7 @@ def test_circuits_only_those_in_exported_sessions(db, tmp_path):
     out = tmp_path / "data"
     ex.export(db, out)
     cs = read(out / "circuits.json")["circuits"]
-    assert [c["circuit_id"] for c in cs] == ["albert_park", "shanghai"]      # monza has no session, 2020 is filtered
+    assert [c["circuit_id"] for c in cs] == ["albert_park", "shanghai"]
     assert cs[0]["pit_loss"]["median_pit_loss_s"] == 22.5 and cs[1]["pit_loss"] is None
     assert cs[0]["degradation"][0]["compound"] == "SOFT"
 

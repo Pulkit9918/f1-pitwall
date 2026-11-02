@@ -7,8 +7,8 @@ export interface TraceLapMeta {
   c?: string;
   a?: number;
   s?: string;
-  k?: 0 | 1; // 1: has a trace and its speed channel agrees with the positions; 0: has a trace, time only
-  r?: string; // why a lap has no trace
+  k?: 0 | 1;
+  r?: string;
 }
 
 export interface TraceSession {
@@ -51,15 +51,14 @@ export interface TraceDriverFile {
 }
 
 export interface Lap {
-  time: number[]; // seconds since the line, at each point
+  time: number[];
   speed: number[] | null;
   throttle: number[] | null;
-  brake: number[] | null; // 0 or 1
+  brake: number[] | null;
   gear: number[] | null;
-  drs: number[] | null; // 1 when the flap is open
+  drs: number[] | null;
 }
 
-// DRS codes follow the timing feed: 10, 12 and 14 mean open, the lower codes closed or not yet allowed.
 export const DRS_OPEN_FROM = 10;
 
 export function decodeLap(enc: EncodedLap): Lap {
@@ -76,12 +75,10 @@ export function decodeLap(enc: EncodedLap): Lap {
   };
 }
 
-// Seconds the lap is behind the reference at each point (positive: slower so far). The reference is 0 throughout.
 export function deltaTo(ref: Lap, lap: Lap): number[] {
   return lap.time.map((t, i) => t - ref.time[i]);
 }
 
-// The traced lap with the shortest lap time, preferring laps whose speed channel can be trusted.
 export function fastestLap(laps: TraceLapMeta[]): TraceLapMeta | null {
   const traced = laps.filter((l) => l.k !== undefined && l.t != null);
   const pool = traced.some((l) => l.k === 1) ? traced.filter((l) => l.k === 1) : traced;
@@ -92,7 +89,6 @@ export function tracedLaps(laps: TraceLapMeta[]): TraceLapMeta[] {
   return laps.filter((l) => l.k !== undefined);
 }
 
-// Drivers with a traced lap, quickest first.
 export function driversByPace(drivers: TraceSession["drivers"]): string[] {
   return drivers
     .map((d) => ({ code: d.code, best: fastestLap(d.laps)?.t ?? null }))
@@ -116,7 +112,6 @@ export function reasonText(r: string | undefined): string {
   return (r && REASONS[r]) || r || "no trace";
 }
 
-// A chosen lap. The colour belongs to the slot and stays with the lap while it is chosen.
 export interface Pick {
   driver: string;
   lap: number;
@@ -155,7 +150,6 @@ export function removePick(picks: Pick[], p: Pick): Pick[] {
   return picks.filter((q) => pickKey(q) !== pickKey(p));
 }
 
-// The index of the grid point nearest to a distance.
 export function nearestIndex(dist: number[], d: number): number {
   let lo = 0;
   let hi = dist.length - 1;
@@ -167,7 +161,6 @@ export function nearestIndex(dist: number[], d: number): number {
   return Math.abs(dist[lo] - d) <= Math.abs(dist[hi] - d) ? lo : hi;
 }
 
-// Moves end labels apart so that none is closer than `gap` to the next, keeping their order, then back inside [lo, hi].
 export function spreadLabels(ys: number[], gap: number, lo: number, hi: number): number[] {
   const order = ys.map((y, i) => i).sort((a, b) => ys[a] - ys[b]);
   const out = ys.slice();
@@ -188,7 +181,6 @@ export function lapLabel(p: Pick): string {
   return `${p.driver} lap ${p.lap}`;
 }
 
-// The same laps from one set of drivers' files, ready to draw.
 export interface DrawnLap {
   pick: Pick;
   slot: number;
@@ -216,7 +208,6 @@ export function drawLaps(
   return out;
 }
 
-// What the track status codes of a lap mean for how it was driven; null for a clear lap.
 export function statusNote(s: string | undefined): string | null {
   if (!s) return null;
   if (s.includes("5")) return "red flag";

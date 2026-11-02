@@ -1,8 +1,4 @@
-"""A read-only gate for SQL written by a model: one SELECT (or WITH ... SELECT) and nothing else.
-
-This is a second line of defence. The database is also opened read-only with external access switched off, so a
-query that slipped through still could not write or read files.
-"""
+"""A read-only gate for SQL written by a model: one SELECT (or WITH ... SELECT) and nothing else."""
 import re
 
 _FORBIDDEN = re.compile(

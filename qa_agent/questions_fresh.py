@@ -1,12 +1,7 @@
-"""A second question set, written after the prompts were frozen, to measure the agent without tuning to the questions.
-
-Same format and categories as questions.py, but different drivers, races, years and tables, and no question was run
-against a model before the prompts were fixed. Run it with:  python -m qa_agent.run_eval --set fresh --model <name>
-"""
+"""A second question set, written after the prompts were frozen, to measure the agent without tuning to the questions."""
 from .questions import J_RES, RACE, Q
 
 FRESH = [
-    # ---- lookups
     Q("f_winner_2023_monaco", "lookup", "Which driver won the 2023 Monaco Grand Prix? Give the three-letter driver code.",
       f"select r.driver_code {J_RES} where s.year = 2023 and {RACE} and s.event ilike '%Monaco%' and r.position = 1",
       ["fct_result", "dim_session"]),
@@ -25,7 +20,6 @@ FRESH = [
     Q("f_laps_2024_spain_alonso", "lookup", "How many laps did Fernando Alonso complete in the 2024 Spanish Grand Prix race?",
       f"select r.laps_completed {J_RES} where s.year = 2024 and {RACE} and s.event ilike '%Spanish%' and r.driver_code = 'ALO'",
       ["fct_result", "dim_session"]),
-    # ---- aggregates
     Q("f_verstappen_wins_2023", "aggregate", "How many Grands Prix did Max Verstappen win in 2023?",
       "select count(*) from fct_season_result where season = 2023 and driver_id = 'max_verstappen' and is_win",
       ["fct_season_result"]),
@@ -40,7 +34,6 @@ FRESH = [
     Q("f_most_british_wins", "aggregate", "Which driver has won the most British Grands Prix? Give the driver id.",
       "select driver_id from fct_season_result where circuit_id = 'silverstone' and is_win group by driver_id order by count(*) desc, driver_id limit 1",
       ["fct_season_result"], note="check_reference prints the top three so a tie can be spotted"),
-    # ---- history
     Q("f_senna_wins", "history", "How many Grands Prix did Ayrton Senna win in his career?",
       "select count(*) from fct_season_result where driver_id = 'senna' and is_win", ["fct_season_result"]),
     Q("f_champion_1994", "history", "Who won the 1994 drivers' championship? Give the driver id.",
@@ -51,7 +44,6 @@ FRESH = [
       "select constructor_id from fct_constructor_standing where season = 2010 and "
       "round = (select max(round) from fct_constructor_standing where season = 2010) and position = 1",
       ["fct_constructor_standing"]),
-    # ---- joins and laps
     Q("f_fastest_lap_2024_italy", "join", "Who set the fastest race lap of the 2024 Italian Grand Prix, and what was the time in seconds? Ignore deleted laps.",
       f"select l.driver_code, l.lap_time_s from fct_lap l join dim_session s on s.session_key = l.session_key "
       f"where s.year = 2024 and {RACE} and s.event ilike '%Italian%' and not coalesce(l.deleted, false) "
@@ -77,7 +69,6 @@ FRESH = [
       f"select count(*) from fct_stint f join dim_session s on s.session_key = f.session_key "
       f"where s.year = 2024 and {RACE} and s.event ilike '%Bahrain%' and f.compound = 'HARD'",
       ["fct_stint", "dim_session"]),
-    # ---- the project's own models
     Q("f_lowest_pit_loss_circuit", "project", "Which circuit has the lowest median green-flag pit loss, counting only circuits marked reliable? Give the circuit name.",
       "select circuit_name from fct_circuit_pit_loss where is_reliable order by median_pit_loss_s asc limit 1",
       ["fct_circuit_pit_loss"]),
@@ -103,7 +94,6 @@ FRESH = [
     Q("f_heldout_mae_undisturbed", "project", "What is the held-out mean absolute error, in places, of the pit-stop prediction for undisturbed stops?",
       "select held_out_mae from fct_pit_prediction_heldout_score where scope ilike '%undisturbed%'",
       ["fct_pit_prediction_heldout_score"], tol=0.0005),
-    # ---- the data cannot answer these
     Q("f_champion_2028", "unanswerable", "Who will win the 2028 drivers' championship?", None),
     Q("f_tyre_temperature", "unanswerable", "What was the front-left tyre temperature on Max Verstappen's car at the start of the 2024 Dutch Grand Prix?", None),
     Q("f_red_bull_budget", "unanswerable", "What was Red Bull's budget for the 2023 season?", None),

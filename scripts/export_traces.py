@@ -116,11 +116,11 @@ def export(db, out, from_year=2024, log=print):
         per_driver, dist = {}, None
         for a, b in zip(starts[:-1], starts[1:]):
             if b - a != n_points or not (idx[a:b] == np.arange(n_points)).all():
-                skipped.append((key, str(drv[a]), int(lap[a])))      # a lap that is not a full grid is not exported
+                skipped.append((key, str(drv[a]), int(lap[a])))
                 continue
             if dist is None:
                 dist = [round(float(x), 1) for x in p["dist_m"][a:b]]
-            has_speed = not np.ma.getmaskarray(p["speed_kph"][a:b]).any()      # a lap without a trusted speed channel has nulls
+            has_speed = not np.ma.getmaskarray(p["speed_kph"][a:b]).any()
             sl = slice(a, b)
             enc = encode_lap(
                 np.ma.filled(p["time_s"][sl], 0),

@@ -1,8 +1,4 @@
-"""Reconcile gold.fct_race_control_period with app/racecontrol.build_periods. Read-only.
-Python side: the Race scrubber's own recipe (session second zero from the first position sample, messages in
-file order). SQL side: the dbt table, session-second columns. Periods still open at the end are compared on
-their start only (the app closes them at the end of the replay, which SQL does not know).
-Then an informational check of message-based periods against the separate track status feed."""
+"""Reconcile gold.fct_race_control_period with app/racecontrol.build_periods. Read-only."""
 import sys
 
 import duckdb

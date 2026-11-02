@@ -30,7 +30,7 @@ describe("race analysis helpers", () => {
   it("finds the real stop on the next lap and the position after the out-lap", () => {
     const p = pitNowAt(doc(), "BBB", 1)!;
     expect(p.stopsNextLap).toBe(true);
-    expect(p.actualAfter).toBeNull();           // lap 3 has no position for BBB in this data
+    expect(p.actualAfter).toBeNull();
     expect(p.predicted).toBe(3);
     const q = pitNowAt(doc(), "AAA", 2)!;
     expect(q.stopsNextLap).toBe(false);
@@ -68,7 +68,7 @@ describe("race analysis helpers", () => {
     expect(predictionAt(d, "AAA", 2)).toEqual({ position: 2, regime: "green" });
     expect(predictionAt(d, "AAA", 3)).toEqual({ position: 1, regime: "sc" });
     expect(predictionAt(d, "AAA", 4)).toEqual({ position: null, regime: "red" });
-    expect(predictionAt(d, "AAA", 0)).toBeNull();      // no lap finished yet
+    expect(predictionAt(d, "AAA", 0)).toBeNull();
     expect(predictionAt(d, "AAA", 9)).toBeNull();
     expect(predictionAt(d, "ZZZ", 1)).toBeNull();
     expect(predictionAt(null, "AAA", 1)).toBeNull();

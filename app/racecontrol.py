@@ -1,8 +1,4 @@
-"""Pure parsers for race control messages: flag periods, events, stewards' status, lap deletions
-and restart times. No Streamlit and no file access, so they can be tested directly.
-
-Expects a DataFrame with the columns Time (UTC timestamp), t (session seconds), Category, Message,
-Flag, Scope, Sector and Lap."""
+"""Pure parsers for race control messages: flag periods, events, stewards' status, lap deletions and restart times."""
 
 import re
 from collections import Counter
@@ -32,9 +28,7 @@ def steward_status(rc, names):
 
 
 def build_periods(d, grid, lead, end):
-    """Safety car, VSC and red flag periods (session seconds) from the message wording.
-
-    grid / lead: the leader's progress over time, used to place each period on the lap axis."""
+    """Safety car, VSC and red flag periods (session seconds) from the message wording."""
     periods, cur = [], None
 
     def close(t1):
@@ -63,7 +57,7 @@ def build_periods(d, grid, lead, end):
             if is_sc or "PIT EXIT OPEN" in msg or "TRACK CLEAR" in msg or "RACE START" in msg:
                 close(t)
             else:
-                continue                      # still red-flagged
+                continue
         if is_sc:
             close(t)
             cur = {"kind": "SC", "t0": t}
@@ -113,8 +107,7 @@ def build_events(d, start, duration):
 
 
 def deleted_laps(d):
-    """Lap-time deletions (track limits and similar) from messages such as
-    'CAR 63 (RUS) TIME 1:20.011 DELETED - TRACK LIMITS AT TURN 12 LAP 5 11:30:13'."""
+    """Lap-time deletions (track limits and similar) from messages such as 'CAR 63 (RUS) TIME 1:20.011 DELETED - TRACK LIMITS AT TURN 12 LAP 5 11:30:13'."""
     rows = []
     for r in d.itertuples():
         up = str(r.Message).upper()
@@ -132,8 +125,7 @@ def deleted_laps(d):
 
 
 def estimate_tz_offset(d):
-    """Local-time offset from UTC in seconds, from messages that quote a local clock time
-    (for example 'TIMED AT 20:38:16' next to a UTC timestamp of 12:38:16). None if unknown."""
+    """Local-time offset from UTC in seconds, from messages that quote a local clock time (for example 'TIMED AT 20:38:16' next to a UTC timestamp of 12:38:16)."""
     votes = Counter()
     for r in d.itertuples():
         text = str(r.Message).upper()

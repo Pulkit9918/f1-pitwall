@@ -1,9 +1,4 @@
-"""Ingest one F1 session into compact, partitioned Parquet files.
-
-usage: python ingest.py YEAR "Event name or round number" CODE [--force] [--keep-cache] [--no-telemetry]
-CODE is a FastF1 session identifier: R, Q, S, SQ, SS, FP1, FP2, FP3
-status: ok (everything written), partial (something missing), failed (no laps)
-"""
+"""Ingest one F1 session into compact, partitioned Parquet files."""
 
 import json
 import logging
@@ -227,11 +222,11 @@ def ingest(year: int, event, code: str, force: bool = False, keep_cache: bool = 
             try:
                 df = build()
                 df.insert(0, "event", name)
-                findings = validate_contract(table, df)  # a hard failure raises: nothing is written
+                findings = validate_contract(table, df)
                 tables[table] = {"rows": len(df),
                                  "bytes": write(df, part_path(table, year, rnd, code))}
                 if findings:
-                    tables[table]["contract"] = findings  # soft findings: stored, never blocking
+                    tables[table]["contract"] = findings
             except Exception as e:
                 tables[table] = {"error": f"{type(e).__name__}: {e}"}
         row["tables"] = tables

@@ -136,8 +136,6 @@ def pick_session(need_telemetry: bool = False, key: str = "s") -> dict:
     return ss[ss["session"] == code].iloc[0].to_dict()
 
 
-# ---- units ---------------------------------------------------------------------------
-
 def imperial() -> bool:
     """Sidebar toggle for mph / deg F. Pages that show speeds or temperatures call this."""
     return st.sidebar.toggle("Imperial units (mph, °F)", key="imperial")

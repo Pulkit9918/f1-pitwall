@@ -26,7 +26,6 @@ export function compoundLetter(c: string | null | undefined): string {
   return (c && COMPOUND_LETTER[c.toUpperCase()]) || "?";
 }
 
-// Dark text on the light compounds, light text on the dark ones.
 export function onCompound(c: string | null | undefined): string {
   const k = (c || "").toUpperCase();
   return k === "SOFT" || k === "WET" ? "#ffffff" : "#14171f";

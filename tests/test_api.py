@@ -37,7 +37,7 @@ def client(tmp_path, monkeypatch):
         ('albert_park', 'Albert Park', 'SOFT', 0.08, true), ('albert_park', 'Albert Park', 'HARD', 0.03, false),
         ('imola', 'Imola', 'SOFT', 0.06, true)) t(circuit_id, circuit_name, compound, median_degradation_s_per_lap, is_reliable)""")
     con.close()
-    (tmp_path / "build.duckdb").rename(path)   # served under a name that would clash with the schema
+    (tmp_path / "build.duckdb").rename(path)
     monkeypatch.setenv("F1_API_DB", str(path))
     return TestClient(main.app)
 
@@ -109,7 +109,7 @@ def test_missing_database_is_503(tmp_path, monkeypatch):
 def test_locked_database_is_503(client, tmp_path, monkeypatch):
     import os
     path = os.environ["F1_API_DB"]
-    writer = duckdb.connect(path)          # holds the write lock, as a dbt build would
+    writer = duckdb.connect(path)
     try:
         assert client.get("/health").status_code == 503
     finally:

@@ -1,13 +1,4 @@
-"""Prototype race-state engine: turn GPS positions into per-driver race progress, then test it.
-
-usage: python engine_probe.py [YEAR ROUND SESSION]      (default: 2026 17 R)
-
-Progress P(t) = laps completed + fraction of the lap, for every driver at every moment.
-Laps are anchored to the official timing at the start/finish line, so the order AT the line is
-right by construction. The real test is the two sector lines in the middle of the lap, which the
-engine never sees: at the moment each driver crosses a sector line, is the engine's running
-order the same as the order derived from the official sector times?
-"""
+"""Prototype race-state engine: turn GPS positions into per-driver race progress, then test it."""
 
 import os
 import sys
@@ -44,13 +35,12 @@ for c in ("x", "y", "session_time_s"):
 print(f"{YEAR} round {RND} {CODE}: {len(laps)} laps, {len(pos):,} position samples, "
       f"{laps['Driver'].nunique()} drivers")
 
-# ---- reference track: the winner's fastest clean lap, as a polyline from line to line --------
 first_winner = res.loc[res["Position"] == 1, "Abbreviation"].iloc[0]
 _order = [first_winner] + [d for d in res.dropna(subset=["Position"]).sort_values("Position")["Abbreviation"]
                            if d != first_winner]
 ref_row = None
-_gps_end = float(pos["session_time_s"].max())  # some sessions have GPS for the first part of the race only
-for winner in _order:  # the winner's best clean lap if it has GPS, otherwise the next finisher's
+_gps_end = float(pos["session_time_s"].max())
+for winner in _order:
     wl = laps[(laps["Driver"] == winner) & laps["LapTime_s"].notna()
               & laps["PitInTime_s"].isna() & laps["PitOutTime_s"].isna()
               & (laps["Time_s"] <= _gps_end)].sort_values("LapTime_s")
@@ -124,7 +114,6 @@ def project(xy, ref, s):
     return s_out, d_out
 
 
-# ---- progress per driver ------------------------------------------------------------------
 prog, diag = {}, []
 for drv, dl in laps.groupby("Driver"):
     num = int(dl["DriverNumber"].iloc[0])
@@ -136,7 +125,7 @@ for drv, dl in laps.groupby("Driver"):
     t = p["session_time_s"].to_numpy(float)
     s_raw, dist = project(p[["x", "y"]].to_numpy(float), ref_xy, s_ref)
     S = np.unwrap(s_raw, period=L)
-    jumps = int((np.abs(np.diff(S)) > 1000).sum())          # more than 100 m in one sample
+    jumps = int((np.abs(np.diff(S)) > 1000).sum())
     P = np.full(len(t), np.nan)
     prev_end = None
     for r in dl.sort_values("LapNumber").drop_duplicates("LapNumber").itertuples():
@@ -158,7 +147,7 @@ for drv, dl in laps.groupby("Driver"):
         if (1 - BAND) * L <= span <= (1 + BAND) * L:
             frac = (S[m] - s0) / span
         else:
-            frac = (t[m] - t0) / (t1 - t0)                    # fall back to linear in time
+            frac = (t[m] - t0) / (t1 - t0)
         P[m] = (int(r.LapNumber) - 1) + np.clip(frac, 0, 1)
     ok = ~np.isnan(P)
     if ok.sum() < 100:
@@ -184,7 +173,6 @@ def p_at(drv, T):
     return float(np.interp(T, tv, pv, left=0.0, right=pv[-1]))
 
 
-# lap-resolution baseline: the official position at the end of the previous lap
 official_pos = {(r.Driver, r.LapNumber): r.Position for r in laps.itertuples()
                 if pd.notna(r.Position)}
 

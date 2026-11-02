@@ -52,7 +52,6 @@ def test_actual_stops_finds_the_in_lap():
 
 def test_predict_rejoin_depends_on_the_pit_loss():
     frames = pit_scenario()
-    # X leads Y by 10 s. A 22.4 s stop drops X behind Y; a 5 s stop would not.
     assert rl.predict_rejoin(frames, "X", 5, 22.4)["position"] == 2
     assert rl.predict_rejoin(frames, "X", 5, 5.0)["position"] == 1
 

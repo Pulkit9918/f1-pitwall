@@ -1,22 +1,11 @@
-"""Data contracts for the Parquet lake, checked at ingest time.
-
-Two levels, both written with pandera:
-  HARD  structure: required columns present, key columns not null, numeric columns numeric.
-        A failure raises ContractError; ingest.py records the table as failed (and it is retried later).
-  SOFT  values: plausible ranges and known code sets. A failure never blocks the write; it is returned as a
-        finding, which ingest.py stores in the manifest row. A rule only reports when more than its tolerance
-        of the rows break it (TOLERANCE), so known glitches in the source do not drown real drift.
-
-Everything here was derived from a profile of the 706 loaded sessions (logs/profile_lake.txt), not guessed.
-`event` is added by ingest.py before validation; year/round/session are partition keys and are not validated.
-"""
+"""Data contracts for the Parquet lake, checked at ingest time."""
 from __future__ import annotations
 
 import pandas as pd
 
 try:
     import pandera.pandas as pa
-except ImportError:  # older pandera
+except ImportError:
     import pandera as pa
 
 
@@ -25,7 +14,6 @@ class ContractError(Exception):
 
 
 def _numeric(s: pd.Series) -> bool:
-    # an all-null column (a session with no sector times, say) is stored untyped, so it must pass
     return bool(pd.api.types.is_numeric_dtype(s) or s.isna().all())
 
 
@@ -96,12 +84,10 @@ def _in(table, col, allowed):
 
 
 COMPOUNDS = ["SOFT", "MEDIUM", "HARD", "INTERMEDIATE", "WET", "SUPERSOFT", "ULTRASOFT", "HYPERSOFT",
-             "TEST_UNKNOWN", "UNKNOWN", "nan", "None", ""]   # 'nan', 'None' and '' are missing values stored as text
-DRS_CODES = [0, 1, 2, 3, 8, 9, 10, 11, 12, 13, 14, 15]       # observed; meanings not yet verified
+             "TEST_UNKNOWN", "UNKNOWN", "nan", "None", ""]
+DRS_CODES = [0, 1, 2, 3, 8, 9, 10, 11, 12, 13, 14, 15]
 
 def _throttle():
-    # Measured on the lake: values are 0-100 plus the single code 104 (about 21% of samples, every season).
-    # 104 is not a percentage; its meaning is not verified. Nothing is seen at 101-103.
     return "throttle", pa.Check(lambda s: s.between(0, 100) | (s == 104),
                                 name="telemetry_car.throttle is 0-100 or the code 104")
 
@@ -130,7 +116,6 @@ _SOFT_RULES = {
                            ["Started", "Inactive", "Finished", "Ends", "Finalised", "Aborted"])],
 }
 
-# whole-frame rules
 _LAP_UNIQUE = pa.Check(lambda df: ~df.duplicated(["Driver", "LapNumber"], keep=False),
                        name="laps.(Driver, LapNumber) is unique")
 _RESULT_CLASS = pa.Check(lambda s: s.astype(str).str.fullmatch(r"\d{1,2}|[A-Z]|"),
@@ -143,9 +128,7 @@ for _t, _rules in _SOFT_RULES.items():
         _cols["ClassifiedPosition"] = pa.Column(required=False, nullable=True, checks=[_RESULT_CLASS])
     SOFT[_t] = pa.DataFrameSchema(_cols, checks=[_LAP_UNIQUE] if _t == "laps" else [], strict=False)
 
-# share of rows allowed to break a rule before it is reported (default 0). Set from the lake-wide check.
 TOLERANCE: dict[str, float] = {
-    # gear values above 8 (9 to 20+) appear in about 0.1% of rows in 96 of 269 sessions, worst 0.17%
     "telemetry_car.ngear in [0, 8]": 0.005,
 }
 

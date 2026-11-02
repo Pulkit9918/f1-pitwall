@@ -103,7 +103,7 @@ def test_tz_offset_from_a_quoted_local_time():
 
 
 def test_resume_targets_use_the_offset():
-    d = frame([m(1800, "RACE WILL RESUME AT 20:45")])       # 12:30 UTC; +8 h means 12:45 UTC
+    d = frame([m(1800, "RACE WILL RESUME AT 20:45")])
     assert rcc.resume_targets(d, 8 * 3600) == [(1800.0, 2700.0)]
     assert rcc.resume_targets(d, None) == []
 

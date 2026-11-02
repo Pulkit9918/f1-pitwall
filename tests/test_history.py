@@ -100,7 +100,7 @@ def test_get_retries_after_a_429_and_then_serves_from_the_cache(tmp_path, monkey
     monkeypatch.setattr(history.requests, "get", fake_get)
     assert history.get("seasons.json?limit=1", 0) == {"ok": 1}
     assert len(calls) == 2
-    assert history.get("seasons.json?limit=1", 0) == {"ok": 1}      # raw cache: no new request
+    assert history.get("seasons.json?limit=1", 0) == {"ok": 1}
     assert len(calls) == 2
 
 

@@ -28,7 +28,7 @@ def db(tmp_path):
     c.execute("""create table gold.fct_pit_loss_ratio(regime varchar, stops int, median_loss_s double, p25_loss_s double, p75_loss_s double,
                  ratio_to_green double, is_reliable boolean)""")
     S = "2025-R01-R"
-    rows = [("AAA", 1, 1, 0.0, None), ("AAA", 2, 1, 0.0, None), ("BBB", 1, 2, 1.234, 1.234), ("BBB", 3, 2, 5.55, 5.55)]  # BBB has no lap 2
+    rows = [("AAA", 1, 1, 0.0, None), ("AAA", 2, 1, 0.0, None), ("BBB", 1, 2, 1.234, 1.234), ("BBB", 3, 2, 5.55, 5.55)]
     for d, lap, pos, gl, itv in rows:
         c.execute("insert into gold.fct_lap_gap values (?,?,2025,?,?,?,?,?)", [f"{S}-{d}-{lap}", S, d, lap, pos, gl, itv])
         c.execute("insert into gold.fct_pit_now values (?,?,?,?,?,?,?)", [f"{S}-{d}-{lap}", "sc" if lap == 2 else "green", 22.04, 3, 2, 4, 1.26])
@@ -43,16 +43,16 @@ def db(tmp_path):
 def test_exports_arrays_by_lap_and_respects_from_year(db, tmp_path):
     out = tmp_path / "out"
     keys = mod.export(db, out, from_year=2022, log=lambda *_: None)
-    assert keys == ["2025-R01-R"]                       # 2019 is before from_year
+    assert keys == ["2025-R01-R"]
     doc = json.loads((out / "2025-R01-R.json").read_text())
     assert doc["laps"] == 3 and doc["drivers"] == ["AAA", "BBB"]
     b = doc["series"]["BBB"]
-    assert b["leader"] == [1.2, None, 5.5] or b["leader"] == [1.2, None, 5.6]   # rounded to 0.1, missing lap is null
+    assert b["leader"] == [1.2, None, 5.5] or b["leader"] == [1.2, None, 5.6]
     assert b["pos"] == [2, None, 2]
-    assert b["regime"] == "g.g"                          # a lap with no row is "."
+    assert b["regime"] == "g.g"
     assert doc["series"]["AAA"]["regime"] == "gs."
     assert doc["series"]["AAA"]["loss"] == [22.0, 22.0, None]
-    assert doc["stops"] == [{"driver": "BBB", "lap": 2}]  # no null laps, no practice sessions
+    assert doc["stops"] == [{"driver": "BBB", "lap": 2}]
     assert doc["battles"][0]["kind"] == "undercut" and doc["battles"][0]["attacker_ahead"] is True
     assert doc["loss_ratio"]["sc"]["reliable"] is False and doc["loss_ratio"]["sc"]["p75_loss_s"] == 38.4
 

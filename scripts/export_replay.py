@@ -42,22 +42,20 @@ DEFAULT_OUT = ROOT / "web" / "public" / "replay-data"
 
 GENERATOR = "export_replay"
 SCHEMA = 1
-STEP_S = 1.0          # seconds between samples
-REF_POINTS = 1000     # resolution of the circuit line used for snapping
-DRAW_POINTS = 500     # points of the outline sent to the page
-VIEW = 1000.0         # the outline is scaled to fit a box this big
-BACK_WINDOW = 20      # when snapping, how far back (in reference points) a car may move between samples
-FWD_WINDOW = 150      # ... and how far forward (15% of a lap)
-HOLE_S = 3.0          # position samples further apart than this are a hole in the data, not a slow stretch
-BACK_LIMIT = 0.03     # a step back of more than this (fraction of a lap) is not a car going backwards, it is a bad sample
-MAX_HOLD = 30         # ... and is ignored for at most this many samples in a row before the car is taken to be there
-CORNER_OFFSET = 500   # how far (in the lake's position units, tenths of a metre) a corner number sits from the track
-MAX_SNAP = 40.0       # a corner or marshal post further than this (in outline units) from the drawn circuit is not used
+STEP_S = 1.0
+REF_POINTS = 1000
+DRAW_POINTS = 500
+VIEW = 1000.0
+BACK_WINDOW = 20
+FWD_WINDOW = 150
+HOLE_S = 3.0
+BACK_LIMIT = 0.03
+MAX_HOLD = 30
+CORNER_OFFSET = 500
+MAX_SNAP = 40.0
 RACE_LIKE = {"R", "S"}
-MIN_COVERAGE = 0.5    # a session whose valid position data covers less of its lap window than this is not exported
+MIN_COVERAGE = 0.5
 
-
-# ---------------------------------------------------------------- lake lookups
 
 def norm(name):
     return re.sub(r"[^a-z0-9]", "", name.lower())
@@ -132,8 +130,6 @@ def driver_teams(con, files):
             out[code] = [n or None, "#" + m.group(1).upper() if m else None]
     return out
 
-
-# ---------------------------------------------------------------- the circuit line and snapping
 
 def circuit_overlay(circuit, mn, mx, scale, ox, oy):
     """Corner numbers and marshal posts placed on the drawn outline: (corners, marshal, notes).
@@ -236,7 +232,7 @@ def snap(points, ref, race_like=True):
             if prev is None:
                 idx = int(gidx[k])
                 c = idx / n
-                if c > 0.5:          # on the grid, just before the start line
+                if c > 0.5:
                     c -= 1.0
             else:
                 cand = (prev + offs) % n
@@ -255,8 +251,6 @@ def snap(points, ref, race_like=True):
             cum[lo + k] = c
     return cum
 
-
-# ---------------------------------------------------------------- one session
 
 def correct_slips(grid, cum, start, ends, last_t):
     """Fix whole-lap slips in cum (progress, edited in place) against the lap table; returns the number fixed.
@@ -317,8 +311,6 @@ def build_replay(con, key, code, pos_file, car_file, weather_file, rc_file, ts_f
         return None, ["no position samples"]
     slices = split_by_driver(drv)
 
-    # the circuit line: the fastest clean lap whose driver has position samples across all of it (lap_ref is a list of
-    # candidate laps, fastest first; samples can be missing for a driver, or the data can stop early)
     ref = None
     for ref_code, ref_start, ref_time in (lap_ref or []):
         ref_num = next((n for n, c in numbers.items() if c == ref_code), None)
@@ -362,8 +354,6 @@ def build_replay(con, key, code, pos_file, car_file, weather_file, rc_file, ts_f
         if vb <= va:
             continue
         gt = grid[va:vb + 1]
-        # A grid point more than HOLE_S from any real sample is not snapped (a straight line across a hole cuts across
-        # the circuit); its progress is filled in from the points either side.
         j = np.clip(np.searchsorted(ts, gt), 1, len(ts) - 1)
         seen = np.minimum(np.abs(gt - ts[j - 1]), np.abs(ts[j] - gt)) <= HOLE_S
         if not seen.any():
@@ -373,9 +363,6 @@ def build_replay(con, key, code, pos_file, car_file, weather_file, rc_file, ts_f
         cum[va:vb + 1] = np.interp(gt, gt[seen], snap(pts[seen], ref, race_like))
         cum[:va] = cum[va]
         cum[vb + 1:] = cum[vb]
-        # Progress counts every pass of the line since the car's first sample, including the out lap, the formation lap
-        # and the drive to the grid, a different number for each car. Re-zero it at the start of lap 1, where a car on
-        # the grid sits just behind the line (progress slightly below zero).
         lap1 = (laps_info.get(numbers.get(num)) or (None, None, None))[2] if race_like else None
         if lap1 is not None and grid[va] <= lap1 <= grid[vb]:
             cum -= float(np.round(np.interp(lap1, grid, cum)))
@@ -400,7 +387,6 @@ def build_replay(con, key, code, pos_file, car_file, weather_file, rc_file, ts_f
     if not drivers:
         return None, ["no driver had enough samples"]
 
-    # outline, scaled into a VIEW x VIEW box with y pointing down
     mn, mx = ref.min(0), ref.max(0)
     scale = VIEW / max(float(mx[0] - mn[0]), float(mx[1] - mn[1]))
     sx = (ref[:, 0] - mn[0]) * scale
@@ -411,7 +397,6 @@ def build_replay(con, key, code, pos_file, car_file, weather_file, rc_file, ts_f
         circuit, mn, mx, scale, np.array([p[0] for p in outline]), np.array([p[1] for p in outline]))
     notes.extend(circuit_notes)
 
-    # race-control messages and weather, on the session clock
     off = clock_offset(ep, t)
     messages = []
     if rc_file and off is not None:
@@ -445,7 +430,6 @@ def build_replay(con, key, code, pos_file, car_file, weather_file, rc_file, ts_f
             'select "Time_s", "Status", "Message" from read_parquet(?) where "Time_s" is not null order by 1',
             [ts_file]).fetchall()]
 
-    # the one check: progress at the end of each car's last lap against the lap count in the gold table
     if race_like:
         def agreement(which):
             good = bad = 0
@@ -458,8 +442,6 @@ def build_replay(con, key, code, pos_file, car_file, weather_file, rc_file, ts_f
                 i = int(np.searchsorted(g, lap_end))
                 if i >= len(g) or not np.isfinite(cm[i]):
                     continue
-                # a car that never finished its last lap (a retirement) is somewhere inside it
-                # (or has finished it and kept driving: the lap table has no time for it either way)
                 lo_ok = lap_count - 1.2 if last_time is None else lap_count - 0.2
                 hi_ok = lap_count + 1.2 if last_time is None else lap_count + 0.2
                 if lo_ok <= cm[i] <= hi_ok:
@@ -468,8 +450,6 @@ def build_replay(con, key, code, pos_file, car_file, weather_file, rc_file, ts_f
                     bad += 1
             return good, bad
 
-        # judged on progress as the positions give it, before whole-lap slips are corrected: if most cars are wrong the
-        # position data cannot be trusted (it can stop matching the cars' clock part way through a race)
         good, bad = agreement(1)
         if good + bad >= 4 and good < 0.5 * (good + bad):
             return None, [f"position data does not match the lap table (progress agrees for only {good} of "
@@ -489,8 +469,6 @@ def build_replay(con, key, code, pos_file, car_file, weather_file, rc_file, ts_f
         **({"corners": corners} if corners else {}), **({"marshal": marshal} if marshal else {}),
     }, notes
 
-
-# ---------------------------------------------------------------- the run
 
 def dumps(obj):
     return json.dumps(obj, separators=(",", ":"), allow_nan=False)
@@ -547,7 +525,6 @@ def export(db, lake, out, from_year=2022, sessions=("R", "Q"), only=None, force=
         if not nums:
             skipped.append((key, "no driver numbers for this session"))
             continue
-        # the circuit is drawn from a lap the position data fully covers (it can stop before the session does)
         pos_lo, pos_hi = con.execute(
             "select min(session_time_s), max(session_time_s) from read_parquet(?) where session_time_s is not null "
             "and x is not null and y is not null and not (x = 0 and y = 0)", [pos[k][0]]).fetchone()
@@ -583,7 +560,6 @@ def export(db, lake, out, from_year=2022, sessions=("R", "Q"), only=None, force=
         circuit = {}
         for name, files, cols in (("corners", corner_files, '"X", "Y", "Number", "Letter", "Angle"'),
                                   ("marshal", marshal_files, '"X", "Y", "Number"')):
-            # the same circuit is stored under each of its sessions, so any session of the weekend will do
             f = next((v[0] for kk, v in sorted(files.items()) if kk[:2] == k[:2]), None)
             if f:
                 circuit[name] = con.execute(f'select distinct {cols} from read_parquet(?) order by "Number"', [f]).fetchall()

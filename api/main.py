@@ -1,9 +1,4 @@
-"""Read-only HTTP API over the gold tables.
-
-Run from the repository root:  uvicorn api.main:app --port 8000   (docs at /docs)
-The database is data/f1_dbt.duckdb unless F1_API_DB points elsewhere. It is opened read-only on every request, so
-a running dbt build (which needs the write lock) makes the API answer 503 until the build ends.
-Every value from the URL goes in as a query parameter; column and table names in the SQL are fixed in this file."""
+"""Read-only HTTP API over the gold tables."""
 import math
 import os
 from datetime import date, datetime
@@ -50,7 +45,6 @@ def query(sql: str, params: list | None = None) -> list[dict]:
         raise HTTPException(503, "The gold database does not exist yet; build the dbt project first.")
     con = duckdb.connect()
     try:
-        # attached under a fixed alias, so the SQL below does not depend on the file's name
         con.execute("attach '" + path.replace("'", "''") + "' as f1 (read_only)")
     except duckdb.Error as e:
         con.close()
@@ -146,7 +140,7 @@ def race_control_periods(session_key: str, limit: Limit = 500):
 
 @app.get("/circuits/pit-loss", tags=["circuits"])
 def circuit_pit_loss(reliable_only: bool = True, limit: Limit = 500):
-    """Green-flag pit loss per circuit (fct_circuit_pit_loss). Unreliable circuits have too few stops or sessions."""
+    """Green-flag pit loss per circuit (fct_circuit_pit_loss)."""
     w = " where is_reliable" if reliable_only else ""
     return query(f"select * from f1.gold.fct_circuit_pit_loss{w} order by median_pit_loss_s desc limit ?", [limit])
 

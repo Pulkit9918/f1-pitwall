@@ -1,7 +1,4 @@
-"""Validate every session already in the lake against contracts.py (read-only). Run from the repo root:
-   ~/.venvs/f1-pitwall/bin/python scripts/check_contracts.py [table ...] 2>&1 | tee logs/contract_check.txt
-Prints, per table, the files that fail a hard rule and, per soft rule, in how many sessions it is broken and
-the worst share of rows. Writes logs/contract_check_<time>.csv with every finding."""
+"""Validate every session already in the lake against contracts.py (read-only)."""
 import csv, glob, os, sys, time
 from pathlib import Path
 

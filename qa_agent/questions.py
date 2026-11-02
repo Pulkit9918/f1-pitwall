@@ -1,17 +1,4 @@
-"""The evaluation set: questions with reference SQL, written by hand, and questions the data cannot answer.
-
-Each question has
-  id         short stable name
-  category   lookup, aggregate, join, project (the project's own models), history, data-gap or unanswerable
-  question   what the agent is asked, including the form of the answer
-  sql        reference SQL (None for an unanswerable question); the expected answer is computed from it at run time,
-             so it stays right when the data is refreshed, and is never produced by the model being tested
-  tables     the gold tables a correct query needs (used to score table routing)
-  ordered    True when the row order is part of the answer
-  tol        tolerance for decimal values (default 0.01)
-
-An unanswerable question has sql=None. The right behaviour is to say so and not to run a query that returns a number.
-"""
+"""The evaluation set: questions with reference SQL, written by hand, and questions the data cannot answer."""
 from dataclasses import dataclass, field
 
 RACE = "s.session_code = 'R'"
@@ -39,7 +26,6 @@ def Q(id, category, question, sql, tables=(), ordered=False, tol=0.01, note=""):
 
 
 QUESTIONS: list[Question] = [
-    # ---- lookups
     Q("winner_2025_italy", "lookup", "Which driver won the 2025 Italian Grand Prix? Give the three-letter driver code.",
       f"select r.driver_code {J_RES} where s.year = 2025 and {RACE} and s.event ilike '%Italian%' and r.position = 1",
       ["fct_result", "dim_session"]),
@@ -65,7 +51,6 @@ QUESTIONS: list[Question] = [
     Q("front_row_2025_hungary", "lookup", "Which drivers started on the front row (grid positions 1 and 2) of the 2025 Hungarian Grand Prix? Give the three-letter driver codes.",
       f"select r.driver_code {J_RES} where s.year = 2025 and {RACE} and s.event ilike '%Hungarian%' and r.grid_position in (1, 2)",
       ["fct_result", "dim_session"]),
-    # ---- aggregates
     Q("hamilton_wins_2007_2024", "aggregate", "How many Grands Prix did Lewis Hamilton win from 2007 to 2024 inclusive?",
       "select count(*) from fct_season_result where driver_id = 'hamilton' and is_win and season between 2007 and 2024",
       ["fct_season_result"]),
@@ -88,7 +73,6 @@ QUESTIONS: list[Question] = [
       "select driver_id from fct_season_result where circuit_id = 'monaco' and is_win "
       "group by driver_id order by count(*) desc, driver_id limit 1",
       ["fct_season_result"], note="check_reference prints the top three so a tie can be spotted"),
-    # ---- joins and laps
     Q("fastest_lap_2025_abu_dhabi", "join", "Who set the fastest race lap of the 2025 Abu Dhabi Grand Prix, and what was the time in seconds? Ignore deleted laps.",
       f"select l.driver_code, l.lap_time_s from fct_lap l join dim_session s on s.session_key = l.session_key "
       f"where s.year = 2025 and {RACE} and s.event ilike '%Abu Dhabi%' and not coalesce(l.deleted, false) "
@@ -114,7 +98,6 @@ QUESTIONS: list[Question] = [
       f"select count(*) from fct_pit_stop p join dim_session s on s.session_key = p.session_key "
       f"where s.year = 2024 and {RACE} and s.event ilike '%Hungarian%' and p.driver_code = 'RUS' and p.is_race_session",
       ["fct_pit_stop", "dim_session"]),
-    # ---- the project's own models
     Q("highest_pit_loss_circuit", "project", "Which circuit has the highest median green-flag pit loss, counting only circuits marked reliable? Give the circuit name.",
       "select circuit_name from fct_circuit_pit_loss where is_reliable order by median_pit_loss_s desc limit 1",
       ["fct_circuit_pit_loss"]),
@@ -149,16 +132,13 @@ QUESTIONS: list[Question] = [
     Q("sessions_loaded_per_year", "project", "For each year from 2022 to 2024, how many sessions were loaded? Give the year and the count, in year order.",
       "select year, sessions_loaded from fct_ingest_summary where year between 2022 and 2024 order by year",
       ["fct_ingest_summary"], ordered=True),
-    # ---- history
     Q("champion_1988", "history", "Who won the 1988 drivers' championship? Give the driver id.",
       "select driver_id from fct_driver_standing where season = 1988 and "
       "round = (select max(round) from fct_driver_standing where season = 1988) and position = 1",
       ["fct_driver_standing"]),
-    # ---- answerable although the data has a known gap (laps are missing for this race, results are not)
     Q("winner_2018_italy", "data-gap", "Who won the 2018 Italian Grand Prix? Give the three-letter driver code.",
       f"select r.driver_code {J_RES} where s.year = 2018 and {RACE} and s.event ilike '%Italian%' and r.position = 1",
       ["fct_result", "dim_session"], note="the lake has results but no laps for this race; a good agent does not refuse"),
-    # ---- the data cannot answer these
     Q("next_race_winner", "unanswerable", "Who will win the next Formula 1 race?", None),
     Q("champion_2027", "unanswerable", "Who will win the 2027 drivers' championship?", None),
     Q("tyre_pressures", "unanswerable", "What tyre pressures did McLaren run in the 2025 Dutch Grand Prix?", None),

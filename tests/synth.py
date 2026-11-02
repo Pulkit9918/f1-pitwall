@@ -3,7 +3,7 @@
 import numpy as np
 import pandas as pd
 
-R = 10_000                    # circle radius in position units (1/10 m)
+R = 10_000
 LAP_TIMES = {"AAA": 90.0, "BBB": 91.0, "CCC": 95.0}
 NUMBERS = {"AAA": 1, "BBB": 2, "CCC": 3}
 N_LAPS = 6

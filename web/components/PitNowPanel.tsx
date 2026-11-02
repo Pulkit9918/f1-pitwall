@@ -21,7 +21,6 @@ function PitNowChart({ analysis, driver, lap, onLap }: { analysis: AnalysisDoc; 
   const path = line<Point>().x((p) => x(p.lap)).y((p) => y(p.value));
   const yTicks = [1, 5, 10, 15, 20].filter((t) => t <= maxPos);
   const stops = analysis.stops.filter((st) => st.driver === driver);
-  // The shaded range is the fast and slow predictions drawn as a band.
   const band = s.fast.length && s.slow.length
     ? `${s.fast.map((p, i) => `${i ? "L" : "M"}${x(p.lap)},${y(p.value)}`).join("")}${[...s.slow].reverse().map((p) => `L${x(p.lap)},${y(p.value)}`).join("")}Z`
     : null;

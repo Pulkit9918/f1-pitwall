@@ -29,10 +29,10 @@ describe("lap rows and summaries", () => {
     const rows = lapRows(driver("A", { x: [0, 1, 0], i: [1, 0, 0], o: [1, 1, 0], t: [120, 80, 89] }));
     const s = summarise(rows);
     expect(s.laps).toBe(2);
-    expect(s.best).toBe(89); // the deleted 80 does not count
+    expect(s.best).toBe(89);
     expect(s.clean).toBe(0);
     expect(s.medianClean).toBeNull();
-    expect(s.purple).toBe(3); // the deleted lap's colours do not count either
+    expect(s.purple).toBe(3);
   });
   it("has no theoretical best when a sector was never timed", () => {
     expect(summarise(lapRows(driver("A", { s3: [null, null, null] }))).theoretical).toBeNull();

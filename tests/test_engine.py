@@ -29,7 +29,6 @@ def test_build_and_snapshot_on_a_synthetic_circuit(lake):
     assert progress["AAA"] == pytest.approx(200 / 90, abs=0.02)
     assert progress["BBB"] == pytest.approx(200 / 91, abs=0.02)
     assert progress["CCC"] == pytest.approx(200 / 95, abs=0.02)
-    # B reached A's current spot 2.2 s ago; C reached B's spot 8.4 s ago
     gaps = dict(zip(snap["driver"], snap["int_s"]))
     assert gaps["BBB"] == pytest.approx(2.2, abs=0.5)
     assert gaps["CCC"] == pytest.approx(8.4, abs=0.8)
@@ -51,7 +50,6 @@ def test_rejoin_live_on_the_synthetic_circuit(lake):
     state = eg.build(2099, 1, "R")
     frames = rl.driver_frames(pw.laps(2099, 1, "R"))
     drivers = state["drivers"]
-    # at t=200 AAA leads BBB by about 2.2 s and CCC by about 11 s
     assert rl.rejoin_live(drivers, frames, "AAA", 200.0, 22.4) == 3
     assert rl.rejoin_live(drivers, frames, "AAA", 200.0, 5.0) == 2
     assert rl.rejoin_live(drivers, frames, "AAA", 200.0, 1.0) == 1

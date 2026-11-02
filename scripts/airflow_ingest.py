@@ -14,7 +14,6 @@ import json
 import sys
 from pathlib import Path
 
-# scripts/ is on sys.path when run as a script; the repo root (batch.py, ingest.py) is not
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 EXIT_OK, EXIT_FAILED, EXIT_RATELIMIT, EXIT_SKIP = 0, 1, 75, 99

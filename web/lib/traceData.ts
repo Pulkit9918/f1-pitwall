@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { loadJson, useJson } from "./data";
 import type { TraceDriverFile, TraceIndex, TraceSession } from "./traces";
 
-// Trace files live outside /data, because scripts/export_static.py wipes that folder on every run.
 export const useTraceIndex = () => useJson<TraceIndex>("/trace-data/index.json");
 export const useTraceSession = (key: string | null) =>
   useJson<TraceSession>(key ? `/trace-data/${encodeURIComponent(key)}/index.json` : null);
@@ -15,7 +14,6 @@ export interface DriverFiles {
   error: string | null;
 }
 
-// The files of the given drivers, each fetched once and kept. Files of drivers no longer chosen stay in memory.
 export function useDriverFiles(key: string | null, drivers: string[]): DriverFiles {
   const [state, setState] = useState<{ key: string | null; files: Record<string, TraceDriverFile | undefined>; error: string | null }>({ key, files: {}, error: null });
   const wanted = [...new Set(drivers)].sort().join(",");

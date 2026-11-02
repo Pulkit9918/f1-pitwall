@@ -28,7 +28,6 @@ export interface YearGroup {
   weekends: Weekend[];
 }
 
-// The order a weekend runs in, roughly: practice, sprint qualifying, sprint, qualifying, race.
 export const SESSION_ORDER = ["FP1", "FP2", "FP3", "SQ", "SS", "S", "Q", "R"];
 
 const rank = (code: string) => {
@@ -36,7 +35,6 @@ const rank = (code: string) => {
   return i === -1 ? SESSION_ORDER.length : i;
 };
 
-// Newest year first, rounds in order, sessions in weekend order. `codes` keeps only those session codes.
 export function groupWeekends(list: WeekendSession[], codes?: string[]): YearGroup[] {
   const byWeekend = new Map<string, Weekend>();
   for (const s of list) {
@@ -59,7 +57,6 @@ export function groupWeekends(list: WeekendSession[], codes?: string[]): YearGro
     .map(([year, weekends]) => ({ year, weekends: weekends.sort((a, b) => a.round - b.round) }));
 }
 
-// The wanted year if there are sessions for it, otherwise the newest year; null when there is nothing to show.
 export function pickYear(groups: YearGroup[], wanted: string | null): number | null {
   const y = wanted === null ? NaN : Number(wanted);
   if (groups.some((g) => g.year === y)) return y;

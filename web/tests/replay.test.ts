@@ -42,8 +42,6 @@ import {
 import type { SessionDoc } from "../lib/types";
 import { contrastWith, teamFill } from "../lib/colors";
 
-// 41 frames, one a second. Progress is in 1e-4 laps. A: 0.10 lap/s from -0.05. B: 0.08 lap/s from -0.10.
-// C: 0.04 lap/s from -0.20, so it is more than a lap behind A by t = 30.
 const N = 41;
 const dp = (v: number) => Array(N - 1).fill(v);
 const file: ReplayFile = {
@@ -124,7 +122,6 @@ describe("race leaderboard", () => {
     const rows = raceBoard(r, facts, 15, OPTS);
     expect(rows.map((x) => x.code)).toEqual(["AAA", "BBB", "CCC"]);
     expect(rows[0]).toMatchObject({ pos: 1, gapLeader: "Leader", interval: "" });
-    // BBB is at 0.08*15-0.1 = 1.1 laps; AAA was there at (1.1+0.05)/0.1 = 11.5 s
     expect(rows[1].gapLeader).toBe("+3.500");
     expect(rows[1].interval).toBe("+3.500");
   });
@@ -134,7 +131,6 @@ describe("race leaderboard", () => {
     expect(rows[2].gapLeader).toBe("+2 LAPS");
   });
   it("marks a car whose last lap never finished as out, after half a lap", () => {
-    // its last lap starts at 26 and the median lap is 12.5 s, so it shows as out from 32.25
     expect(raceBoard(r, facts, 33, OPTS).find((x) => x.code === "BBB")!.state).toBe("out");
     expect(raceBoard(r, facts, 30, OPTS).find((x) => x.code === "BBB")!.state).toBe("run");
   });
@@ -143,11 +139,9 @@ describe("race leaderboard", () => {
     expect(rows.every((x) => x.gapLeader === "" && x.interval === "")).toBe(true);
   });
   it("treats a car that stopped three or more laps short as out, even with no unfinished lap", () => {
-    // a lap table where CCC finished lap 1 (at 30) while the winner did 4 laps
     const short: LapIndex = new Map([["AAA", idx.get("AAA")!], ["CCC", [lap(1, 5, 30)]]]);
     const f2 = driverFacts(short);
     const o = { total: 4, start: 0.5 };
-    // its lap took 25 s and ended at 30, so it shows as out from 30 + 0.75 * 25 = 48.75
     expect(raceBoard(r, f2, 40, o).find((x) => x.code === "CCC")!.state).not.toBe("out");
     expect(raceBoard(r, f2, 49, o).find((x) => x.code === "CCC")!.state).toBe("out");
     expect(raceBoard(r, f2, 49, { total: 3, start: 0.5 }).find((x) => x.code === "CCC")!.state).not.toBe("out");
@@ -176,20 +170,19 @@ describe("qualifying board and timing table", () => {
     expect(rows.map((x) => x.code)).toEqual(["AAA", "BBB", "CCC"]);
     expect(rows[0]).toMatchObject({ best: 10, gapLeader: "Leader" });
     expect(rows[1].gapLeader).toBe("+2.500");
-    expect(rows[2].gapLeader).toBe("");           // no completed lap yet
+    expect(rows[2].gapLeader).toBe("");
     expect(qualiBoard(facts, 31).map((x) => x.code)).toEqual(["AAA", "BBB", "CCC"]);
   });
   it("marks purple for the best so far and green for a driver's own best", () => {
     const rows = timingRows(idx, ["AAA", "BBB", "CCC"], 27);
     const a = rows[0];
     const b = rows[1];
-    // AAA laps: 10, 9.9, 10 (the third runs 20.4 to 30.4 and is not complete by 27), so two are done and the best is 9.9
     expect(a.laps).toBe(2);
     expect(a.best.v).toBeCloseTo(9.9);
     expect(a.best.purple).toBe(true);
     expect(a.last.v).toBeCloseTo(9.9);
     expect(a.last).toMatchObject({ purple: true, green: false });
-    expect(a.sectors[0]).toMatchObject({ v: 3.1, purple: false, green: false });   // 3.0 on lap 1 is faster
+    expect(a.sectors[0]).toMatchObject({ v: 3.1, purple: false, green: false });
     expect(a.sectors[1]).toMatchObject({ v: 3.9, purple: true });
     expect(b.last).toMatchObject({ v: 12.5, purple: false, green: true });
     expect(b.sectors[2]).toMatchObject({ v: 3.9, purple: false, green: true });
@@ -291,8 +284,8 @@ describe("gap to a chosen driver", () => {
     const rows = raceBoard(r, facts, 15, OPTS);
     const g = gapsToDriver(r, rows, 15, "BBB", OPTS.start);
     expect(g.get("BBB")).toBe("Selected");
-    expect(g.get("AAA")).toBe("-3.500");       // A was where B is now 11.5 s in; 15 - 11.5
-    expect(g.get("CCC")).toBe("+8.750");       // B was where C is now 6.25 s in; 15 - 6.25
+    expect(g.get("AAA")).toBe("-3.500");
+    expect(g.get("CCC")).toBe("+8.750");
   });
   it("shows whole laps when a car is a lap or more apart", () => {
     const rows = raceBoard(r, facts, 36, OPTS);
@@ -313,7 +306,7 @@ describe("laps done, lap start and lap history", () => {
     expect(lapsDoneAt(idx.get("AAA")!, 5)).toBe(0);
     expect(lapsDoneAt(idx.get("AAA")!, 10.5)).toBe(1);
     expect(lapsDoneAt(idx.get("AAA")!, 25)).toBe(2);
-    expect(lapsDoneAt(idx.get("BBB")!, 99)).toBe(2);     // lap 3 never finished
+    expect(lapsDoneAt(idx.get("BBB")!, 99)).toBe(2);
   });
   it("starts lap 1 at the race start and lap n at the end of lap n - 1", () => {
     const ends = lapEnds(idx);
@@ -325,7 +318,7 @@ describe("laps done, lap start and lap history", () => {
     const h = lapHistory(idx, ["AAA", "BBB"], 26);
     expect(h.laps).toEqual([2, 1]);
     expect(h.rows.get(2)!.has("CCC")).toBe(false);
-    expect(h.sessionBest).toBeCloseTo(9.9);               // A's lap 2: 20.4 - 10.5
+    expect(h.sessionBest).toBeCloseTo(9.9);
     expect(h.own.get("BBB")).toBeCloseTo(12.5);
     expect(lapHistory(idx, ["AAA"], 5).laps).toEqual([]);
   });
@@ -334,7 +327,6 @@ describe("laps done, lap start and lap history", () => {
     expect(lapHistory(idx2, ["AAA"], 30).sessionBest).toBeCloseTo(12);
   });
 });
-
 
 describe("marshal sectors", () => {
   const msgs: ReplayFile["messages"] = [
@@ -366,13 +358,9 @@ describe("marshal sectors", () => {
   });
 });
 
-
-// ---- cars whose position data stopped ----
 describe("frozenSpans", () => {
-  // DDD moves for 20 s, then stays at one point to the end of the file, climbing a whole lap at frame 30 as the replay does.
   const stuck = [...Array(20).fill(1000), ...Array(20).fill(0)];
   stuck[29] = 10000;
-  // EEE is still from frame 10 to 35 and then moves again.
   const gap = [...Array(10).fill(1000), ...Array(25).fill(0), ...Array(5).fill(1000)];
   const rf = decodeReplay({
     ...file,
@@ -417,7 +405,6 @@ describe("frozenSpans", () => {
     expect(mergeSpans([], 5)).toEqual([]);
   });
 });
-
 
 describe("leaderboard extras", () => {
   const recs = idx.get("AAA")!;

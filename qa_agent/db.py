@@ -6,7 +6,6 @@ import duckdb
 
 from . import sqlguard
 
-# Tables the agent may see. The per-sample telemetry tables are views over the whole lake, far too large to query here.
 EXCLUDED = {"fct_lap_sample", "fct_lap_sample_total", "fct_lap_position", "fct_lap_trace"}
 MAX_ROWS = 200
 

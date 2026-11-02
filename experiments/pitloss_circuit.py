@@ -1,10 +1,4 @@
-"""Does a circuit-specific pit loss beat one global figure? Run from the repo root.
-Reads data/f1_dbt.duckdb read-only; changes nothing.
-
-Measurement is the one in rejoin_probe.py: for a green-flag stop, loss = (in-lap - field - offset) +
-(out-lap - field - offset), where field is the median clean lap of all cars on that lap and offset is the
-driver's median gap to the field over the 4 laps before and 4 after (needs 3 clean green laps).
-Each stop is predicted from the other sessions: the circuit median if at least MIN_N other stops, else global."""
+"""Does a circuit-specific pit loss beat one global figure? Run from the repo root."""
 import duckdb
 import numpy as np
 import pandas as pd

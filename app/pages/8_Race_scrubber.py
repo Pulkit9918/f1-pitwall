@@ -25,7 +25,7 @@ drv = pw.drivers(year, rnd, code)
 colors = dict(zip(drv["Driver"], drv["color"]))
 numbers = dict(zip(drv["Driver"], drv["number"]))
 names = list(state["drivers"])
-imp = pw.imperial()          # sidebar widget: must live outside the fragment
+imp = pw.imperial()
 
 duration = int(state["end"] - state["start"])
 last_lap = max(1, int(np.ceil(state["lead"][-1])))
@@ -74,7 +74,7 @@ def t_at(name, P):
 
 
 def rel_gap_text(ref, name, p_ref, p_name, T):
-    diff = p_ref - p_name            # positive: `name` is behind `ref`
+    diff = p_ref - p_name
     if abs(diff) >= 1.0:
         n = int(np.floor(abs(diff) + 1e-9))
         return f"{'+' if diff > 0 else '-'}{n} lap" + ("s" if n > 1 else "")
@@ -85,7 +85,6 @@ def rel_gap_text(ref, name, p_ref, p_name, T):
     return "" if np.isnan(t) else f"-{T - t:.1f}"
 
 
-# ---- race control messages on the race clock ----
 @st.cache_data(show_spinner=False)
 def utc_offset(year: int, rnd: int, code: str):
     """UTC clock time of session second zero, from the first position sample."""
@@ -111,7 +110,7 @@ def prepare_rc():
     d["t"] = (pd.to_datetime(d["Time"]) - off).dt.total_seconds()
     d = d.sort_values("t").reset_index(drop=True)
     if not ((d["t"] > -600) & (d["t"] < state["end"] + 1800)).any():
-        return None                          # the clock mapping looks wrong: switch the feature off
+        return None
     return d
 
 
@@ -123,7 +122,7 @@ def build_marshal(d):
     if not {"Scope", "Flag", "Sector"} <= set(d.columns):
         return None
     s_pts, off = eg.project(ms[["X", "Y"]].to_numpy(float), state["ref_xy"], _s)
-    if float(np.median(off)) > 500:          # over 50 m from the track: a different coordinate frame
+    if float(np.median(off)) > 500:
         return None
     frac = s_pts / _s[-1]
     order = np.argsort(frac)
@@ -250,7 +249,6 @@ def toggle_play() -> None:
     st.session_state[clock_key] = float(st.session_state[key])
 
 
-# ---- playback controls: outside the fragment, so a click re-evaluates the refresh interval ----
 pc1, pc2, pc3, pc4 = st.columns([1, 1, 2, 4])
 pc1.button("Pause" if st.session_state[play_key] else "Play", on_click=toggle_play,
            key=f"{key}_playbtn")
@@ -269,7 +267,7 @@ def render() -> None:
         dt = max(0.0, now - st.session_state.get(tick_key, now))
         st.session_state[tick_key] = now
         clock = st.session_state.get(clock_key, float(st.session_state[key]))
-        if int(clock) != st.session_state[key]:      # the slider or a button moved it: re-sync
+        if int(clock) != st.session_state[key]:
             clock = float(st.session_state[key])
         clock += st.session_state[speed_key] * dt
         st.session_state[clock_key] = clock
@@ -323,7 +321,6 @@ def render() -> None:
     stew = (rcc.steward_status(rc_up, names)
             if (not rc_up.empty and "Message" in rc_up.columns) else {})
 
-    # ---- flag timeline: exact safety car / VSC / red periods when the messages allow it ----
     with timeline_box:
         tl = go.Figure()
         tl.add_trace(go.Bar(x=[n - 0.5 for n in range(1, last_lap + 1)], y=[1] * last_lap, width=1,
@@ -357,7 +354,6 @@ def render() -> None:
         tl.update_yaxes(visible=False, range=[0, 1])
         st.plotly_chart(tl)
 
-    # ---- weather strip ----
     w = pw.read("weather", year, rnd, code)
     if not w.empty:
         wr = w.loc[(w["Time_s"] - T).abs().idxmin()]

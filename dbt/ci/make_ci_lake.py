@@ -1,9 +1,4 @@
-"""Write a tiny synthetic Parquet lake with the real column names and types, for CI and local checks.
-
-usage (from the repository root):  python dbt/ci/make_ci_lake.py [output_dir]
-Default output: ci_lake/   Then:   F1_LAKE=ci_lake F1_DBT_DB=ci_lake/f1.duckdb dbt build --project-dir dbt --profiles-dir dbt
-Only needs the duckdb package. One 2099 race (3 drivers, 6 laps, one pit stop, one safety car) and one qualifying.
-"""
+"""Write a tiny synthetic Parquet lake with the real column names and types, for CI and local checks."""
 
 import shutil
 import sys
@@ -49,7 +44,6 @@ def write(table, session, cols, rows, year=2099, rnd="01"):
     con.execute(f"COPY t TO '{d / 'part.parquet'}' (FORMAT parquet)")
 
 
-# ---- race: AAA leads, BBB second, CCC third; BBB pits at the end of lap 3 ----
 lap_rows = []
 for name, (num, _id, lt) in DRIVERS.items():
     t_end = 0.0
@@ -70,7 +64,6 @@ for name, (num, _id, lt) in DRIVERS.items():
             "MEDIUM" if stint == 1 else "HARD", float(n), True, "Test", None, status, float(pos), False, None,
             False, True, t_end, this_lt, pit_out, pit_in, this_lt / 3, this_lt / 3, this_lt / 3,
             t_end - 2 * this_lt / 3, t_end - this_lt / 3, t_end, t_end - this_lt))
-# one duplicate row (same lap twice) and one row with no lap number, both to be removed in silver
 lap_rows.append(lap_rows[0])
 lap_rows.append(("Synth Grand Prix", "AAA", "1", None, 1.0) + (None,) * 4 + (False, "MEDIUM", 1.0, True, "Test",
                  None, "1", 1.0, False, None, False, True, 1.0, 90.0, None, None, 30.0, 30.0, 30.0,
@@ -82,7 +75,6 @@ for pos, (name, (num, did, _lt)) in enumerate(DRIVERS.items(), start=1):
     res_rows.append(("Synth Grand Prix", str(num), name, name, did, "Test Team", "ffffff", "test", name,
                      name, name + " Driver", "", "AUS", float(pos), str(pos), float(pos), "Finished",
                      float(25 - 7 * (pos - 1)), float(N_LAPS), None, None, None, 600.0 + pos))
-# patch_dbt_6: FastF1 gave CCC no driver id ('nan'); silver_results must fill it from the history
 res_rows = [r[:4] + ("nan",) + r[5:] if r[3] == "CCC" else r for r in res_rows]
 write("results", "R", RESULTS_COLS, res_rows)
 
@@ -95,7 +87,6 @@ rc_rows = [
 ]
 write("race_control", "R", RC_COLS, rc_rows)
 
-# ---- qualifying: results and laps only ----
 q_laps = []
 for name, (num, _id, lt) in DRIVERS.items():
     for n in (1, 2, 3):
@@ -108,13 +99,11 @@ q_res = [("Synth Grand Prix", str(num), name, name, did, "Test Team", "ffffff", 
           name + " Driver", "", "AUS", float(pos), str(pos), None, "", 0.0, None, 80.0 + pos, 79.0 + pos,
           78.0 + pos, None)
          for pos, (name, (num, did, _lt)) in enumerate(DRIVERS.items(), start=1)]
-# patch_dbt_7: a practice-only driver with no id and the name 'None None' (becomes the surrogate id ff1-zzz)
 q_res.append(("Synth Grand Prix", "99", "ZZZ", "ZZZ", "nan", "Test Team", "ffffff", "test", "None", "None",
               "None None", "", "AUS", 4.0, "4", None, "", 0.0, None, 85.0, 84.0, 83.0, None))
 write("results", "Q", RESULTS_COLS, q_res)
 write("race_control", "Q", RC_COLS, [])
 
-# ---- weather, track status and history (added by patch_dbt_5) ----
 W_COLS = ("event VARCHAR, AirTemp DOUBLE, Humidity DOUBLE, Pressure DOUBLE, Rainfall BOOLEAN, "
           "TrackTemp DOUBLE, WindDirection BIGINT, WindSpeed DOUBLE, Time_s DOUBLE")
 write("weather", "R", W_COLS, [("Synth Grand Prix", 25.0 + i, 50.0, 1010.0, i == 3, 35.0 + i, 90, 2.0 + i, 60.0 * i)
@@ -149,7 +138,6 @@ hist("results", "season BIGINT, round BIGINT, race_name VARCHAR, date VARCHAR, c
      [(2099, 1, "Synth Grand Prix", "2099-01-01", "synth", did, name, name + " Driver", float(num), "test",
        "Test Team", float(num), float(num), str(num), float(25 - 7 * (num - 1)), 6.0, "Finished", 600000.0 + num,
        float(num), 3.0, "1:30.000") for name, (num, did, _lt) in DRIVERS.items()])
-# patch_dbt_6: CCC also drove a second car in the same race (a shared drive)
 con.execute("INSERT INTO h SELECT * REPLACE (9.0 AS grid, 12.0 AS position, '12' AS position_text, "
             "0.0 AS points, 2.0 AS laps, 'Engine' AS status, NULL AS time_ms, NULL AS fastest_rank, "
             "NULL AS fastest_lap, NULL AS fastest_time) FROM h WHERE code = 'CCC'")
@@ -163,7 +151,6 @@ hist("constructor_standings", "season BIGINT, round BIGINT, position DOUBLE, poi
      "constructor_id VARCHAR, constructor VARCHAR, nationality VARCHAR",
      [(2099, 1, 1.0, float(sum(25 - 7 * (num - 1) for num, _i, _l in DRIVERS.values())), 1.0, "test", "Test Team", "Australian")])
 
-# patch_dbt_8: an ingest log that matches the synthetic files. The race's track_status is only in the backfill log.
 import json
 
 MAN = OUT / "_manifest"
@@ -185,11 +172,6 @@ with open(MAN / "sessions.jsonl", "w", encoding="utf-8") as f, open(MAN / "backf
                                 "at": "2099-01-03T00:00:00+00:00", "status": "ok", "seconds": 1.0,
                                 "tables": {"track_status": {"rows": tabs["track_status"], "bytes": 1000}}}) + "\n")
 
-# ---- telemetry: 4 Hz samples for the 3 drivers, covering each session ----
-# Written after the ingest log on purpose, so the log above stays as it was. rec_telemetry_coverage reads only the
-# driver number and the clock; the lap trace models also read the car channels (speed, throttle, gear, DRS, brake)
-# and the position (x, y, in tenths of a metre). The cars here all drive the same 90 s circle, which is enough for the
-# models to bind and run; with 18 laps the layout is too short to be reliable, so no traces are made from it.
 CHANNELS = {
     "telemetry_car": (
         "cast(round(200 + 50 * sin(i / 4.0 / 15.0)) as smallint) as speed, cast(9000 as smallint) as rpm, "

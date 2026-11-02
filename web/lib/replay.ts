@@ -38,9 +38,9 @@ export interface ReplayFile {
   weather: Maybe<WeatherSeries>;
   messages: ReplayMessage[];
   track_status: [number, string, string][];
-  teams?: Record<string, [Maybe<string>, Maybe<string>]>; // driver code -> [team name, "#RRGGBB"]
-  corners?: [number, number, number, number, string][]; // x, y on the outline, label x, y, "7" or "10A"
-  marshal?: [number, number, number, number][]; // marshal sector number, x, y, index into track.pts of the post that starts it
+  teams?: Record<string, [Maybe<string>, Maybe<string>]>;
+  corners?: [number, number, number, number, string][];
+  marshal?: [number, number, number, number][];
 }
 
 export interface TeamInfo {
@@ -262,7 +262,7 @@ export interface BoardRow {
   tyre: TyreNow;
   gapLeader: string; 
   interval: string;
-  intervalS: Maybe<number>; // seconds to the car ahead; null for the leader or a car a lap or more behind
+  intervalS: Maybe<number>;
   progress: number; 
   best: Maybe<number>; 
 }
@@ -555,31 +555,23 @@ export function lapHistory(idx: LapIndex, codes: string[], t: number) {
       rows.set(rec.lap, row);
     }
   }
-  const laps = [...rows.keys()].sort((a, b) => b - a); // newest first
+  const laps = [...rows.keys()].sort((a, b) => b - a);
   const bestOf = (code: string) => Math.min(...all.filter((x) => x.code === code).map((x) => x.rec.time!), Infinity);
   const sessionBest = Math.min(...all.map((x) => x.rec.time!), Infinity);
   return { laps, rows, sessionBest, own: new Map(codes.map((c) => [c, bestOf(c)])) };
 }
 
-
-// ---- cars whose position data stopped ----
-
 export const FROZEN_MIN_S = 60;
-export const FROZEN_MIN_LAPS = 2; // completed laps that must end inside a stretch
-const FROZEN_GRACE_S = 10; // a lap that ends within this long of the stop does not count: the car may simply have stopped after the line
-const STILL = 0.0006; // laps between two samples; below this a car is not moving (about 3 m a second on a 5 km lap)
+export const FROZEN_MIN_LAPS = 2;
+const FROZEN_GRACE_S = 10;
+const STILL = 0.0006;
 export type Span = [number, number];
 
-// How far apart two places on the lap are, 0 to 0.5. Whole laps do not count: the replay puts a car right by whole laps
-// at the end of every lap, so a car stuck at one point still climbs one lap at a time.
 const lapStep = (a: number, b: number) => {
   const d = Math.abs(a - b) % 1;
   return Math.min(d, 1 - d);
 };
 
-// Stretches, at least `minSeconds` long, in which a car's place on the circuit does not change although the lap table has
-// it completing a lap. A car that stopped for good (retired, parked, in the pits) completes no lap while stopped and is
-// not caught; neither is an unfinished last lap, which has no lap time.
 export function frozenSpans(r: Replay, code: string, recs: LapRec[], minSeconds = FROZEN_MIN_S, minLaps = FROZEN_MIN_LAPS): Span[] {
   const c = r.cum[code];
   const d = r.file.drivers[code];
@@ -604,7 +596,6 @@ export function frozenSpans(r: Replay, code: string, recs: LapRec[], minSeconds 
   return mergeSpans(out);
 }
 
-// Joins stretches less than `gap` seconds apart, so one sample of movement does not split a frozen car in two.
 export function mergeSpans(spans: Span[], gap = 5): Span[] {
   const out: Span[] = [];
   for (const sp of spans) {
@@ -617,17 +608,12 @@ export function mergeSpans(spans: Span[], gap = 5): Span[] {
 
 export const frozenAt = (spans: Span[] | undefined, t: number): boolean => !!spans && spans.some(([a, b]) => t >= a && t <= b);
 
-
-// ---- extras for the leaderboard and controls ----
-
-// The compounds a driver has finished stints on, oldest first. A stint ends at the lap that has a pit entry.
 export function tyreHistory(recs: LapRec[], t: number): string[] {
   const out: string[] = [];
   for (const l of recs) if (fin(l.pitIn) && l.pitIn <= t && l.compound) out.push(l.compound);
   return out;
 }
 
-// Seconds since the car entered the pit lane, or null when it is not in it.
 export function pitSeconds(recs: LapRec[], t: number): number | null {
   if (!inPit(recs, t)) return null;
   let pin: number | null = null;
@@ -635,7 +621,6 @@ export function pitSeconds(recs: LapRec[], t: number): number | null {
   return pin == null ? null : Math.max(0, t - pin);
 }
 
-// Who holds the fastest lap of the session so far. Deleted laps do not count.
 export function fastestLapAt(idx: LapIndex, t: number): string | null {
   let best = Infinity;
   let who: string | null = null;
@@ -651,20 +636,13 @@ export function fastestLapAt(idx: LapIndex, t: number): string | null {
   return who;
 }
 
-// When the red-flag period that contains t ends, or null if there is none.
 export function redFlagEnd(bands: TimeBand[], t: number): number | null {
   for (const b of bands) if (b.kind === "RED" && t >= b.t0 && t < b.t1) return b.t1;
   return null;
 }
 
-
-
-// ---- marshal-sector flags ----
-
 export type SectorFlag = "yellow" | "double";
 
-// The sectors that have a yellow flag out at time t, read from the race-control messages ("YELLOW IN TRACK SECTOR 7",
-// "DOUBLE YELLOW IN TRACK SECTOR 7", "CLEAR IN TRACK SECTOR 7"). A flag stays until its own clear message.
 export function sectorFlagsAt(file: ReplayFile, t: number): Map<number, SectorFlag> {
   const out = new Map<number, SectorFlag>();
   for (const m of file.messages) {
@@ -679,7 +657,6 @@ export function sectorFlagsAt(file: ReplayFile, t: number): Map<number, SectorFl
   return out;
 }
 
-// The outline points of marshal sector n: from its post to the next sector's post (wrapping round the lap). Null if unknown.
 export function sectorPoints(file: ReplayFile, n: number): [number, number][] | null {
   const posts = file.marshal;
   if (!posts || posts.length < 2) return null;

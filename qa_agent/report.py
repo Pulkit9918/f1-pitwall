@@ -1,7 +1,4 @@
-"""Turn the files in qa_agent/results/ into qa_agent/results/RESULTS.md.
-
-    python -m qa_agent.report
-"""
+"""Turn the files in qa_agent/results/ into qa_agent/results/RESULTS.md."""
 import json
 from pathlib import Path
 

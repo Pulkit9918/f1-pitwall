@@ -1,5 +1,4 @@
-"""Telemetry coverage probe. Read-only. What the two telemetry tables hold per session, how that lines up with
-the laps table (2022 onward), and how long a session-level summary of the 1.6 GB takes."""
+"""Telemetry coverage probe. Read-only."""
 import sys
 import time
 

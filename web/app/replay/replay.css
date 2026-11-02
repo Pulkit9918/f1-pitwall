@@ -1,4 +1,3 @@
-
 .rp-top { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px 36px; padding: 14px 0 16px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-bottom: 20px; }
 .rp-stat { display: flex; flex-direction: column-reverse; gap: 2px; }
 .rp-big { font-stretch: 72%; font-weight: 800; font-size: 2.2rem; line-height: 1.05; text-align: left; }
@@ -121,7 +120,6 @@ span.swatch.rp-band-yellow { background: rgba(240, 196, 85, 0.5); }
   .rp-skips { display: none; }
 }
 
-/* ---- upgrade: gap to a driver, pit prediction, flags on the track, jump to lap, full screen, units ---- */
 .rp-board-opts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 10px; }
 .rp-check { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--ink-2); cursor: pointer; }
 .rp-row-pred { grid-template-columns: 4px 26px 70px 1fr 42px 54px auto; }
@@ -151,7 +149,6 @@ span.swatch.rp-band-pre { background: rgba(140, 150, 170, 0.45); }
 .rp-tag-lost { font-size: 14px; font-weight: 600; fill: var(--ink-3); }
 .rp-pit[title] { cursor: help; }
 
-/* ---- upgrade: leaderboard extras, red-flag skip, pulsing safety-car edge ---- */
 .rp-fl { margin-left: 6px; padding: 0 4px; font-size: 0.65rem; font-weight: 800; background: rgba(168, 85, 247, 0.35); border-radius: 3px; vertical-align: middle; }
 .rp-close { color: var(--ink); font-weight: 800; background: rgba(60, 170, 90, 0.26); border-radius: 3px; }
 .rp-hist { display: inline-flex; gap: 1px; opacity: 0.55; margin-right: 2px; }
@@ -162,7 +159,6 @@ span.swatch.rp-band-pre { background: rgba(140, 150, 170, 0.45); }
 .rp-edge-sc { animation: rp-pulse 1.6s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .rp-edge-sc { animation: none; } }
 
-/* ---- upgrade: corner numbers and marshal-sector flags ---- */
 .rp-corner { fill: var(--ink-3); font-size: 15px; font-weight: 600; pointer-events: none; }
 .rp-sector { fill: none; stroke: #f0c455; stroke-width: 26; stroke-linejoin: round; stroke-linecap: butt; opacity: 0.85; }
 .rp-sector-core { fill: none; stroke: rgba(240, 196, 85, 0.35); stroke-width: 16; stroke-linejoin: round; }

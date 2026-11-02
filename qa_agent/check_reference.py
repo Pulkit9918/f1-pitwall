@@ -1,8 +1,4 @@
-"""Run every reference query and show what it returns, so a wrong reference answer is caught before any model is scored.
-
-    python -m qa_agent.check_reference
-Look for ERROR (the SQL is wrong), EMPTY (nothing matched, so a literal is probably wrong), and ties in 'limit 1' answers.
-"""
+"""Run every reference query and show what it returns, so a wrong reference answer is caught before any model is scored."""
 import argparse
 import re
 import sys

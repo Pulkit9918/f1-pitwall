@@ -1,9 +1,4 @@
-"""Does a per-circuit offset, shrunk toward the global lap-length line, predict a held-out race better?
-
-Each race is held out in turn. The global line is refit without it. The circuit offset comes from that
-circuit's OTHER races only (their residuals against that same line), shrunk by n / (n + k), where
-k = noise variance / between-circuit variance, estimated inside the fold. Nothing from the held-out
-race is used. Compared: the global line, the unshrunk offset, and the shrunk offset."""
+"""Does a per-circuit offset, shrunk toward the global lap-length line, predict a held-out race better?"""
 import glob
 
 import numpy as np

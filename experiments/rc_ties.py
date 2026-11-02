@@ -1,10 +1,4 @@
-"""How much does the order of same-second race control messages change the safety car / VSC / red flag
-periods? Read-only. Runs app/racecontrol.build_periods on every session in four tie orders:
-  FILE    file order, stable sort by time
-  APP     file order, then pandas default sort by time (what the Race scrubber page does)
-  ALPHA   ties broken by message text (what silver_race_control's event_key does today)
-  REVERSE file order reversed within ties
-Time is seconds since the session's first message, so no telemetry is needed and every session is covered."""
+"""How much does the order of same-second race control messages change the safety car / VSC / red flag periods? Read-only."""
 import sys
 
 import duckdb

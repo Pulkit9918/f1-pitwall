@@ -8,7 +8,7 @@ export interface LapDriver {
   s1: (number | null)[];
   s2: (number | null)[];
   s3: (number | null)[];
-  c: string[]; // three letters per lap: p purple, g green, y yellow, - none
+  c: string[];
   k: (string | null)[];
   a: (number | null)[];
   w: (string | null)[];
@@ -82,10 +82,10 @@ export interface Summary {
   clean: number;
   best: number | null;
   bestSectors: (number | null)[];
-  theoretical: number | null; // the three best sectors added up, which no lap necessarily matched
+  theoretical: number | null;
   medianClean: number | null;
   medianCleanSectors: (number | null)[];
-  purple: number; // sector times that were the session's best when they were set
+  purple: number;
 }
 
 export function summarise(rows: LapRow[]): Summary {
@@ -107,10 +107,9 @@ export function summarise(rows: LapRow[]): Summary {
 export interface Pair {
   n: number;
   lap: number;
-  sectors: number[]; // first driver minus second, per sector; positive: the first driver was slower
+  sectors: number[];
 }
 
-// Laps both drivers drove cleanly (no pit lane, no deleted time, all three sectors timed), matched by lap number.
 export function pairedLaps(a: LapRow[], b: LapRow[]): Pair[] {
   const ok = (r: LapRow) => r.clean && !r.pit && !r.deleted && r.time != null && r.sectors.every((s) => s != null);
   const bBy = new Map(b.filter(ok).map((r) => [r.n, r]));
@@ -122,7 +121,6 @@ export function pairedLaps(a: LapRow[], b: LapRow[]): Pair[] {
   return out;
 }
 
-// Drivers with a timed lap, quickest first.
 export function driversByBest(doc: LapDoc): string[] {
   return doc.drivers
     .map((d) => ({ code: d.code, best: summarise(lapRows(d)).best }))
@@ -131,5 +129,4 @@ export function driversByBest(doc: LapDoc): string[] {
     .map((d) => d.code);
 }
 
-// Race-like sessions, where the same lap number is the same stretch of the race for both drivers.
 export const isRaceLike = (code: string) => code === "R" || code === "S";

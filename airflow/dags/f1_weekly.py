@@ -1,12 +1,4 @@
-"""Weekly F1 pipeline: ingest new sessions, build dbt, check contracts and docs.
-
-plan_sessions    asks the ingest venv which sessions are finished but not yet in the lake
-ingest_session   one mapped task per session, pool f1_ingest (1 slot) so FastF1 is hit
-                 one session at a time; a rate limit retries the task after a delay
-dbt_build        silver + gold models and dbt tests
-check_contracts  pandera contracts over the whole lake
-dbt_docs, doc_coverage   catalog plus the documentation gate
-"""
+"""Weekly F1 pipeline: ingest new sessions, build dbt, check contracts and docs."""
 
 from __future__ import annotations
 
@@ -42,8 +34,7 @@ def _stream(cmd: list[str]) -> tuple[int, list[str]]:
 
 
 def _alert_failed_run(context) -> None:
-    """DAG failure callback: one line in logs/alerts.log, plus a phone push when
-    F1_ALERT_NTFY_TOPIC is set. Never raises, so it cannot hide the real failure."""
+    """DAG failure callback: one line in logs/alerts.log, plus a phone push when F1_ALERT_NTFY_TOPIC is set."""
     try:
         run_id = getattr(context.get("dag_run"), "run_id", "unknown run")
         reason = str(context.get("reason") or "run failed")
@@ -149,7 +140,5 @@ with DAG(
     ingested >> [dbt_build, contracts]
     dbt_build >> dbt_docs >> doc_coverage
 
-    # the run's state comes from its last tasks; this one fails the run if planning,
-    # any ingest, contracts or docs failed (skipped is fine)
     pipeline_ok = EmptyOperator(task_id="pipeline_ok", trigger_rule="none_failed")
     [ingested, contracts, doc_coverage] >> pipeline_ok

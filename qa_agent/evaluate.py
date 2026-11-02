@@ -17,7 +17,6 @@ def score(q: Question, out, ref_rows) -> dict:
         s["first_try"] = executed and out.attempts == 1
         s["correct"] = bool(executed and compare.matches(ref_rows, out.rows, q.ordered, q.tol))
     else:
-        # right: decline, or run a query that finds nothing (empty or all NULL) and so reports no answer; wrong: a value
         s["no_data"] = bool(executed and not any(v is not None for r in out.rows for v in r))
         s["correct"] = bool(out.refused or s["no_data"])
     return s

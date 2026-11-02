@@ -1,11 +1,4 @@
-"""Out-of-sample check of the pit-loss figure and the rejoin model, season by season.
-
-usage:  ~/.venvs/f1-app/bin/python oos_backtest.py        (run from the project folder)
-
-The 22.4 s pit loss and the lap-end rejoin model were built and tuned on 2025-2026 data. This applies
-them, unchanged, to every season from 2022 that is in the lake, and reports each year separately.
-Only green-flag stops are used. Not modelled: safety cars, other cars pitting in the same window.
-"""
+"""Out-of-sample check of the pit-loss figure and the rejoin model, season by season."""
 
 import logging
 import sys

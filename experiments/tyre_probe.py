@@ -29,11 +29,11 @@ import pandas as pd
 
 SLICKS = ("SOFT", "MEDIUM", "HARD")
 MODELS = ("linear", "quad", "spline")
-KNOTS = (8, 16, 30)  # laps where the spline trend may change slope
-CUTOFF = 1.07  # drop laps slower than this multiple of the session's fastest clean lap
-MIN_LAPS = 400  # usable laps needed to fit a session
-MIN_COMPOUND_LAPS = 120  # laps a compound needs to get its own slope
-MIN_AGE_RANGE = 8  # a compound's tyre ages must span at least this many laps
+KNOTS = (8, 16, 30)
+CUTOFF = 1.07
+MIN_LAPS = 400
+MIN_COMPOUND_LAPS = 120
+MIN_AGE_RANGE = 8
 
 QUERY = """
 select l.session_key, l.year, l.round, s.event, l.driver_code, l.lap_number,

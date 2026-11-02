@@ -4,7 +4,6 @@ import type { Circuit, DegradationRow } from "@/lib/types";
 
 const COMPOUNDS = ["SOFT", "MEDIUM", "HARD"] as const;
 
-// For each circuit and compound, the layout with the most stints.
 function pick(c: Circuit, compound: string, reliableOnly: boolean): DegradationRow | null {
   const rows = c.degradation.filter((d) => d.compound.toUpperCase() === compound && d.median_degradation_s_per_lap != null && (!reliableOnly || d.is_reliable));
   return rows.sort((a, b) => b.stints - a.stints)[0] ?? null;

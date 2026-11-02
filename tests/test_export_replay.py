@@ -15,15 +15,14 @@ mod = importlib.util.module_from_spec(SPEC)
 sys.modules["export_replay"] = mod
 SPEC.loader.exec_module(mod)
 
-BASE_EPOCH = 1_750_000_000.0   # wall clock at session time 0
+BASE_EPOCH = 1_750_000_000.0
 DRIVERS = {1: "VER", 4: "NOR", 16: "LEC", 44: "HAM"}
 LAPS = 5
-# team name and colour as the lake has them
 TEAMS = {"VER": ("Red Bull", "3671c6"), "NOR": ("McLaren", "zzz"), "LEC": ("Ferrari", "#E80020"), "HAM": ("Ferrari", None)}
 
 
 def track(theta, figure_eight):
-    if figure_eight:   # crosses itself, like Suzuka
+    if figure_eight:
         return 4000 * math.sin(theta), 2000 * math.sin(2 * theta)
     return 4000 * math.cos(theta), 2500 * math.sin(theta)
 
@@ -43,8 +42,8 @@ def make_lake(root, figure_eight=False, year=2026, rnd=6, code="R", with_car=Tru
     pos, car, laps = [], [], []
     for n, (num, d) in enumerate(DRIVERS.items()):
         period = 60.0 + n * 0.8
-        start_theta = -0.04 - 0.02 * n            # on the grid, just before the line
-        pre = pre_laps * period        # laps driven before the race start (out lap, formation lap)
+        start_theta = -0.04 - 0.02 * n
+        pre = pre_laps * period
         t = 0.0
         while t <= LAPS * period + 20 + pre:
             theta = start_theta + 2 * math.pi * (t - pre) / period
@@ -53,7 +52,6 @@ def make_lake(root, figure_eight=False, year=2026, rnd=6, code="R", with_car=Tru
             if with_car:
                 car.append((num, t, 200 + n, 5, 80, 8, False, rnd, code, year))
             t += 0.5
-        # lap n ends when theta reaches 2*pi*n
         prev_end = pre
         for lap in range(1, LAPS + 1):
             end = pre + (2 * math.pi * lap - start_theta) * period / (2 * math.pi)
@@ -106,7 +104,6 @@ def decode(entry):
 
 @pytest.mark.parametrize("figure_eight,pre_laps", [(False, 0), (True, 0), (False, 2), (True, 3)])
 def test_progress_follows_the_laps(tmp_path, figure_eight, pre_laps):
-    # pre_laps: laps the cars drive before the race start; progress must still be zero at the start of lap 1
     lake, db, key = make_lake(tmp_path, figure_eight, pre_laps=pre_laps)
     out = tmp_path / "out"
     lines = []
@@ -118,12 +115,10 @@ def test_progress_follows_the_laps(tmp_path, figure_eight, pre_laps):
     for code, e in doc["drivers"].items():
         cum = decode(e)
         assert len(cum) == doc["n"]
-        assert cum[0] < 0                       # on the grid, behind the line
-        assert (np.diff(cum[e["a"]:e["b"] + 1]) > -0.02).all(), code   # never jumps back, even where a figure-8 crosses itself
+        assert cum[0] < 0
+        assert (np.diff(cum[e["a"]:e["b"] + 1]) > -0.02).all(), code
         assert cum[e["b"]] == pytest.approx(LAPS + (20 / (60 + 0.8 * list(DRIVERS.values()).index(code))), abs=0.1)
-    # the built-in check agrees on every car
     assert any("agrees with the lap count for 4 of 4 cars" in s for s in lines), lines
-    # the outline fits the box and the drawn points stay inside it
     xs = [p[0] for p in doc["track"]["pts"]]
     ys = [p[1] for p in doc["track"]["pts"]]
     assert max(doc["track"]["w"], doc["track"]["h"]) == pytest.approx(mod.VIEW, abs=0.2)
@@ -138,7 +133,6 @@ def test_telemetry_weather_messages_and_status(tmp_path):
     e = doc["drivers"]["NOR"]
     assert e["spd"][50] == 201 and e["gear"][50] == 5 and e["thr"][50] == 80 and e["drs"][50] == 8 and e["brk"][50] == 0
     assert doc["weather"]["t"] == [0.0, 60.0, 120.0, 180.0, 240.0] and doc["weather"]["rain"] == [0, 0, 0, 1, 1]
-    # wall-clock messages become session seconds; the one far outside the session is dropped
     assert [m[0] for m in doc["messages"]] == [100.0, 130.0]
     assert doc["messages"][0][1:] == ["Flag", "YELLOW", 2, "YELLOW IN TURN 3", None]
     assert doc["messages"][1][5] == "NOR"
@@ -159,9 +153,9 @@ def test_index_skip_and_force(tmp_path):
     index = json.loads((out / "index.json").read_text())
     assert index["generator"] == "export_replay" and [s["key"] for s in index["sessions"]] == [key]
     (out / f"{key}.json").write_text(json.dumps({"kind": "race", "n": 7, "drivers": {}}))
-    mod.export(db, lake, out)                   # existing file is kept
+    mod.export(db, lake, out)
     assert json.loads((out / f"{key}.json").read_text())["n"] == 7
-    mod.export(db, lake, out, force=True)       # and rewritten when asked
+    mod.export(db, lake, out, force=True)
     assert json.loads((out / f"{key}.json").read_text())["n"] > 7
 
 
@@ -192,7 +186,6 @@ def test_missing_database_exits(tmp_path):
 
 
 def test_circuit_is_drawn_from_a_lap_the_telemetry_covers(tmp_path):
-    # the position data stops before the session does: the fastest lap in the lap table is far beyond it
     lake, db, key = make_lake(tmp_path)
     g = duckdb.connect(str(db))
     g.execute("insert into gold.fct_lap values (?, 'VER', 99, 450.0, 20.0, 470.0, true)", [key])
@@ -202,12 +195,10 @@ def test_circuit_is_drawn_from_a_lap_the_telemetry_covers(tmp_path):
     r = mod.export(db, lake, tmp_path / "out", log=lines.append)
     assert r["written"] == 1 and not r["skipped"]
     assert any("position data ends" in s for s in lines), lines
-    # VER's last lap (99) is past the end of the data, so VER is left out of the lap-count check; the others agree
     assert any("agrees with the lap count for 3 of 3 cars" in s for s in lines), lines
 
 
 def test_circuit_skips_a_fastest_lap_with_no_position_samples(tmp_path):
-    # the fastest lap is inside the telemetry's time range, but its driver has only placeholder (0, 0) rows there
     lake, db, key = make_lake(tmp_path)
     f = f"{lake}/telemetry_pos/year=2026/round=6/session=R/part-0.parquet"
     c = duckdb.connect()
@@ -223,7 +214,6 @@ def test_circuit_skips_a_fastest_lap_with_no_position_samples(tmp_path):
 
 
 def test_session_with_mostly_missing_position_data_is_skipped(tmp_path):
-    # the lap table runs far beyond the position data (as with Monaco 2026, where positions stop five laps in)
     lake, db, key = make_lake(tmp_path)
     g = duckdb.connect(str(db))
     g.execute("insert into gold.fct_lap values (?, 'VER', 99, 8000.0, 30.0, 8030.0, true)", [key])
@@ -252,10 +242,9 @@ def test_no_team_columns_means_no_teams(tmp_path):
 
 
 def test_a_retired_car_inside_its_last_lap_still_agrees(tmp_path):
-    # HAM stops half way round his 4th lap: that lap has no lap time, and his progress there is 3.5, not 4
     lake, db, key = make_lake(tmp_path)
     period = 60.0 + 3 * 0.8
-    end3 = (2 * math.pi * 3 + 0.10) * period / (2 * math.pi)     # start_theta of the 4th car is -0.10
+    end3 = (2 * math.pi * 3 + 0.10) * period / (2 * math.pi)
     g = duckdb.connect(str(db))
     g.execute("delete from gold.fct_lap where driver_code = 'HAM' and lap_number >= 4")
     g.execute("insert into gold.fct_lap values (?, 'HAM', 4, ?, NULL, ?, true)", [key, end3, end3 + 0.5 * period])
@@ -266,7 +255,6 @@ def test_a_retired_car_inside_its_last_lap_still_agrees(tmp_path):
 
 
 def test_a_hole_in_one_cars_position_data_does_not_cost_a_lap(tmp_path):
-    # no samples for HAM for 40 s (more than half his 62.4 s lap): the car cannot have gone backwards, so he drove on
     lake, db, key = make_lake(tmp_path)
     f = f"{lake}/telemetry_pos/year=2026/round=6/session=R/part-0.parquet"
     c = duckdb.connect()
@@ -277,13 +265,12 @@ def test_a_hole_in_one_cars_position_data_does_not_cost_a_lap(tmp_path):
     out = tmp_path / "out"
     mod.export(db, lake, out, log=lines.append)
     assert any("agrees with the lap count for 4 of 4 cars" in s for s in lines), lines
-    assert any("whole-lap slips corrected" in s for s in lines), lines     # the 40 s hole cost him a lap, the lap table put it back
+    assert any("whole-lap slips corrected" in s for s in lines), lines
     e = json.loads((out / f"{key}.json").read_text())["drivers"]["HAM"]
     assert decode(e)[e["b"]] == pytest.approx(LAPS + 20 / (60 + 2.4), abs=0.1)
 
 
 def test_a_bad_sample_that_jumps_back_is_ignored(tmp_path):
-    # a few HAM samples are placed a third of a lap behind where he is: progress must not dip
     lake, db, key = make_lake(tmp_path)
     f = f"{lake}/telemetry_pos/year=2026/round=6/session=R/part-0.parquet"
     c = duckdb.connect()
@@ -297,7 +284,6 @@ def test_a_bad_sample_that_jumps_back_is_ignored(tmp_path):
 
 
 def test_a_last_lap_with_no_time_may_be_a_car_that_kept_driving(tmp_path):
-    # HAM's 4th lap has no time in the lap table, and the table's end for it is 0.4 of a lap late: progress reads 4.4
     lake, db, key = make_lake(tmp_path)
     period = 60.0 + 3 * 0.8
     end3 = (2 * math.pi * 3 + 0.10) * period / (2 * math.pi)
@@ -311,7 +297,6 @@ def test_a_last_lap_with_no_time_may_be_a_car_that_kept_driving(tmp_path):
 
 
 def test_a_session_whose_positions_do_not_match_the_laps_is_skipped(tmp_path):
-    # after 100 s every car's positions are scrambled in time (as in 2026 round 11), so progress cannot be trusted
     lake, db, key = make_lake(tmp_path)
     f = f"{lake}/telemetry_pos/year=2026/round=6/session=R/part-0.parquet"
     c = duckdb.connect()
@@ -330,24 +315,22 @@ def test_a_session_whose_positions_do_not_match_the_laps_is_skipped(tmp_path):
 
 def test_correct_slips_fixes_whole_laps_only():
     grid = np.arange(0.0, 400.0)
-    ends = [(n, 100.0 * n) for n in range(1, 4)]            # a lap every 100 s
+    ends = [(n, 100.0 * n) for n in range(1, 4)]
     ok = grid / 100.0
     lost = ok.copy()
-    lost[150:] -= 1.0                                        # a lap lost half way through lap 2
+    lost[150:] -= 1.0
     assert mod.correct_slips(grid, lost, 0.0, ends, 399.0) == 1
     assert np.allclose(lost, ok)
     gained = ok.copy()
     gained[250:] += 2.0
     assert mod.correct_slips(grid, gained, 0.0, ends, 399.0) == 1 and gained[300] == pytest.approx(3.0, abs=0.02)
     half = ok.copy()
-    half[250:] += 0.5                                        # a car part way round a lap, or garbage: left alone
+    half[250:] += 0.5
     keep = half.copy()
     assert mod.correct_slips(grid, half, 0.0, ends, 399.0) == 0 and (half == keep).all()
     short = ok.copy()
-    assert mod.correct_slips(grid, short, 0.0, ends, 150.0) == 0   # laps after the data ends are not checked
+    assert mod.correct_slips(grid, short, 0.0, ends, 150.0) == 0
 
-
-# ---- corner numbers and marshal posts (the circuit_corners / circuit_marshal_sectors tables) ----
 
 def add_circuit(lake, corners, marshal, year=2026, rnd=6, session="Q"):
     con = duckdb.connect()
@@ -367,20 +350,20 @@ def test_corners_and_marshal_posts_are_placed_on_the_outline(tmp_path):
     lake, db, key = make_lake(tmp_path)
     corners = [(*on_track(th), n, "A" if n == 2 else "", 90.0) for n, th in enumerate([0.5, 1.5, 2.5, 4.0], start=1)]
     marshal = [(*on_track(th), n) for n, th in enumerate([0.1, 1.6, 3.2, 4.7], start=1)]
-    add_circuit(lake, corners, marshal)           # stored under the qualifying session, the race still gets it
+    add_circuit(lake, corners, marshal)
     out = tmp_path / "out"
     mod.export(db, lake, out)
     doc = json.loads((out / f"{key}.json").read_text())
     assert [c[4] for c in doc["corners"]] == ["1", "2A", "3", "4"]
     pts = doc["track"]["pts"]
     for x, y, lx, ly, _ in doc["corners"]:
-        assert min(math.hypot(x - a, y - b) for a, b in pts) < 5            # on the drawn track
-        assert ly < y - 1                                                     # angle 90 degrees is up the page
+        assert min(math.hypot(x - a, y - b) for a, b in pts) < 5
+        assert ly < y - 1
         assert abs(lx - x) < 0.1
     assert [m[0] for m in doc["marshal"]] == [1, 2, 3, 4]
     assert all(0 <= m[3] < len(pts) for m in doc["marshal"])
     idx = [m[3] for m in doc["marshal"]]
-    assert sum(b < a for a, b in zip(idx, idx[1:] + idx[:1])) <= 1             # in order around the lap
+    assert sum(b < a for a, b in zip(idx, idx[1:] + idx[:1])) <= 1
 
 
 def test_no_circuit_tables_means_no_overlay(tmp_path):
@@ -403,7 +386,7 @@ def test_corners_in_the_wrong_coordinates_are_not_used(tmp_path):
 
 def test_marshal_posts_out_of_order_are_not_used(tmp_path):
     lake, db, key = make_lake(tmp_path)
-    ths = [0.1, 3.2, 1.6, 4.7]            # post 2 is further round the lap than post 3
+    ths = [0.1, 3.2, 1.6, 4.7]
     add_circuit(lake, [], [(*on_track(th), n) for n, th in enumerate(ths, start=1)])
     lines = []
     mod.export(db, lake, tmp_path / "out", log=lines.append)

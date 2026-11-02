@@ -19,7 +19,6 @@ export function GapChart({ doc, analysis, slots, metric }: { doc: SessionDoc; an
   const laps = Math.max(maxLap(doc), analysis.laps, 1);
   const bands = useMemo(() => periodBands(doc), [doc]);
   const selected = slots.flatMap((code, slot) => (code ? [{ code, slot, pts: gapSeries(analysis, code, metric) }] : []));
-  // The axis fits the selected drivers only: a lapped car's gap is longer than a lap and would flatten everyone else.
   const top = Math.max(5, ...selected.flatMap((s) => s.pts.map((p) => p.value)));
   const innerW = Math.max(0, width - M.l - M.r);
   const innerH = height - M.t - M.b;

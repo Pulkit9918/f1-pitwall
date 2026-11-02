@@ -1,5 +1,4 @@
-"""Can session second zero be taken from the laps table (LapStartDate - LapStartTime_s) instead of from the
-first position sample (what the Race scrubber does)? Read-only. Compares the two over every session that has both."""
+"""Can session second zero be taken from the laps table (LapStartDate - LapStartTime_s) instead of from the first position sample (what the Race scrubber does)? Read-only."""
 import sys
 
 import duckdb

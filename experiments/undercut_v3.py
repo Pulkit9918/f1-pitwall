@@ -1,9 +1,4 @@
-"""Undercut probe v3: adds the recent pace difference between B and A, and paired bootstrap tests.
-Run from the repo root after patch_v2_36.py. Reads data/f1_dbt.duckdb read-only; changes nothing.
-
-pace_diff = median over B's and A's last N_PACE clean laps before B's in-lap of (B lap time - A lap time),
-seconds per lap, positive = B slower. Known when B pits. Needs at least MIN_PACE clean paired laps.
-car_term  = -pace_diff x (k + 2): what the car pace difference alone would give B over laps L..M."""
+"""Undercut probe v3: adds the recent pace difference between B and A, and paired bootstrap tests. Run from the repo root after patch_v2_36.py."""
 import duckdb, numpy as np, pandas as pd
 import undercut_v2 as v2
 from undercut_v2 import huber, loro, logit, auc

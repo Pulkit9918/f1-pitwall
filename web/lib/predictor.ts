@@ -38,7 +38,6 @@ export function heldOut(rows: HeldOutRow[] | undefined, scope: HeldOutRow["scope
   return rows?.find((r) => r.scope === scope);
 }
 
-// How much accuracy is lost when the pit loss is estimated without the race being scored, in percentage points of hit rate.
 export function heldOutCost(r: HeldOutRow): number | null {
   return r.in_sample_hit == null || r.held_out_hit == null ? null : (r.in_sample_hit - r.held_out_hit) * 100;
 }
@@ -49,14 +48,14 @@ export interface StopsDoc {
   s: number[];
   d: string[];
   l: number[];
-  r: string[]; // g green, s safety car, v virtual safety car
-  n: number[]; // position before the stop
-  p: number[]; // predicted position
-  f: number[]; // predicted with a quick stop
-  w: number[]; // predicted with a slow stop
-  a: number[]; // actual position at the end of the out-lap
-  m: (number | null)[]; // margin in seconds
-  o: number[]; // other drivers' stops nearby
+  r: string[];
+  n: number[];
+  p: number[];
+  f: number[];
+  w: number[];
+  a: number[];
+  m: (number | null)[];
+  o: number[];
 }
 
 export interface StopRow {
@@ -112,7 +111,6 @@ export function stopRows(doc: StopsDoc, session: number): StopRow[] {
   return out;
 }
 
-// What the model's range said about the real outcome.
 export function verdict(r: StopRow): "exact" | "in range" | "outside" {
   if (r.predicted === r.actual) return "exact";
   return r.actual >= r.fast && r.actual <= r.slow ? "in range" : "outside";

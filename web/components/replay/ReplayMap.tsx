@@ -23,7 +23,6 @@ function flagText(code: string | undefined): string {
   return "SAFETY CAR";
 }
 
-// The track edge changes colour with the flag; the label next to the map always says which one it is.
 function tintClass(code: string | undefined): string {
   if (code === "2") return " rp-edge-yellow";
   if (code === "4" || code === "6" || code === "7") return " rp-edge-sc";

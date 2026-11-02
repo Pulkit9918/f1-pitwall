@@ -1,9 +1,4 @@
-"""Scoring: does the agent's result table hold the reference answer?
-
-Execution accuracy, the usual text-to-SQL measure: the two result tables are compared, not the SQL text. Column names
-and the order of columns do not matter, extra columns the agent adds do not matter, row order matters only when the
-question asks for it. Decimal values match within a tolerance; text ignores case and surrounding spaces.
-"""
+"""Scoring: does the agent's result table hold the reference answer?"""
 from itertools import product
 
 
@@ -38,9 +33,7 @@ def _dedupe(rows, tol):
 
 
 def matches(ref_rows, got_rows, ordered=False, tol=0.01) -> bool:
-    """True when some choice of the agent's columns reproduces every reference row.
-
-    When the order does not matter, identical repeated rows count once: 18 returned three times is still 18."""
+    """True when some choice of the agent's columns reproduces every reference row."""
     if not ordered:
         ref_rows, got_rows = _dedupe(ref_rows, tol), _dedupe(got_rows, tol)
     if not ref_rows:
@@ -50,7 +43,6 @@ def matches(ref_rows, got_rows, ordered=False, tol=0.01) -> bool:
     ncols_ref, ncols_got = len(ref_rows[0]), len(got_rows[0]) if got_rows else 0
     if ncols_got < ncols_ref:
         return False
-    # decimals: compare on a grid of width tol; neighbouring grid cells are tried too, below
     ref_cols = [_col(ref_rows, j, tol) for j in range(ncols_ref)]
     got_cols = [_col(got_rows, j, tol) for j in range(ncols_got)]
 
