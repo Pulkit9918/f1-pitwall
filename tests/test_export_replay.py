@@ -345,3 +345,68 @@ def test_correct_slips_fixes_whole_laps_only():
     assert mod.correct_slips(grid, half, 0.0, ends, 399.0) == 0 and (half == keep).all()
     short = ok.copy()
     assert mod.correct_slips(grid, short, 0.0, ends, 150.0) == 0   # laps after the data ends are not checked
+
+
+# ---- corner numbers and marshal posts (the circuit_corners / circuit_marshal_sectors tables) ----
+
+def add_circuit(lake, corners, marshal, year=2026, rnd=6, session="Q"):
+    con = duckdb.connect()
+    ddl = "event varchar, X double, Y double, Number bigint, Letter varchar, Angle double, Distance double"
+    part = f"year={year}/round={rnd:02d}/session={session}/part-0.parquet"
+    if corners:
+        write_parquet(con, f"{lake}/circuit_corners/{part}", ddl, [("T", x, y, n, l, a, None) for x, y, n, l, a in corners])
+    if marshal:
+        write_parquet(con, f"{lake}/circuit_marshal_sectors/{part}", ddl, [("T", x, y, n, "", 0.0, None) for x, y, n in marshal])
+
+
+def on_track(theta):
+    return track(theta, False)
+
+
+def test_corners_and_marshal_posts_are_placed_on_the_outline(tmp_path):
+    lake, db, key = make_lake(tmp_path)
+    corners = [(*on_track(th), n, "A" if n == 2 else "", 90.0) for n, th in enumerate([0.5, 1.5, 2.5, 4.0], start=1)]
+    marshal = [(*on_track(th), n) for n, th in enumerate([0.1, 1.6, 3.2, 4.7], start=1)]
+    add_circuit(lake, corners, marshal)           # stored under the qualifying session, the race still gets it
+    out = tmp_path / "out"
+    mod.export(db, lake, out)
+    doc = json.loads((out / f"{key}.json").read_text())
+    assert [c[4] for c in doc["corners"]] == ["1", "2A", "3", "4"]
+    pts = doc["track"]["pts"]
+    for x, y, lx, ly, _ in doc["corners"]:
+        assert min(math.hypot(x - a, y - b) for a, b in pts) < 5            # on the drawn track
+        assert ly < y - 1                                                     # angle 90 degrees is up the page
+        assert abs(lx - x) < 0.1
+    assert [m[0] for m in doc["marshal"]] == [1, 2, 3, 4]
+    assert all(0 <= m[3] < len(pts) for m in doc["marshal"])
+    idx = [m[3] for m in doc["marshal"]]
+    assert sum(b < a for a, b in zip(idx, idx[1:] + idx[:1])) <= 1             # in order around the lap
+
+
+def test_no_circuit_tables_means_no_overlay(tmp_path):
+    lake, db, key = make_lake(tmp_path)
+    mod.export(db, lake, tmp_path / "out")
+    doc = json.loads((tmp_path / "out" / f"{key}.json").read_text())
+    assert "corners" not in doc and "marshal" not in doc
+
+
+def test_corners_in_the_wrong_coordinates_are_not_used(tmp_path):
+    lake, db, key = make_lake(tmp_path)
+    corners = [(x + 30000, y, n, "", 0.0) for n, (x, y) in enumerate([on_track(t) for t in (0.5, 1.5, 2.5, 4.0)], start=1)]
+    add_circuit(lake, corners, [])
+    lines = []
+    mod.export(db, lake, tmp_path / "out", log=lines.append)
+    doc = json.loads((tmp_path / "out" / f"{key}.json").read_text())
+    assert "corners" not in doc
+    assert any("corners are not near the drawn circuit" in s for s in lines), lines
+
+
+def test_marshal_posts_out_of_order_are_not_used(tmp_path):
+    lake, db, key = make_lake(tmp_path)
+    ths = [0.1, 3.2, 1.6, 4.7]            # post 2 is further round the lap than post 3
+    add_circuit(lake, [], [(*on_track(th), n) for n, th in enumerate(ths, start=1)])
+    lines = []
+    mod.export(db, lake, tmp_path / "out", log=lines.append)
+    doc = json.loads((tmp_path / "out" / f"{key}.json").read_text())
+    assert "marshal" not in doc
+    assert any("do not run around the lap in order" in s for s in lines), lines

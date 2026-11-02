@@ -74,6 +74,7 @@ export function ReplayView({ doc, replay }: { doc: SessionDoc; replay: Replay })
     assignSlots(Array(MAX_COMPARED).fill(null), order.filter((c) => replay.file.drivers[c]).slice(0, MAX_COMPARED), MAX_COMPARED),
   );
   const [tab, setTab] = useState<"timing" | "laps" | "messages">("timing");
+  const [corners, setCorners] = useState(true);
   const [gapMetric, setGapMetric] = useState<GapMetric>("leader");
   const [units, setUnits] = useState<Units>("metric");
   useEffect(() => setUnits(loadUnits()), []);
@@ -189,13 +190,14 @@ export function ReplayView({ doc, replay }: { doc: SessionDoc; replay: Replay })
         <span className="muted small">Units</span>
         <button type="button" className={`chip${units === "metric" ? " chip-on" : ""}`} aria-pressed={units === "metric"} onClick={() => chooseUnits("metric")}>Metric</button>
         <button type="button" className={`chip${units === "imperial" ? " chip-on" : ""}`} aria-pressed={units === "imperial"} onClick={() => chooseUnits("imperial")}>Imperial</button>
+        <label className="rp-check"><input type="checkbox" checked={corners} onChange={(e) => setCorners(e.target.checked)} /> Corner numbers</label>
       </div>
 
       <div ref={screenRef} className="rp-screen">
       <StatusStrip replay={replay} t={play.slow} kind={kind} lap={lap} totalLaps={total} clock={play.slow - clock0} units={units} />
 
       <div className="rp-stage">
-        <ReplayMap replay={replay} t={play.t} states={states} leader={board[0]?.code ?? null} slots={slots} onToggle={toggle} status={status} frozen={frozen} />
+        <ReplayMap replay={replay} t={play.t} states={states} leader={board[0]?.code ?? null} slots={slots} onToggle={toggle} status={status} frozen={frozen} showCorners={corners} />
         <ReplayBoard rows={board} kind={kind} slots={slots} teams={replay.teams} onToggle={toggle} gapsToSelected={gapsToSelected} selected={selected} predictions={predictions} frozen={frozen} now={play.slow} extras={extras} fastest={fastest} />
       </div>
 

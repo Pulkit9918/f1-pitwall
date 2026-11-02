@@ -39,6 +39,8 @@ export interface ReplayFile {
   messages: ReplayMessage[];
   track_status: [number, string, string][];
   teams?: Record<string, [Maybe<string>, Maybe<string>]>; // driver code -> [team name, "#RRGGBB"]
+  corners?: [number, number, number, number, string][]; // x, y on the outline, label x, y, "7" or "10A"
+  marshal?: [number, number, number, number][]; // marshal sector number, x, y, index into track.pts of the post that starts it
 }
 
 export interface TeamInfo {
@@ -653,4 +655,43 @@ export function fastestLapAt(idx: LapIndex, t: number): string | null {
 export function redFlagEnd(bands: TimeBand[], t: number): number | null {
   for (const b of bands) if (b.kind === "RED" && t >= b.t0 && t < b.t1) return b.t1;
   return null;
+}
+
+
+
+// ---- marshal-sector flags ----
+
+export type SectorFlag = "yellow" | "double";
+
+// The sectors that have a yellow flag out at time t, read from the race-control messages ("YELLOW IN TRACK SECTOR 7",
+// "DOUBLE YELLOW IN TRACK SECTOR 7", "CLEAR IN TRACK SECTOR 7"). A flag stays until its own clear message.
+export function sectorFlagsAt(file: ReplayFile, t: number): Map<number, SectorFlag> {
+  const out = new Map<number, SectorFlag>();
+  for (const m of file.messages) {
+    if (m[0] > t) break;
+    const hit = /^\s*(DOUBLE YELLOW|YELLOW|CLEAR) IN TRACK SECTOR\s+(\d+)/i.exec(m[4] ?? "");
+    if (!hit) continue;
+    const n = Number(hit[2]);
+    const what = hit[1].toUpperCase();
+    if (what === "CLEAR") out.delete(n);
+    else out.set(n, what === "DOUBLE YELLOW" ? "double" : "yellow");
+  }
+  return out;
+}
+
+// The outline points of marshal sector n: from its post to the next sector's post (wrapping round the lap). Null if unknown.
+export function sectorPoints(file: ReplayFile, n: number): [number, number][] | null {
+  const posts = file.marshal;
+  if (!posts || posts.length < 2) return null;
+  const k = posts.findIndex((m) => m[0] === n);
+  if (k < 0) return null;
+  const pts = file.track.pts;
+  const a = posts[k][3];
+  const b = posts[(k + 1) % posts.length][3];
+  const out: [number, number][] = [];
+  for (let i = a; ; i = (i + 1) % pts.length) {
+    out.push(pts[i]);
+    if (i === b || out.length > pts.length) break;
+  }
+  return out;
 }

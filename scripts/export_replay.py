@@ -51,6 +51,8 @@ FWD_WINDOW = 150      # ... and how far forward (15% of a lap)
 HOLE_S = 3.0          # position samples further apart than this are a hole in the data, not a slow stretch
 BACK_LIMIT = 0.03     # a step back of more than this (fraction of a lap) is not a car going backwards, it is a bad sample
 MAX_HOLD = 30         # ... and is ignored for at most this many samples in a row before the car is taken to be there
+CORNER_OFFSET = 500   # how far (in the lake's position units, tenths of a metre) a corner number sits from the track
+MAX_SNAP = 40.0       # a corner or marshal post further than this (in outline units) from the drawn circuit is not used
 RACE_LIKE = {"R", "S"}
 MIN_COVERAGE = 0.5    # a session whose valid position data covers less of its lap window than this is not exported
 
@@ -132,6 +134,56 @@ def driver_teams(con, files):
 
 
 # ---------------------------------------------------------------- the circuit line and snapping
+
+def circuit_overlay(circuit, mn, mx, scale, ox, oy):
+    """Corner numbers and marshal posts placed on the drawn outline: (corners, marshal, notes).
+
+    circuit is {"corners": [(X, Y, Number, Letter, Angle)], "marshal": [(X, Y, Number)]} in the position data's own
+    coordinates. Each point is put through the same transform as the outline. A point further than MAX_SNAP from the outline
+    is dropped, and if a quarter of the corners are, the coordinates evidently do not match and none are used.
+    Marshal posts must run around the lap in order (a sector is the stretch from one post to the next), or none are used.
+    """
+    notes = []
+    pts = np.column_stack([ox, oy])
+
+    def place(x, y):
+        px, py = (x - mn[0]) * scale, (mx[1] - y) * scale
+        d = np.hypot(pts[:, 0] - px, pts[:, 1] - py)
+        i = int(d.argmin())
+        return px, py, i, float(d[i])
+
+    corners = []
+    rows = [r for r in (circuit or {}).get("corners", []) if r[0] is not None and r[1] is not None and r[2] is not None]
+    far = 0
+    for X, Y, number, letter, angle in rows:
+        px, py, _, dist = place(float(X), float(Y))
+        if dist > MAX_SNAP:
+            far += 1
+            continue
+        a = math.radians(float(angle or 0.0))
+        corners.append([round(px, 1), round(py, 1), round(px + math.cos(a) * CORNER_OFFSET * scale, 1),
+                        round(py - math.sin(a) * CORNER_OFFSET * scale, 1), f"{int(number)}{letter or ''}"])
+    if rows and far * 4 >= len(rows):
+        notes.append(f"{far} of {len(rows)} corners are not near the drawn circuit, so none are shown")
+        corners = []
+    elif far:
+        notes.append(f"{far} of {len(rows)} corners are not near the drawn circuit and were left out")
+
+    marshal = []
+    mrows = sorted((r for r in (circuit or {}).get("marshal", []) if r[0] is not None and r[1] is not None and r[2] is not None),
+                   key=lambda r: r[2])
+    placed = [(int(n), *place(float(x), float(y))) for x, y, n in mrows]
+    if placed:
+        idx = [p[3] for p in placed]
+        descents = sum(1 for a, b in zip(idx, idx[1:] + idx[:1]) if b < a)
+        if any(p[4] > MAX_SNAP for p in placed):
+            notes.append("marshal posts are not near the drawn circuit, so no sectors are shown")
+        elif descents > 1 or len(set(idx)) != len(idx):
+            notes.append("marshal posts do not run around the lap in order, so no sectors are shown")
+        else:
+            marshal = [[n, round(px, 1), round(py, 1), i] for n, px, py, i, _ in placed]
+    return corners, marshal, notes
+
 
 def split_by_driver(driver_col):
     """Slices of a sorted driver-number column: {number: (start, stop)}."""
@@ -249,7 +301,7 @@ def sample_hold(t_src, v_src, grid):
 
 
 def build_replay(con, key, code, pos_file, car_file, weather_file, rc_file, ts_file, numbers, laps_info, lap_ref,
-                 teams=None, lap_ends=None):
+                 teams=None, lap_ends=None, circuit=None):
     """The replay dict for one session, plus a list of notes for the console."""
     notes = []
     p = con.execute(
@@ -355,6 +407,9 @@ def build_replay(con, key, code, pos_file, car_file, weather_file, rc_file, ts_f
     sy = (mx[1] - ref[:, 1]) * scale
     step = max(1, REF_POINTS // DRAW_POINTS)
     outline = [[round(float(a), 1), round(float(b), 1)] for a, b in zip(sx[::step], sy[::step])]
+    corners, marshal, circuit_notes = circuit_overlay(
+        circuit, mn, mx, scale, np.array([p[0] for p in outline]), np.array([p[1] for p in outline]))
+    notes.extend(circuit_notes)
 
     # race-control messages and weather, on the session clock
     off = clock_offset(ep, t)
@@ -431,6 +486,7 @@ def build_replay(con, key, code, pos_file, car_file, weather_file, rc_file, ts_f
                           "pts": outline},
         "drivers": drivers, "weather": weather, "messages": messages, "track_status": status,
         **({"teams": {c: teams[c] for c in drivers if c in teams}} if teams else {}),
+        **({"corners": corners} if corners else {}), **({"marshal": marshal} if marshal else {}),
     }, notes
 
 
@@ -466,6 +522,8 @@ def export(db, lake, out, from_year=2022, sessions=("R", "Q"), only=None, force=
     results = file_index(con, str(lake), "results")
     rc = file_index(con, str(lake), "race_control")
     tstat = file_index(con, str(lake), "track_status")
+    corner_files = file_index(con, str(lake), "circuit_corners")
+    marshal_files = file_index(con, str(lake), "circuit_marshal_sectors")
     numbers = driver_numbers(con, str(lake))
 
     index = []
@@ -522,10 +580,17 @@ def export(db, lake, out, from_year=2022, sessions=("R", "Q"), only=None, force=
                 "select driver_code, lap_number, time_s from f1.gold.fct_lap where session_key = ? and time_s is not null "
                 "order by driver_code, lap_number", [key]).fetchall():
             ends.setdefault(d, []).append((int(n), float(e)))
+        circuit = {}
+        for name, files, cols in (("corners", corner_files, '"X", "Y", "Number", "Letter", "Angle"'),
+                                  ("marshal", marshal_files, '"X", "Y", "Number"')):
+            # the same circuit is stored under each of its sessions, so any session of the weekend will do
+            f = next((v[0] for kk, v in sorted(files.items()) if kk[:2] == k[:2]), None)
+            if f:
+                circuit[name] = con.execute(f'select distinct {cols} from read_parquet(?) order by "Number"', [f]).fetchall()
         doc, notes = build_replay(
             con, key, code, pos[k][0], (car.get(k) or [None])[0], (weather.get(k) or [None])[0],
             (rc.get(k) or [None])[0], (tstat.get(k) or [None])[0], nums, info, fastest,
-            driver_teams(con, results.get(k)), ends)
+            driver_teams(con, results.get(k)), ends, circuit)
         if doc is None:
             skipped.append((key, "; ".join(notes)))
             continue

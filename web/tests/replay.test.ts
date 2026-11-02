@@ -25,6 +25,8 @@ import {
   qualiBoard,
   raceBoard,
   redFlagEnd,
+  sectorFlagsAt,
+  sectorPoints,
   statusAt,
   timeAtCum,
   timeBands,
@@ -330,6 +332,37 @@ describe("laps done, lap start and lap history", () => {
   it("ignores laps the stewards deleted when finding the best", () => {
     const idx2: LapIndex = new Map([["AAA", [lap(1, 0, 8, { deleted: true }), lap(2, 8, 20)]]]);
     expect(lapHistory(idx2, ["AAA"], 30).sessionBest).toBeCloseTo(12);
+  });
+});
+
+
+describe("marshal sectors", () => {
+  const msgs: ReplayFile["messages"] = [
+    [10, "Flag", "YELLOW", 1, "YELLOW IN TRACK SECTOR 7", null],
+    [20, "Flag", "DOUBLE YELLOW", 2, "DOUBLE YELLOW IN TRACK SECTOR 7", null],
+    [30, "Flag", "YELLOW", 2, "YELLOW IN TRACK SECTOR 3", null],
+    [40, "Flag", "CLEAR", 2, "CLEAR IN TRACK SECTOR 7", null],
+    [50, "Other", "", 3, "CAR 4 (NOR) TIME DELETED", "4"],
+  ];
+  const f: ReplayFile = {
+    ...file,
+    messages: msgs,
+    track: { w: 10, h: 10, pts: [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [5, 0]] },
+    marshal: [[1, 0, 0, 0], [2, 1, 0, 1], [3, 2, 0, 3]],
+  };
+  it("tracks yellow, double yellow and clear per sector", () => {
+    expect([...sectorFlagsAt(f, 5)]).toEqual([]);
+    expect([...sectorFlagsAt(f, 15)]).toEqual([[7, "yellow"]]);
+    expect([...sectorFlagsAt(f, 25)]).toEqual([[7, "double"]]);
+    expect([...sectorFlagsAt(f, 35)].sort()).toEqual([[3, "yellow"], [7, "double"]]);
+    expect([...sectorFlagsAt(f, 60)]).toEqual([[3, "yellow"]]);
+  });
+  it("gives a sector's outline from its post to the next, wrapping round the lap", () => {
+    expect(sectorPoints(f, 1)).toEqual([[0, 0], [1, 0]]);
+    expect(sectorPoints(f, 2)).toEqual([[1, 0], [2, 0], [3, 0]]);
+    expect(sectorPoints(f, 3)).toEqual([[3, 0], [4, 0], [5, 0], [0, 0]]);
+    expect(sectorPoints(f, 9)).toBeNull();
+    expect(sectorPoints(file, 1)).toBeNull();
   });
 });
 

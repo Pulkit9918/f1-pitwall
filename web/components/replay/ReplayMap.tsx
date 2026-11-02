@@ -2,7 +2,17 @@
 
 import { useMemo } from "react";
 import { DRIVER_COLORS, teamFill } from "@/lib/colors";
-import { cumAt, hasData, trackPoint, type CarState, type Replay, frozenAt, type Span } from "@/lib/replay";
+import {
+  cumAt,
+  frozenAt,
+  hasData,
+  sectorFlagsAt,
+  sectorPoints,
+  trackPoint,
+  type CarState,
+  type Replay,
+  type Span,
+} from "@/lib/replay";
 
 const PAD = 36;
 
@@ -30,6 +40,7 @@ export function ReplayMap({
   onToggle,
   status,
   frozen,
+  showCorners = true,
 }: {
   replay: Replay;
   t: number;
@@ -39,6 +50,7 @@ export function ReplayMap({
   onToggle: (code: string) => void;
   status: { code: string; label: string } | null;
   frozen: Map<string, Span[]>;
+  showCorners?: boolean;
 }) {
   const { w, h, pts } = replay.file.track;
   const outline = useMemo(() => `M${pts.map((p) => p.join(",")).join("L")}Z`, [pts]);
@@ -50,6 +62,17 @@ export function ReplayMap({
     const ny = ((c - a) / len) * 15;
     return { x1: a - nx, y1: b - ny, x2: a + nx, y2: b + ny };
   }, [pts]);
+
+  const flagged = useMemo(() => {
+    const out: { n: number; kind: string; d: string; x: number; y: number }[] = [];
+    for (const [n, kind] of sectorFlagsAt(replay.file, t)) {
+      const seg = sectorPoints(replay.file, n);
+      const post = replay.file.marshal?.find((q) => q[0] === n);
+      if (seg && post) out.push({ n, kind, d: `M${seg.map((q) => q.join(",")).join("L")}`, x: post[1], y: post[2] });
+    }
+    return out;
+  }, [replay.file, t]);
+  const corners = showCorners ? (replay.file.corners ?? []) : [];
 
   const cars = replay.codes
     .filter((c) => hasData(replay, c, t) && states.get(c) !== "out")
@@ -67,7 +90,19 @@ export function ReplayMap({
       aria-label={`Track map with ${cars.length} cars. The leaderboard lists them in order.`}
     >
       <path d={outline} className={`rp-road-edge${tintClass(status?.code)}`} />
+      {flagged.map((f) => (
+        <path key={`s${f.n}`} d={f.d} className={`rp-sector rp-sector-${f.kind}`} />
+      ))}
       <path d={outline} className="rp-road" />
+      {flagged.map((f) => (
+        <path key={`r${f.n}`} d={f.d} className={`rp-sector-core rp-sector-${f.kind}`} />
+      ))}
+      {corners.map(([, , lx, ly, label]) => (
+        <text key={label} x={lx} y={ly} textAnchor="middle" dominantBaseline="central" className="rp-corner">{label}</text>
+      ))}
+      {flagged.map((f) => (
+        <text key={`t${f.n}`} x={f.x} y={f.y} textAnchor="middle" dominantBaseline="central" className="rp-sector-tag">{`S${f.n}`}</text>
+      ))}
       <line {...finish} className="rp-finish" />
       {tintClass(status?.code) && (
         <text x={0} y={-12} className="rp-map-flag">{flagText(status?.code)}</text>

@@ -161,3 +161,10 @@ span.swatch.rp-band-pre { background: rgba(140, 150, 170, 0.45); }
 @keyframes rp-pulse { 0%, 100% { stroke-opacity: 1; stroke-width: 22; } 50% { stroke-opacity: 0.45; stroke-width: 28; } }
 .rp-edge-sc { animation: rp-pulse 1.6s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .rp-edge-sc { animation: none; } }
+
+/* ---- upgrade: corner numbers and marshal-sector flags ---- */
+.rp-corner { fill: var(--ink-3); font-size: 15px; font-weight: 600; pointer-events: none; }
+.rp-sector { fill: none; stroke: #f0c455; stroke-width: 26; stroke-linejoin: round; stroke-linecap: butt; opacity: 0.85; }
+.rp-sector-core { fill: none; stroke: rgba(240, 196, 85, 0.35); stroke-width: 16; stroke-linejoin: round; }
+.rp-sector-double { stroke: #ff9f1c; }
+.rp-sector-tag { fill: #f0c455; font-size: 16px; font-weight: 800; paint-order: stroke; stroke: var(--surface); stroke-width: 4px; pointer-events: none; }
