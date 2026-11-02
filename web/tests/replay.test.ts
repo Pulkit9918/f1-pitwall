@@ -8,6 +8,9 @@ import {
   fmtClock,
   fmtGap,
   frame,
+  frozenAt,
+  frozenSpans,
+  mergeSpans,
   gapsToDriver,
   hasData,
   inPit,
@@ -323,5 +326,57 @@ describe("laps done, lap start and lap history", () => {
   it("ignores laps the stewards deleted when finding the best", () => {
     const idx2: LapIndex = new Map([["AAA", [lap(1, 0, 8, { deleted: true }), lap(2, 8, 20)]]]);
     expect(lapHistory(idx2, ["AAA"], 30).sessionBest).toBeCloseTo(12);
+  });
+});
+
+
+// ---- cars whose position data stopped ----
+describe("frozenSpans", () => {
+  // DDD moves for 20 s, then stays at one point to the end of the file, climbing a whole lap at frame 30 as the replay does.
+  const stuck = [...Array(20).fill(1000), ...Array(20).fill(0)];
+  stuck[29] = 10000;
+  // EEE is still from frame 10 to 35 and then moves again.
+  const gap = [...Array(10).fill(1000), ...Array(25).fill(0), ...Array(5).fill(1000)];
+  const rf = decodeReplay({
+    ...file,
+    drivers: { ...file.drivers, DDD: { num: 4, a: 0, b: 40, p0: 0, dp: stuck }, EEE: { num: 5, a: 0, b: 40, p0: 0, dp: gap } },
+  });
+  const lap = (n: number, end: number | null, time: number | null = 10): LapRec => ({
+    lap: n, start: end == null ? 0 : end - 10, end, time, s1: null, s2: null, s3: null,
+    compound: null, tyreLife: null, pitIn: null, pitOut: null, deleted: false,
+  });
+
+  it("finds a car stuck at one point while the lap table completes laps, although progress climbs by whole laps", () => {
+    expect(frozenSpans(rf, "DDD", [lap(1, 12), lap(2, 32), lap(3, 38)], 10)).toEqual([[20, 40]]);
+  });
+  it("finds a stretch that is not at the end of the data", () => {
+    const spans = frozenSpans(rf, "EEE", [lap(1, 8), lap(2, 22), lap(3, 30)], 10);
+    expect(spans).toEqual([[10, 35]]);
+    expect(frozenAt(spans, 20)).toBe(true);
+    expect(frozenAt(spans, 38)).toBe(false);
+    expect(frozenAt(undefined, 20)).toBe(false);
+  });
+  it("needs two completed laps in the stretch, so one stray lap does not mark a car", () => {
+    expect(frozenSpans(rf, "DDD", [lap(1, 12), lap(2, 35)], 10)).toEqual([]);
+    expect(frozenSpans(rf, "DDD", [lap(1, 12), lap(2, 35)], 10, 1)).toEqual([[20, 40]]);
+  });
+  it("ignores a car that is still moving", () => {
+    expect(frozenSpans(rf, "AAA", [lap(1, 12), lap(2, 32), lap(3, 38)], 10)).toEqual([]);
+  });
+  it("ignores a retirement: the unfinished last lap has an end time but no lap time", () => {
+    expect(frozenSpans(rf, "DDD", [lap(1, 12), lap(2, 170, null)], 10, 1)).toEqual([]);
+  });
+  it("ignores a stop with no lap completed inside it, and a lap that ends as the car stops", () => {
+    expect(frozenSpans(rf, "DDD", [lap(1, 12), lap(2, 25)], 10, 1)).toEqual([]);
+  });
+  it("ignores a stop shorter than the minimum, such as a pit stop", () => {
+    expect(frozenSpans(rf, "DDD", [lap(1, 12), lap(2, 32), lap(3, 38)], 30)).toEqual([]);
+  });
+  it("ignores a driver it has no data for", () => {
+    expect(frozenSpans(rf, "ZZZ", [lap(1, 12)], 10)).toEqual([]);
+  });
+  it("joins stretches a moment apart", () => {
+    expect(mergeSpans([[0, 10], [12, 20], [40, 50]], 5)).toEqual([[0, 20], [40, 50]]);
+    expect(mergeSpans([], 5)).toEqual([]);
   });
 });

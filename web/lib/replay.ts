@@ -551,3 +551,58 @@ export function lapHistory(idx: LapIndex, codes: string[], t: number) {
   return { laps, rows, sessionBest, own: new Map(codes.map((c) => [c, bestOf(c)])) };
 }
 
+
+// ---- cars whose position data stopped ----
+
+export const FROZEN_MIN_S = 60;
+export const FROZEN_MIN_LAPS = 2; // completed laps that must end inside a stretch
+const FROZEN_GRACE_S = 10; // a lap that ends within this long of the stop does not count: the car may simply have stopped after the line
+const STILL = 0.0006; // laps between two samples; below this a car is not moving (about 3 m a second on a 5 km lap)
+export type Span = [number, number];
+
+// How far apart two places on the lap are, 0 to 0.5. Whole laps do not count: the replay puts a car right by whole laps
+// at the end of every lap, so a car stuck at one point still climbs one lap at a time.
+const lapStep = (a: number, b: number) => {
+  const d = Math.abs(a - b) % 1;
+  return Math.min(d, 1 - d);
+};
+
+// Stretches, at least `minSeconds` long, in which a car's place on the circuit does not change although the lap table has
+// it completing a lap. A car that stopped for good (retired, parked, in the pits) completes no lap while stopped and is
+// not caught; neither is an unfinished last lap, which has no lap time.
+export function frozenSpans(r: Replay, code: string, recs: LapRec[], minSeconds = FROZEN_MIN_S, minLaps = FROZEN_MIN_LAPS): Span[] {
+  const c = r.cum[code];
+  const d = r.file.drivers[code];
+  if (!c || !d) return [];
+  const e = Math.min(d.b, c.length - 1);
+  const out: Span[] = [];
+  let s = d.a;
+  const close = (i: number) => {
+    if ((i - s) * r.step < minSeconds) return;
+    const from = r.t0 + s * r.step;
+    const to = r.t0 + i * r.step;
+    const laps = recs.filter((l) => completed(l) && l.end! > from + FROZEN_GRACE_S && l.end! <= to).length;
+    if (laps >= minLaps) out.push([from, to]);
+  };
+  for (let i = d.a + 1; i <= e; i++) {
+    if (lapStep(c[i], c[i - 1]) > STILL) {
+      close(i - 1);
+      s = i;
+    }
+  }
+  close(e);
+  return mergeSpans(out);
+}
+
+// Joins stretches less than `gap` seconds apart, so one sample of movement does not split a frozen car in two.
+export function mergeSpans(spans: Span[], gap = 5): Span[] {
+  const out: Span[] = [];
+  for (const sp of spans) {
+    const last = out[out.length - 1];
+    if (last && sp[0] - last[1] <= gap) last[1] = Math.max(last[1], sp[1]);
+    else out.push([sp[0], sp[1]]);
+  }
+  return out;
+}
+
+export const frozenAt = (spans: Span[] | undefined, t: number): boolean => !!spans && spans.some(([a, b]) => t >= a && t <= b);

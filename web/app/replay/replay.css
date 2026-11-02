@@ -146,3 +146,7 @@ span.swatch.rp-band-pre { background: rgba(140, 150, 170, 0.45); }
 .rp-tick-start { position: absolute; transform: translateX(-50%); color: #3ecf6e; font-weight: 700; z-index: 1; background: var(--ground); padding: 0 3px; }
 .rp-phase { font-size: 0.85rem; color: var(--ink-3); font-weight: 600; }
 .rp-phase-pre { color: #8ea0c4; }
+
+.rp-dot-lost { stroke-dasharray: 3 3; opacity: 0.6; }
+.rp-tag-lost { font-size: 14px; font-weight: 600; fill: var(--ink-3); }
+.rp-pit[title] { cursor: help; }

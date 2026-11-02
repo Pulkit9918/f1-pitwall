@@ -325,7 +325,7 @@ every lap; where a car is a whole number of laps out, it is put right using the 
 honestly are skipped with a reason: 2026 round 6 (Monaco), where position data covers 5% of the race. 2026 round
 11 (Hungary) is limited: its position feed stops matching the cars' clock from lap 7, and only 109 laps there have
 traces. A few cars have position data that stops moving before the race ends (for example Russell in 2025 round
-4), so their marker stands still while the leaderboard follows the lap table; the replay does not label that yet.
+4), so their marker stands still while the leaderboard follows the lap table. The replay marks such a stretch: the dot is dashed and labelled "no position" and the leaderboard shows a !. Only one stretch in the 134 race replays meets the rule (two or more laps completed while the position stays still), so shorter freezes are not marked.
 
 ## The API
 

@@ -5,7 +5,7 @@ import { CompoundChip } from "@/components/CompoundChip";
 import { DRIVER_COLORS, teamFill } from "@/lib/colors";
 import { fmtLap } from "@/lib/format";
 import type { Regime } from "@/lib/analysis";
-import type { BoardRow, TeamInfo } from "@/lib/replay";
+import { frozenAt, type BoardRow, type Span, type TeamInfo } from "@/lib/replay";
 
 export type GapMode = "leader" | "interval" | "driver";
 export type Prediction = { position: number | null; regime: Regime };
@@ -19,6 +19,8 @@ export function ReplayBoard({
   gapsToSelected,
   selected,
   predictions,
+  frozen,
+  now,
 }: {
   rows: BoardRow[];
   kind: "race" | "quali";
@@ -28,6 +30,8 @@ export function ReplayBoard({
   gapsToSelected: Map<string, string> | null;
   selected: string | null;
   predictions: Map<string, Prediction> | null;
+  frozen: Map<string, Span[]>;
+  now: number;
 }) {
   const [chosen, setMode] = useState<GapMode>("leader");
   const [showPred, setShowPred] = useState(false);
@@ -63,6 +67,7 @@ export function ReplayBoard({
           const slot = slots.indexOf(r.code);
           const on = slot >= 0;
           const blocked = !on && full;
+          const lost = r.state !== "out" && frozenAt(frozen.get(r.code), now);
           const gap = r.state === "out" ? "OUT" : kind === "quali" ? (r.best != null ? fmtLap(r.best) : "-") : mode === "leader" ? r.gapLeader : mode === "driver" ? gapsToSelected?.get(r.code) ?? "" : r.interval || r.gapLeader;
           return (
             <li key={r.code}>
@@ -93,7 +98,10 @@ export function ReplayBoard({
                     </span>
                   );
                 })()}
-                <span className="rp-pit">{r.state === "pit" ? "PIT" : ""}</span>
+                <span className="rp-pit" title={lost && r.state !== "pit" ? "Position data stopped; the dot is not where the car is" : undefined}>
+                  {r.state === "pit" ? "PIT" : lost ? "!" : ""}
+                  {lost && r.state !== "pit" && <span className="sr-only"> position data lost</span>}
+                </span>
                 <span className="rp-tyre">
                   <CompoundChip compound={r.tyre.compound} />
                   <span className="num rp-age">{r.tyre.life ?? ""}</span>
@@ -104,6 +112,9 @@ export function ReplayBoard({
         })}
       </ol>
       {pred && <p className="axis-caption">Pit prediction: the place each driver would rejoin in if they pitted at the end of the lap they just finished. * is low confidence (safety car or VSC).</p>}
+      {[...frozen.values()].some((s) => frozenAt(s, now)) && (
+        <p className="axis-caption">! marks a car whose position data stopped changing while the lap table shows it still racing. Its dot stays where the data stopped, so between lap ends its place in the order and its gaps may be off.</p>
+      )}
     </div>
   );
 }

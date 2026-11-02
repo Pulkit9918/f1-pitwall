@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { DRIVER_COLORS, teamFill } from "@/lib/colors";
-import { cumAt, hasData, trackPoint, type CarState, type Replay } from "@/lib/replay";
+import { cumAt, hasData, trackPoint, type CarState, type Replay, frozenAt, type Span } from "@/lib/replay";
 
 const PAD = 36;
 
@@ -29,6 +29,7 @@ export function ReplayMap({
   slots,
   onToggle,
   status,
+  frozen,
 }: {
   replay: Replay;
   t: number;
@@ -37,6 +38,7 @@ export function ReplayMap({
   slots: (string | null)[];
   onToggle: (code: string) => void;
   status: { code: string; label: string } | null;
+  frozen: Map<string, Span[]>;
 }) {
   const { w, h, pts } = replay.file.track;
   const outline = useMemo(() => `M${pts.map((p) => p.join(",")).join("L")}Z`, [pts]);
@@ -73,6 +75,7 @@ export function ReplayMap({
       {cars.map(({ c, x, y, slot }) => {
         const picked = slot >= 0;
         const pit = states.get(c) === "pit";
+        const lost = frozenAt(frozen.get(c), t);
         const team = replay.teams[c];
         const color = teamFill(team?.color);
         const style = color
@@ -88,13 +91,14 @@ export function ReplayMap({
           <g key={c} transform={`translate(${x},${y})`} className="rp-car" onClick={() => onToggle(c)}>
             <circle
               r={picked ? 13 : 9}
-              className={`rp-dot${!color && c === leader ? " rp-dot-lead" : ""}${!color && pit ? " rp-dot-pit" : ""}`}
+              className={`rp-dot${!color && c === leader ? " rp-dot-lead" : ""}${!color && pit ? " rp-dot-pit" : ""}${lost ? " rp-dot-lost" : ""}`}
               style={style}
             />
             {color && team?.second && <circle r={picked ? 5 : 3.5} className="rp-dot-second" style={pit ? { fill: color } : undefined} />}
             <text y={picked ? -19 : -14} textAnchor="middle" className={picked ? "rp-tag rp-tag-on" : "rp-tag"}>
               {c}
             </text>
+            {lost && <text y={picked ? 34 : 26} textAnchor="middle" className="rp-tag rp-tag-lost">no position</text>}
           </g>
         );
       })}

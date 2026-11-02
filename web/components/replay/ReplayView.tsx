@@ -10,6 +10,7 @@ import { assignSlots, driverOrder, maxLap, toggleDriver } from "@/lib/race";
 import {
   buildLapIndex,
   driverFacts,
+  frozenSpans,
   gapsToDriver,
   lapEnds,
   lapsDoneAt,
@@ -23,6 +24,7 @@ import {
   timingRows,
   type CarState,
   type Replay,
+  type Span,
 } from "@/lib/replay";
 import type { SessionDoc } from "@/lib/types";
 import { loadUnits, saveUnits, type Units } from "@/lib/units";
@@ -46,6 +48,15 @@ export function ReplayView({ doc, replay }: { doc: SessionDoc; replay: Replay })
   const clock0 = useMemo(() => raceStart(idx, replay.t0), [idx, replay.t0]);
   const bands = useMemo(() => timeBands(replay, doc), [replay, doc]);
   const order = useMemo(() => driverOrder(doc), [doc]);
+  const frozen = useMemo(() => {
+    const out = new Map<string, Span[]>();
+    if (kind !== "race") return out;
+    for (const [code, recs] of idx) {
+      const spans = frozenSpans(replay, code, recs);
+      if (spans.length) out.set(code, spans);
+    }
+    return out;
+  }, [kind, idx, replay]);
   const ticks = useMemo(() => {
     if (kind !== "race") return [];
     const out: { t: number; label: string }[] = [];
@@ -167,8 +178,8 @@ export function ReplayView({ doc, replay }: { doc: SessionDoc; replay: Replay })
       <StatusStrip replay={replay} t={play.slow} kind={kind} lap={lap} totalLaps={total} clock={play.slow - clock0} units={units} />
 
       <div className="rp-stage">
-        <ReplayMap replay={replay} t={play.t} states={states} leader={board[0]?.code ?? null} slots={slots} onToggle={toggle} status={status} />
-        <ReplayBoard rows={board} kind={kind} slots={slots} teams={replay.teams} onToggle={toggle} gapsToSelected={gapsToSelected} selected={selected} predictions={predictions} />
+        <ReplayMap replay={replay} t={play.t} states={states} leader={board[0]?.code ?? null} slots={slots} onToggle={toggle} status={status} frozen={frozen} />
+        <ReplayBoard rows={board} kind={kind} slots={slots} teams={replay.teams} onToggle={toggle} gapsToSelected={gapsToSelected} selected={selected} predictions={predictions} frozen={frozen} now={play.slow} />
       </div>
 
       <Transport
