@@ -19,6 +19,14 @@ Most F1 tools are viewers. This project asks a narrower question: *how well can 
 | Pit-stop predictor | Scored on races it was not fitted on: 41.1% exact place over 5,489 green-flag stops, and 79.4% on the 649 undisturbed stops, which are 12% of all stops | [apps.md](docs/apps.md) |
 | Q&A agent | A local 14B model answering questions with SQL: 25 of 28 on questions written after the prompts were frozen, and it declined all 8 that the data cannot answer | [qa-agent.md](docs/qa-agent.md) |
 
+## Screenshots
+
+| Replay | Telemetry |
+|---|---|
+| ![Race replay](docs/screenshots/replay.png) | ![Telemetry against distance](docs/screenshots/telemetry.png) |
+| **Pit-stop predictor** | **Driver comparison** |
+| ![Pit-stop predictor](docs/screenshots/predictor.png) | ![Driver comparison](docs/screenshots/drivers.png) |
+
 ## Limits to know first
 
 - **New sessions cannot be ingested at the moment.** Since about 15 October 2026 F1's timing archive wants a login. The lake is complete through round 17 of 2026 (Singapore); everything downstream works on it.
