@@ -10,4 +10,5 @@ A static Next.js site over the gold tables. It reads JSON files that `scripts/ex
     npm test                            # unit tests for the race maths
     npm run build                       # writes the static site to web/out
 
-Pages: `/` (latest race), `/sessions`, `/circuits`, `/race/?key=2026-R17-R` (one session).
+Pages: `/` (latest race), `/sessions`, `/circuits`, `/race/?key=2026-R17-R` (one session), `/telemetry`, `/compare`, `/predictor`, `/practice`,
+and `/replay` (race, qualifying and sprint replays; `python scripts/export_replay.py --sessions R,Q,S,SQ,SS` builds its data).

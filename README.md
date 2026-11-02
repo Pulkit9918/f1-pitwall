@@ -139,6 +139,7 @@ Every warning left in the build is listed here, with what was measured and what 
 | 2024 British GP, race (ZHO, lap 26) | A stop with a measured pit loss of 1.3 s, below the 5 s plausibility floor. The driver's median gap to the field over the eight laps around the stop was 6.8 s, which the method subtracts from the in-lap and the out-lap | Cause unknown (`pit_loss_plausible`). Changing track conditions around the stop are a candidate; not tested |
 | 2026 Monaco GP, race | Position telemetry ends 5,233 s (87 minutes) before the last lap and averages 1.2 samples per second against about 3.8 elsewhere; car telemetry is complete | Source gap, caught by `telemetry_coverage_flags`; cause unknown |
 | 2023 round 17, sprint shootout | Car and position telemetry both start 78 s after the first lap began | Source gap, caught by `telemetry_coverage_flags`; cause unknown |
+| 2022 rounds 18 and 21, 2023 round 16, 2024 round 4 (nine replays) | The replay export drops the corner numbers or the marshal sectors: the corner coordinates are far from the drawn circuit (round 21), or the marshal posts do not run once around the lap in order (the others) | Not investigated |
 
 For the four lap-count cases I compared the raw Parquet files with the gold tables for the winner: the row counts agree, so the transformation does not lose laps and the disagreement is between the source's timing laps and its classification. The explanations above are readings of this data, not confirmed against official documents.
 
@@ -241,7 +242,7 @@ Parquet lake -> dbt gold tables -> scripts/export_*.py -> JSON in web/public/ ->
 | Drivers (`/compare`) | Lap-time gap between two drivers lap by lap, with purple, green and yellow sector colours | `fct_lap_sector`, `export_laps.py` |
 | Predictor (`/predictor`) | The pit-stop rejoin prediction scored against what happened, including a held-out test | `fct_pit_prediction_*`, `export_predictor.py` |
 | Practice (`/practice`) | Fastest laps and long runs in practice sessions | `export_laps.py` |
-| Replay (`/replay`) | All cars on the track map with playback, leaderboard and gaps, driver telemetry cards, weather, flags and race control messages, for race and qualifying sessions from 2022 (sprints with `--sessions`) | `export_replay.py` |
+| Replay (`/replay`) | All cars on the track map with playback, corner numbers, marshal-sector flags, a leaderboard with gaps, tyre history and pit timers, a timing tower, driver telemetry cards, weather, flags and race control messages, for race, qualifying, sprint and sprint-qualifying sessions from 2022 (267 replays) | `export_replay.py` |
 
 ```bash
 python scripts/export_static.py
@@ -254,7 +255,7 @@ python scripts/export_replay.py  --sessions R,Q,S,SQ,SS
 cd web && npm install && npm run dev      # npm run build writes the static site to web/out
 ```
 
-`web/public/trace-data` (83 sessions, about 37 MB gzipped) and `web/public/replay-data` (about 440 MB) are
+`web/public/trace-data` (83 sessions, about 37 MB gzipped) and `web/public/replay-data` (about 500 MB) are
 git-ignored and rebuilt with the exporters. The other JSON is committed. `export_replay.py --only 2026-R17-R
 --force` rebuilds one session.
 
@@ -326,6 +327,10 @@ honestly are skipped with a reason: 2026 round 6 (Monaco), where position data c
 11 (Hungary) is limited: its position feed stops matching the cars' clock from lap 7, and only 109 laps there have
 traces. A few cars have position data that stops moving before the race ends (for example Russell in 2025 round
 4), so their marker stands still while the leaderboard follows the lap table. The replay marks such a stretch: the dot is dashed and labelled "no position" and the leaderboard shows a !. Only one stretch in the 134 race replays meets the rule (two or more laps completed while the position stays still), so shorter freezes are not marked.
+
+**What the page shows.** The leaderboard gives the gap to the leader and to the car ahead (an interval under a second is highlighted), each driver's earlier tyre compounds, a pit-lane timer while a car is in the pits, and a badge for the holder of the fastest lap so far. The timing tower has Gap and Int columns next to the sector colours, and the lap history tab has a chart of the gaps. The controls have 0.5x to 20x playback, skip buttons (including 5 minutes back and forward), a jump to a lap number, a progress bar shaded for yellow-flag, safety car, VSC and red-flag periods, and during a red flag a button that skips to the restart. A safety car or VSC makes the track edge pulse and labels the map; there is no safety car on the map, because the data has no position for it.
+
+**Corner numbers and marshal sectors.** Corner numbers come from the lake's `circuit_corners` table and are placed on the drawn outline; a checkbox hides them. A marshal sector is the stretch of track from one marshal post to the next (`circuit_marshal_sectors`). While a message such as "YELLOW IN TRACK SECTOR 7" is in force, that sector is highlighted and tagged, yellow, or orange for a double yellow, until its "CLEAR" message. A corner is used only if it lies close to the drawn circuit, and the exporter drops all corners when a quarter or more are far away, and all marshal sectors when any post is far away or the posts do not run once around the lap in order, because a label in the wrong place is worse than none. That happens in nine replays from four weekends: 2022 round 21 has neither corners nor sectors, and 2022 round 18, 2023 round 16 and 2024 round 4 have no sectors. I did not look into why, and have not checked the sector highlights against the broadcast.
 
 ## The API
 
@@ -481,9 +486,9 @@ The scores held up, so the prompt changes did not only fit the first set. The sa
 
 ## Limitations
 
-- New sessions cannot be ingested at the moment. Since about 15 October 2026 F1's timing archive (`livetiming.formula1.com/static`) answers HTTP 401 to unauthenticated requests (FastF1 issue #978, open, no fix posted when I checked). The lake is complete through round 17 of 2026 (Singapore); later sessions cannot be loaded until access changes. Everything downstream (dbt, the app, the analyses) works on the existing lake.
+- New sessions cannot be ingested at the moment. Since about 15 October 2026 F1's timing archive (`livetiming.formula1.com/static`) answers HTTP 401 to unauthenticated requests (FastF1 issue #978, open, no fix posted when I checked). The lake is complete through round 17 of 2026 (Singapore); later sessions cannot be loaded until access changes. On 2 November 2026 I tried the United States and Mexico City weekends (nine sessions): FastF1 3.8.3 could not load any of them, and all nine are recorded as failed in the ingest log. FastF1 3.9.0 adds a sign-in with an F1TV account for this, and says an F1TV Access subscription or higher is needed; loading the United States race with it went straight to a sign-in prompt. I did not sign in, did not upgrade the project's environment, and have not checked whether the F1TV terms allow automated use. Everything downstream (dbt, the app, the analyses) works on the existing lake.
 - GPS position is already snapped to a common line, so cars cannot be shown side by side.
-- The simulated safety car is placed about 500 m ahead of the leader (no safety car GPS exists).
+- The simulated safety car is placed about 500 m ahead of the leader (no safety car GPS exists). The web replay does not draw one; it shows the safety car as a pulsing track edge and a label.
 - Red-flag periods end at the next pit-exit-open, safety car, track-clear or race-start message; no message states the end.
 - Wind speed is assumed to be in m/s, and the DRS open codes are an interpretation of the FastF1 documentation. The track status code meanings are confirmed by the feed's own labels (1 AllClear, 2 Yellow, 4 SCDeployed, 5 Red, 6 VSCDeployed, 7 VSCEnding).
 - Gaps are lap-timing based at the lines and GPS based in between; the running order is validated against official sector timing on 135 sessions (four of them in detail), the time gaps on those four only.
@@ -503,7 +508,7 @@ The scores held up, so the prompt changes did not only fit the first set. The sa
 - Make the API the single access path for the app and anything built on top; for now the Streamlit app does not use it
 - Switch the Race scrubber to the SQL race-control periods
 - Deploy the static site on a free host (Cloudflare Pages is the candidate) once the data-terms question is settled. The trace and replay data are large and git-ignored, so how they are built and hosted needs deciding first
-- Mark stale or frozen car positions on the replay (2026 round 11), and a formation-lap marker
+- Find out why the circuit data does not line up in the four weekends listed under Replay, and add a formation-lap marker to the replay
 - An S3-compatible object store (MinIO) for the lake, set up with Terraform and run locally
 
 ## Data terms
