@@ -2,26 +2,31 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { predictionAt } from "@/lib/analysis";
+import { predictionAt, type GapMetric } from "@/lib/analysis";
 import { MAX_COMPARED } from "@/lib/colors";
 import { useAnalysis } from "@/lib/data";
+import { GapChart } from "@/components/GapChart";
 import { sessionLabel } from "@/lib/format";
 import { assignSlots, driverOrder, maxLap, toggleDriver } from "@/lib/race";
 import {
   buildLapIndex,
   driverFacts,
+  fastestLapAt,
   frozenSpans,
   gapsToDriver,
   lapEnds,
   lapsDoneAt,
   lapStartTime,
   leaderLap,
+  pitSeconds,
   qualiBoard,
+  redFlagEnd,
   raceBoard,
   raceStart,
   statusAt,
   timeBands,
   timingRows,
+  tyreHistory,
   type CarState,
   type Replay,
   type Span,
@@ -31,7 +36,7 @@ import { loadUnits, saveUnits, type Units } from "@/lib/units";
 import { SPEEDS, usePlayback } from "@/lib/usePlayback";
 import { LapHistory } from "./LapHistory";
 import { MessageFeed } from "./MessageFeed";
-import { ReplayBoard, type Prediction } from "./ReplayBoard";
+import { ReplayBoard, type Prediction, type RowExtra } from "./ReplayBoard";
 import { ReplayMap } from "./ReplayMap";
 import { StatusStrip } from "./StatusStrip";
 import { TelemetryCards } from "./TelemetryCards";
@@ -69,6 +74,7 @@ export function ReplayView({ doc, replay }: { doc: SessionDoc; replay: Replay })
     assignSlots(Array(MAX_COMPARED).fill(null), order.filter((c) => replay.file.drivers[c]).slice(0, MAX_COMPARED), MAX_COMPARED),
   );
   const [tab, setTab] = useState<"timing" | "laps" | "messages">("timing");
+  const [gapMetric, setGapMetric] = useState<GapMetric>("leader");
   const [units, setUnits] = useState<Units>("metric");
   useEffect(() => setUnits(loadUnits()), []);
   const chooseUnits = (u: Units) => {
@@ -100,6 +106,17 @@ export function ReplayView({ doc, replay }: { doc: SessionDoc; replay: Replay })
   const states = useMemo(() => new Map<string, CarState>(board.map((r) => [r.code, r.state])), [board]);
   const positions = useMemo(() => new Map<string, number>(board.map((r) => [r.code, r.pos])), [board]);
   const timing = useMemo(() => timingRows(idx, board.map((r) => r.code), play.slow), [idx, board, play.slow]);
+  const extras = useMemo(() => {
+    const out = new Map<string, RowExtra>();
+    for (const [code, recs] of idx) out.set(code, { history: tyreHistory(recs, play.slow), pit: pitSeconds(recs, play.slow) });
+    return out;
+  }, [idx, play.slow]);
+  const fastest = useMemo(() => (kind === "race" ? fastestLapAt(idx, play.slow) : null), [kind, idx, play.slow]);
+  const gaps = useMemo(
+    () => (kind === "race" ? new Map(board.map((r) => [r.code, { gap: r.gapLeader, interval: r.interval, close: r.intervalS != null && r.intervalS < 1 }])) : undefined),
+    [kind, board],
+  );
+  const redUntil = redFlagEnd(bands, play.slow);
   const lap = leaderLap(ends, play.slow, total);
   const selected = slots.find((c): c is string => c !== null) ?? null;
   const gapsToSelected = useMemo(
@@ -179,7 +196,7 @@ export function ReplayView({ doc, replay }: { doc: SessionDoc; replay: Replay })
 
       <div className="rp-stage">
         <ReplayMap replay={replay} t={play.t} states={states} leader={board[0]?.code ?? null} slots={slots} onToggle={toggle} status={status} frozen={frozen} />
-        <ReplayBoard rows={board} kind={kind} slots={slots} teams={replay.teams} onToggle={toggle} gapsToSelected={gapsToSelected} selected={selected} predictions={predictions} frozen={frozen} now={play.slow} />
+        <ReplayBoard rows={board} kind={kind} slots={slots} teams={replay.teams} onToggle={toggle} gapsToSelected={gapsToSelected} selected={selected} predictions={predictions} frozen={frozen} now={play.slow} extras={extras} fastest={fastest} />
       </div>
 
       <Transport
@@ -200,6 +217,7 @@ export function ReplayView({ doc, replay }: { doc: SessionDoc; replay: Replay })
         onLap={kind === "race" ? jumpToLap : undefined}
         onFullscreen={typeof document !== "undefined" && document.fullscreenEnabled ? toggleFullscreen : undefined}
         fullscreen={fullscreen}
+        redUntil={redUntil}
       />
       <p className="axis-caption rp-keys">Space plays or pauses. Left and right arrows skip 5 seconds, with Shift 30. Up and down change speed.</p>
       </div>
@@ -219,11 +237,21 @@ export function ReplayView({ doc, replay }: { doc: SessionDoc; replay: Replay })
         </div>
         {tab === "timing" ? (
           <div role="tabpanel" id="panel-timing" aria-labelledby="tab-timing">
-            <TimingTable rows={timing} idx={idx} t={play.slow} positions={positions} />
+            <TimingTable rows={timing} idx={idx} t={play.slow} positions={positions} gaps={gaps} />
           </div>
         ) : tab === "laps" ? (
           <div role="tabpanel" id="panel-laps" aria-labelledby="tab-laps">
             <LapHistory idx={idx} slots={slots} t={play.slow} />
+            {analysisDoc && (
+              <>
+                <h3 className="rp-sub">Gap over the race</h3>
+                <div role="group" aria-label="Gap shown" className="chips">
+                  <button type="button" className={`chip${gapMetric === "leader" ? " chip-on" : ""}`} aria-pressed={gapMetric === "leader"} onClick={() => setGapMetric("leader")}>To leader</button>
+                  <button type="button" className={`chip${gapMetric === "interval" ? " chip-on" : ""}`} aria-pressed={gapMetric === "interval"} onClick={() => setGapMetric("interval")}>To car ahead</button>
+                </div>
+                <GapChart doc={doc} analysis={analysisDoc} slots={slots} metric={gapMetric} />
+              </>
+            )}
           </div>
         ) : (
           <div role="tabpanel" id="panel-messages" aria-labelledby="tab-messages">

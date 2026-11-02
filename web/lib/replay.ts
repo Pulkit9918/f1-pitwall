@@ -260,6 +260,7 @@ export interface BoardRow {
   tyre: TyreNow;
   gapLeader: string; 
   interval: string;
+  intervalS: Maybe<number>; // seconds to the car ahead; null for the leader or a car a lap or more behind
   progress: number; 
   best: Maybe<number>; 
 }
@@ -354,6 +355,11 @@ export function raceBoard(r: Replay, facts: Map<string, DriverFacts>, t: number,
       const now = done ? f.lastEnd! : t;
       return fmtGap(Math.max(0, now - reached));
     };
+    const gapSecs = (ahead: (typeof rows)[number]): number | null => {
+      if (t < opts.start || ahead.c - c >= 1) return null;
+      const reached = timeAtCum(r, ahead.f.code, c);
+      return reached == null ? null : Math.max(0, (done ? f.lastEnd! : t) - reached);
+    };
     return {
       code: f.code,
       pos: i + 1,
@@ -361,6 +367,7 @@ export function raceBoard(r: Replay, facts: Map<string, DriverFacts>, t: number,
       tyre: tyreAt(f.recs, t),
       gapLeader: i === 0 ? (t < opts.start ? "" : "Leader") : gapTo(leader),
       interval: i === 0 ? "" : gapTo(rows[i - 1]),
+      intervalS: i === 0 ? null : gapSecs(rows[i - 1]),
       progress: c,
       best: null,
     };
@@ -382,6 +389,7 @@ export function qualiBoard(facts: Map<string, DriverFacts>, t: number): BoardRow
     tyre: tyreAt(row.f.recs, t),
     gapLeader: row.best == null ? "" : i === 0 ? "Leader" : `+${(row.best - top!).toFixed(3)}`,
     interval: "",
+    intervalS: null,
     progress: row.best ?? Infinity,
     best: row.best,
   }));
@@ -606,3 +614,43 @@ export function mergeSpans(spans: Span[], gap = 5): Span[] {
 }
 
 export const frozenAt = (spans: Span[] | undefined, t: number): boolean => !!spans && spans.some(([a, b]) => t >= a && t <= b);
+
+
+// ---- extras for the leaderboard and controls ----
+
+// The compounds a driver has finished stints on, oldest first. A stint ends at the lap that has a pit entry.
+export function tyreHistory(recs: LapRec[], t: number): string[] {
+  const out: string[] = [];
+  for (const l of recs) if (fin(l.pitIn) && l.pitIn <= t && l.compound) out.push(l.compound);
+  return out;
+}
+
+// Seconds since the car entered the pit lane, or null when it is not in it.
+export function pitSeconds(recs: LapRec[], t: number): number | null {
+  if (!inPit(recs, t)) return null;
+  let pin: number | null = null;
+  for (const l of recs) if (fin(l.pitIn) && l.pitIn <= t) pin = l.pitIn;
+  return pin == null ? null : Math.max(0, t - pin);
+}
+
+// Who holds the fastest lap of the session so far. Deleted laps do not count.
+export function fastestLapAt(idx: LapIndex, t: number): string | null {
+  let best = Infinity;
+  let who: string | null = null;
+  for (const [code, recs] of idx) {
+    for (const l of recs) {
+      if (!completed(l) || l.deleted || l.end! > t) continue;
+      if (l.time! < best) {
+        best = l.time!;
+        who = code;
+      }
+    }
+  }
+  return who;
+}
+
+// When the red-flag period that contains t ends, or null if there is none.
+export function redFlagEnd(bands: TimeBand[], t: number): number | null {
+  for (const b of bands) if (b.kind === "RED" && t >= b.t0 && t < b.t1) return b.t1;
+  return null;
+}

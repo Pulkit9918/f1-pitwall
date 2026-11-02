@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { clamp } from "./replay";
 
-export const SPEEDS = [1, 2, 5, 10, 20];
+export const SPEEDS = [0.5, 1, 2, 5, 10, 20];
 
 export function usePlayback(start: number, end: number, initial = start) {
   const [t, setT] = useState(initial);

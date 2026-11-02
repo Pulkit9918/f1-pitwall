@@ -5,8 +5,8 @@ import { SPEEDS } from "@/lib/usePlayback";
 import { fmtClock, type TimeBand } from "@/lib/replay";
 
 const SKIPS = [
-  { label: "-1m", dt: -60 }, { label: "-30s", dt: -30 }, { label: "-5s", dt: -5 },
-  { label: "+5s", dt: 5 }, { label: "+30s", dt: 30 }, { label: "+1m", dt: 60 },
+  { label: "-5m", dt: -300 }, { label: "-1m", dt: -60 }, { label: "-30s", dt: -30 }, { label: "-5s", dt: -5 },
+  { label: "+5s", dt: 5 }, { label: "+30s", dt: 30 }, { label: "+1m", dt: 60 }, { label: "+5m", dt: 300 },
 ];
 
 export function Transport({
@@ -27,6 +27,7 @@ export function Transport({
   onFullscreen,
   fullscreen,
   raceStart,
+  redUntil,
 }: {
   start: number;
   end: number;
@@ -45,6 +46,7 @@ export function Transport({
   onFullscreen?: () => void;
   fullscreen?: boolean;
   raceStart?: number;
+  redUntil?: number | null;
 }) {
   const [lapText, setLapText] = useState("");
   const span = Math.max(1, end - start);
@@ -92,6 +94,11 @@ export function Transport({
         )}
         {raceStart !== undefined && (
           <span className={`rp-phase${t < raceStart ? " rp-phase-pre" : ""}`}>{t < raceStart ? "Pre-race / formation lap" : "Race"}</span>
+        )}
+        {redUntil != null && (
+          <button type="button" className="rp-skip rp-skip-red" onClick={() => onSeek(redUntil)}>
+            Red flag: skip to restart ({fmtClock(redUntil - t)} of session time left)
+          </button>
         )}
         <span className="rp-clock num">{fmtClock(t - clock0)}</span>
       </div>

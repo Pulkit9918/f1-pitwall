@@ -13,7 +13,7 @@
 .rp-weather dt { font-size: 0.75rem; color: var(--ink-3); }
 .rp-weather dd { margin: 0; font-weight: 700; font-size: 1rem; text-align: left; }
 
-.rp-stage { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 20px; align-items: start; }
+.rp-stage { display: grid; grid-template-columns: minmax(0, 1fr) 370px; gap: 20px; align-items: start; }
 .rp-map { display: block; width: 100%; height: auto; max-height: 72vh; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
 .rp-road-edge { fill: none; stroke: #343b4f; stroke-width: 22; stroke-linejoin: round; }
 .rp-road { fill: none; stroke: #1b2030; stroke-width: 16; stroke-linejoin: round; }
@@ -30,7 +30,7 @@
 .rp-board-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
 .rp-board-head h2 { margin: 0; font-size: 1.3rem; }
 .rp-board { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
-.rp-row { display: grid; grid-template-columns: 4px 26px 62px 1fr 34px 62px; align-items: center; gap: 8px; width: 100%; padding: 5px 8px 5px 0; background: transparent; border: 0; border-bottom: 1px solid var(--line-soft); color: var(--ink); font: inherit; font-size: 0.92rem; text-align: left; cursor: pointer; min-height: 32px; }
+.rp-row { display: grid; grid-template-columns: 4px 26px 70px 1fr 54px auto; align-items: center; gap: 8px; width: 100%; padding: 5px 8px 5px 0; background: transparent; border: 0; border-bottom: 1px solid var(--line-soft); color: var(--ink); font: inherit; font-size: 0.92rem; text-align: left; cursor: pointer; min-height: 32px; }
 .rp-row:hover { background: var(--surface); }
 .rp-row-on { background: var(--raised); }
 .rp-row[aria-disabled="true"] { cursor: not-allowed; }
@@ -124,7 +124,7 @@ span.swatch.rp-band-yellow { background: rgba(240, 196, 85, 0.5); }
 /* ---- upgrade: gap to a driver, pit prediction, flags on the track, jump to lap, full screen, units ---- */
 .rp-board-opts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 10px; }
 .rp-check { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--ink-2); cursor: pointer; }
-.rp-row-pred { grid-template-columns: 4px 26px 62px 1fr 42px 34px 62px; }
+.rp-row-pred { grid-template-columns: 4px 26px 70px 1fr 42px 54px auto; }
 .rp-predcell { color: var(--ink-2); font-size: 0.85rem; text-align: right; }
 .chip:disabled { opacity: 0.45; cursor: not-allowed; }
 .rp-edge-yellow { stroke: #b88a1e; }
@@ -150,3 +150,14 @@ span.swatch.rp-band-pre { background: rgba(140, 150, 170, 0.45); }
 .rp-dot-lost { stroke-dasharray: 3 3; opacity: 0.6; }
 .rp-tag-lost { font-size: 14px; font-weight: 600; fill: var(--ink-3); }
 .rp-pit[title] { cursor: help; }
+
+/* ---- upgrade: leaderboard extras, red-flag skip, pulsing safety-car edge ---- */
+.rp-fl { margin-left: 6px; padding: 0 4px; font-size: 0.65rem; font-weight: 800; background: rgba(168, 85, 247, 0.35); border-radius: 3px; vertical-align: middle; }
+.rp-close { color: var(--ink); font-weight: 800; background: rgba(60, 170, 90, 0.26); border-radius: 3px; }
+.rp-hist { display: inline-flex; gap: 1px; opacity: 0.55; margin-right: 2px; }
+.rp-hist .chip-compound { width: 16px; height: 16px; font-size: 0.58rem; }
+.rp-skip-red { border-color: #b8403d; color: #ff8a86; }
+.rp-sub { margin: 18px 0 8px; font-size: 1.05rem; }
+@keyframes rp-pulse { 0%, 100% { stroke-opacity: 1; stroke-width: 22; } 50% { stroke-opacity: 0.45; stroke-width: 28; } }
+.rp-edge-sc { animation: rp-pulse 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .rp-edge-sc { animation: none; } }

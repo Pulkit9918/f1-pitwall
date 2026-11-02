@@ -9,6 +9,7 @@ import { frozenAt, type BoardRow, type Span, type TeamInfo } from "@/lib/replay"
 
 export type GapMode = "leader" | "interval" | "driver";
 export type Prediction = { position: number | null; regime: Regime };
+export type RowExtra = { history: string[]; pit: number | null };
 
 export function ReplayBoard({
   rows,
@@ -21,6 +22,8 @@ export function ReplayBoard({
   predictions,
   frozen,
   now,
+  extras,
+  fastest,
 }: {
   rows: BoardRow[];
   kind: "race" | "quali";
@@ -32,6 +35,8 @@ export function ReplayBoard({
   predictions: Map<string, Prediction> | null;
   frozen: Map<string, Span[]>;
   now: number;
+  extras: Map<string, RowExtra>;
+  fastest: string | null;
 }) {
   const [chosen, setMode] = useState<GapMode>("leader");
   const [showPred, setShowPred] = useState(false);
@@ -68,6 +73,7 @@ export function ReplayBoard({
           const on = slot >= 0;
           const blocked = !on && full;
           const lost = r.state !== "out" && frozenAt(frozen.get(r.code), now);
+          const ex = extras.get(r.code);
           const gap = r.state === "out" ? "OUT" : kind === "quali" ? (r.best != null ? fmtLap(r.best) : "-") : mode === "leader" ? r.gapLeader : mode === "driver" ? gapsToSelected?.get(r.code) ?? "" : r.interval || r.gapLeader;
           return (
             <li key={r.code}>
@@ -84,8 +90,9 @@ export function ReplayBoard({
                 <span className="rp-code" title={teams[r.code]?.name ?? undefined}>
                   {r.code}
                   {on && <span className="rp-slot" style={{ background: DRIVER_COLORS[slot] }} aria-hidden="true" />}
+                  {fastest === r.code && <span className="rp-fl" title="Fastest lap so far">FL</span>}
                 </span>
-                <span className={`rp-gap num${r.state === "out" ? " rp-out" : ""}`}>
+                <span className={`rp-gap num${r.state === "out" ? " rp-out" : ""}${mode === "interval" && r.intervalS != null && r.intervalS < 1 ? " rp-close" : ""}`}>
                   {gap}
                   {kind === "quali" && r.gapLeader && r.gapLeader !== "Leader" && <small>{r.gapLeader}</small>}
                 </span>
@@ -99,10 +106,15 @@ export function ReplayBoard({
                   );
                 })()}
                 <span className="rp-pit" title={lost && r.state !== "pit" ? "Position data stopped; the dot is not where the car is" : undefined}>
-                  {r.state === "pit" ? "PIT" : lost ? "!" : ""}
+                  {r.state === "pit" ? (ex?.pit != null ? `PIT ${Math.floor(ex.pit)}s` : "PIT") : lost ? "!" : ""}
                   {lost && r.state !== "pit" && <span className="sr-only"> position data lost</span>}
                 </span>
                 <span className="rp-tyre">
+                  {ex && ex.history.length > 0 && (
+                    <span className="rp-hist" title={`Earlier tyres: ${ex.history.join(", ")}`}>
+                      {ex.history.map((c, i) => <CompoundChip key={i} compound={c} />)}
+                    </span>
+                  )}
                   <CompoundChip compound={r.tyre.compound} />
                   <span className="num rp-age">{r.tyre.life ?? ""}</span>
                 </span>

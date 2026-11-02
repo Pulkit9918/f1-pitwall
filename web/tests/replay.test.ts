@@ -5,6 +5,7 @@ import {
   cumAt,
   decodeReplay,
   driverFacts,
+  fastestLapAt,
   fmtClock,
   fmtGap,
   frame,
@@ -20,14 +21,17 @@ import {
   lapStartTime,
   leaderLap,
   messagesUpTo,
+  pitSeconds,
   qualiBoard,
   raceBoard,
+  redFlagEnd,
   statusAt,
   timeAtCum,
   timeBands,
   timingRows,
   trackPoint,
   tyreAt,
+  tyreHistory,
   weatherAt,
   type LapIndex,
   type LapRec,
@@ -378,5 +382,38 @@ describe("frozenSpans", () => {
   it("joins stretches a moment apart", () => {
     expect(mergeSpans([[0, 10], [12, 20], [40, 50]], 5)).toEqual([[0, 20], [40, 50]]);
     expect(mergeSpans([], 5)).toEqual([]);
+  });
+});
+
+
+describe("leaderboard extras", () => {
+  const recs = idx.get("AAA")!;
+  it("lists the compounds of finished stints", () => {
+    expect(tyreHistory(recs, 18)).toEqual([]);
+    expect(tyreHistory(recs, 25)).toEqual(["MEDIUM"]);
+  });
+  it("times a stop from pit entry and stops at pit exit", () => {
+    expect(pitSeconds(recs, 18)).toBeNull();
+    expect(pitSeconds(recs, 20)).toBeCloseTo(1);
+    expect(pitSeconds(recs, 22.1)).toBeNull();
+  });
+  it("names the fastest lap so far and ignores deleted laps", () => {
+    expect(fastestLapAt(idx, 5)).toBeNull();
+    expect(fastestLapAt(idx, 14)).toBe("AAA");
+    const del: LapIndex = new Map([["AAA", [lap(1, 0, 9, { deleted: true })]], ["BBB", [lap(1, 0, 12)]]]);
+    expect(fastestLapAt(del, 20)).toBe("BBB");
+  });
+  it("finds the end of the red flag period around a time", () => {
+    const bands = [{ kind: "YELLOW" as const, t0: 0, t1: 30 }, { kind: "RED" as const, t0: 10, t1: 20 }];
+    expect(redFlagEnd(bands, 15)).toBe(20);
+    expect(redFlagEnd(bands, 20)).toBeNull();
+    expect(redFlagEnd(bands, 5)).toBeNull();
+  });
+  it("gives the interval in seconds, and nothing for the leader or a car a lap down", () => {
+    const rows = raceBoard(r, driverFacts(idx), 15, OPTS);
+    expect(rows[0].intervalS).toBeNull();
+    expect(rows[1].intervalS).toBeCloseTo(3.5);
+    expect(raceBoard(r, driverFacts(idx), 36, OPTS)[2].intervalS).toBeNull();
+    expect(qualiBoard(driverFacts(idx), 14)[1].intervalS).toBeNull();
   });
 });
